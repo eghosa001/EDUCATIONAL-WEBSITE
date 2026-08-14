@@ -24,6 +24,7 @@ import { searchRoutes } from './search.routes.js';
 import { analyticsRoutes } from './analytics.routes.js';
 import { reportRoutes } from './report.routes.js';
 import { adminRoutes } from './admin.routes.js';
+import { storageRoutes } from './storage.routes.js';
 
 export const apiRoutes = Router();
 
@@ -52,6 +53,7 @@ apiRoutes.use('/search', searchRoutes);
 apiRoutes.use('/analytics', analyticsRoutes);
 apiRoutes.use('/reports', reportRoutes);
 apiRoutes.use('/admin', adminRoutes);
+apiRoutes.use('/storage', storageRoutes);
 
 apiRoutes.get('/', (req, res) => {
   res.json({
@@ -84,6 +86,7 @@ apiRoutes.get('/', (req, res) => {
       analytics: '/api/v1/analytics',
       reports: '/api/v1/reports',
       admin: '/api/v1/admin',
+      storage: '/api/v1/storage',
     },
   });
 });

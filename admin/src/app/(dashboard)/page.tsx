@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AcademicCapIcon, UserGroupIcon, TrendingUpIcon, ShoppingCartIcon } from 'lucide-react';
+import { GraduationCap, Users, TrendingUp, ShoppingCart } from 'lucide-react';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({
@@ -30,12 +30,12 @@ export default function DashboardPage() {
   }, []);
 
   const statCards = [
-    { label: 'Total Users', value: stats.totalUsers.toLocaleString(), icon: UserGroupIcon, color: 'blue', change: '+12%' },
-    { label: 'Active Students', value: stats.activeStudents.toLocaleString(), icon: AcademicCapIcon, color: 'green', change: '+8%' },
-    { label: 'Teachers', value: stats.teachers.toLocaleString(), icon: TrendingUpIcon, color: 'purple', change: '+5%' },
-    { label: 'Schools', value: stats.schools.toString(), icon: ShoppingCartIcon, color: 'orange', change: '+3%' },
-    { label: 'Courses', value: stats.courses.toLocaleString(), icon: AcademicCapIcon, color: 'blue', change: '+15%' },
-    { label: 'Monthly Revenue', value: `₦${(stats.revenue / 1000).toFixed(0)}K`, icon: TrendingUpIcon, color: 'green', change: '+22%' },
+    { label: 'Total Users', value: stats.totalUsers.toLocaleString(), icon: Users, color: 'blue', change: '+12%' },
+    { label: 'Active Students', value: stats.activeStudents.toLocaleString(), icon: GraduationCap, color: 'green', change: '+8%' },
+    { label: 'Teachers', value: stats.teachers.toLocaleString(), icon: TrendingUp, color: 'purple', change: '+5%' },
+    { label: 'Schools', value: stats.schools.toString(), icon: ShoppingCart, color: 'orange', change: '+3%' },
+    { label: 'Courses', value: stats.courses.toLocaleString(), icon: GraduationCap, color: 'blue', change: '+15%' },
+    { label: 'Monthly Revenue', value: `₦${(stats.revenue / 1000).toFixed(0)}K`, icon: TrendingUp, color: 'green', change: '+22%' },
   ];
 
   return (

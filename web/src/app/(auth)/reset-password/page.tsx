@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { EyeIcon, EyeSlashIcon, CheckCircleIcon } from 'lucide-react';
+import { EyeIcon, EyeOff as EyeSlashIcon, CheckCircleIcon } from 'lucide-react';
 import { resetPassword } from '@/services/api/authService';
 
 export default function ResetPasswordPage() {

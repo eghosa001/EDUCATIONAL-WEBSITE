@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { UsersIcon, TrendingUpIcon, BookOpenIcon, CalendarIcon } from 'lucide-react';
+import { UsersIcon, TrendingUp, BookOpenIcon, CalendarIcon } from 'lucide-react';
 
 export default function SchoolDetailPage() {
   const params = useParams();
@@ -43,7 +43,7 @@ export default function SchoolDetailPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[{ label: 'Students', value: school.students.toLocaleString(), icon: UsersIcon, color: 'blue' },
-          { label: 'Teachers', value: school.teachers.toString(), icon: TrendingUpIcon, color: 'green' },
+          { label: 'Teachers', value: school.teachers.toString(), icon: TrendingUp, color: 'green' },
           { label: 'Courses', value: school.courses.toString(), icon: BookOpenIcon, color: 'purple' },
           { label: 'Established', value: school.established.toString(), icon: CalendarIcon, color: 'orange' }].map(s => (
           <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-5">

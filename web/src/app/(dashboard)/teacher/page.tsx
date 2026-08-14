@@ -1,11 +1,11 @@
 'use client';
 
-import { BookOpenIcon, TrendingUpIcon, WalletIcon, ClipboardCheckIcon } from 'lucide-react';
+import { BookOpenIcon, TrendingUp, WalletIcon, ClipboardCheckIcon } from 'lucide-react';
 
 export default function TeacherPage() {
   const stats = [
     { label: 'My Courses', value: '3', icon: BookOpenIcon, color: 'blue' },
-    { label: 'Active Students', value: '142', icon: TrendingUpIcon, color: 'green' },
+    { label: 'Active Students', value: '142', icon: TrendingUp, color: 'green' },
     { label: 'Earnings', value: '₦45,200', icon: WalletIcon, color: 'purple' },
     { label: 'Assignments Graded', value: '89', icon: ClipboardCheckIcon, color: 'orange' },
   ];

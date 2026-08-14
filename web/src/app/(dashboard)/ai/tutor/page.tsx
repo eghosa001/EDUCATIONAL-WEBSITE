@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { SendIcon, BotIcon, UserIcon, LightBulbIcon } from 'lucide-react';
+import { Send, Bot, User, Lightbulb } from 'lucide-react';
 
 const INITIAL_MESSAGE = {
   role: 'assistant',
@@ -38,7 +38,7 @@ export default function AiTutorPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-          <LightBulbIcon className="w-6 h-6 text-indigo-600" />
+          <Lightbulb className="w-6 h-6 text-indigo-600" />
         </div>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">AI Tutor</h1>
@@ -52,7 +52,7 @@ export default function AiTutorPage() {
             <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
               {msg.role === 'assistant' && (
                 <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                  <BotIcon className="w-4 h-4 text-indigo-600" />
+                  <Bot className="w-4 h-4 text-indigo-600" />
                 </div>
               )}
               <div className={`max-w-lg px-4 py-3 rounded-2xl text-sm ${
@@ -64,7 +64,7 @@ export default function AiTutorPage() {
               </div>
               {msg.role === 'user' && (
                 <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                  <UserIcon className="w-4 h-4 text-blue-600" />
+                  <User className="w-4 h-4 text-blue-600" />
                 </div>
               )}
             </div>
@@ -72,7 +72,7 @@ export default function AiTutorPage() {
           {isLoading && (
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                <BotIcon className="w-4 h-4 text-indigo-600" />
+                <Bot className="w-4 h-4 text-indigo-600" />
               </div>
               <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-3">
                 <div className="flex gap-1">
@@ -101,7 +101,7 @@ export default function AiTutorPage() {
               disabled={isLoading || !input.trim()}
               className="px-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
-              <SendIcon className="w-5 h-5" />
+              <Send className="w-5 h-5" />
             </button>
           </div>
           <p className="text-xs text-gray-400 mt-2">AI may produce inaccurate information. Always verify with your teacher.</p>

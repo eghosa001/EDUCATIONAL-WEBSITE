@@ -3,7 +3,10 @@ import { HTTP_STATUS, ERROR_CODES } from '../constants/index.js';
 import { AppError, handleError, asyncHandler } from '../errors/index.js';
 import { rateLimit } from 'express-rate-limit';
 
-export { asyncHandler, AppError }; 
+export { asyncHandler, AppError };
+import subscriptionMiddleware from './subscription.js';
+export const requireSubscription = subscriptionMiddleware.requireSubscription;
+export const requireFeatureAccess = subscriptionMiddleware.requireFeatureAccess; 
 
 export const errorHandler = (err, req, res, next) => {
   handleError(err, res);

@@ -24,7 +24,7 @@ export default function ProgressPage() {
   useEffect(() => {
     if (token) {
       fetchMyCourses(token)
-        .then((res) => setProgress(res.data?.courses || []))
+        .then((res) => setProgress(res.courses || []))
         .catch(console.error)
         .finally(() => setLoading(false));
     } else {

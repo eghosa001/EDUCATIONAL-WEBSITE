@@ -168,9 +168,9 @@ export const fetchTimeSeriesAnalytics = async (
 export const exportAnalyticsReport = async (
   reportType: 'users' | 'courses' | 'exams' | 'revenue' | 'activity',
   format: 'csv' | 'excel' | 'pdf',
+  token: string,
   startDate?: string,
-  endDate?: string,
-  token: string
+  endDate?: string
 ) => {
   const query = new URLSearchParams({ reportType, format });
   if (startDate) query.append('startDate', startDate);

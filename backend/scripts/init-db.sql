@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- USERS & AUTHENTICATION
 -- ============================================
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(255) UNIQUE NOT NULL,
     phone VARCHAR(20) UNIQUE,
@@ -28,7 +28,7 @@ CREATE TABLE users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE roles (
+CREATE TABLE IF NOT EXISTS roles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(50) UNIQUE NOT NULL,
     description TEXT,
@@ -36,7 +36,7 @@ CREATE TABLE roles (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE user_roles (
+CREATE TABLE IF NOT EXISTS user_roles (
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     role_id UUID REFERENCES roles(id) ON DELETE CASCADE,
     assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -44,7 +44,7 @@ CREATE TABLE user_roles (
     PRIMARY KEY (user_id, role_id)
 );
 
-CREATE TABLE sessions (
+CREATE TABLE IF NOT EXISTS sessions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     token_hash VARCHAR(255) NOT NULL,
@@ -56,7 +56,7 @@ CREATE TABLE sessions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE password_resets (
+CREATE TABLE IF NOT EXISTS password_resets (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     token_hash VARCHAR(255) NOT NULL,
@@ -69,7 +69,7 @@ CREATE TABLE password_resets (
 -- EDUCATION STRUCTURE
 -- ============================================
 
-CREATE TABLE education_systems (
+CREATE TABLE IF NOT EXISTS education_systems (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(100) NOT NULL,
     code VARCHAR(20) UNIQUE NOT NULL,
@@ -79,7 +79,7 @@ CREATE TABLE education_systems (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE education_levels (
+CREATE TABLE IF NOT EXISTS education_levels (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     education_system_id UUID REFERENCES education_systems(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
@@ -93,7 +93,7 @@ CREATE TABLE education_levels (
     UNIQUE(education_system_id, code)
 );
 
-CREATE TABLE programs (
+CREATE TABLE IF NOT EXISTS programs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     education_level_id UUID REFERENCES education_levels(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
@@ -106,7 +106,7 @@ CREATE TABLE programs (
     UNIQUE(education_level_id, code)
 );
 
-CREATE TABLE classes (
+CREATE TABLE IF NOT EXISTS classes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     program_id UUID REFERENCES programs(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
@@ -118,7 +118,7 @@ CREATE TABLE classes (
     UNIQUE(program_id, code)
 );
 
-CREATE TABLE terms (
+CREATE TABLE IF NOT EXISTS terms (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     education_system_id UUID REFERENCES education_systems(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
@@ -134,7 +134,7 @@ CREATE TABLE terms (
 -- CURRICULUM
 -- ============================================
 
-CREATE TABLE subjects (
+CREATE TABLE IF NOT EXISTS subjects (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     education_system_id UUID REFERENCES education_systems(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
@@ -149,7 +149,7 @@ CREATE TABLE subjects (
     UNIQUE(education_system_id, code)
 );
 
-CREATE TABLE topics (
+CREATE TABLE IF NOT EXISTS topics (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     subject_id UUID REFERENCES subjects(id) ON DELETE CASCADE,
     class_id UUID REFERENCES classes(id) ON DELETE CASCADE,
@@ -166,7 +166,7 @@ CREATE TABLE topics (
     UNIQUE(subject_id, class_id, term_id, code)
 );
 
-CREATE TABLE subtopics (
+CREATE TABLE IF NOT EXISTS subtopics (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     topic_id UUID REFERENCES topics(id) ON DELETE CASCADE,
     name VARCHAR(200) NOT NULL,
@@ -185,7 +185,7 @@ CREATE TABLE subtopics (
 -- COURSES
 -- ============================================
 
-CREATE TABLE courses (
+CREATE TABLE IF NOT EXISTS courses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     subject_id UUID REFERENCES subjects(id) ON DELETE SET NULL,
     class_id UUID REFERENCES classes(id) ON DELETE SET NULL,
@@ -213,7 +213,7 @@ CREATE TABLE courses (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE course_sections (
+CREATE TABLE IF NOT EXISTS course_sections (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
     title VARCHAR(300) NOT NULL,
@@ -228,7 +228,7 @@ CREATE TABLE course_sections (
 -- LESSONS
 -- ============================================
 
-CREATE TABLE lessons (
+CREATE TABLE IF NOT EXISTS lessons (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
     section_id UUID REFERENCES course_sections(id) ON DELETE CASCADE,
@@ -255,7 +255,7 @@ CREATE TABLE lessons (
     UNIQUE(course_id, slug)
 );
 
-CREATE TABLE lesson_resources (
+CREATE TABLE IF NOT EXISTS lesson_resources (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     lesson_id UUID REFERENCES lessons(id) ON DELETE CASCADE,
     title VARCHAR(200) NOT NULL,
@@ -273,7 +273,7 @@ CREATE TABLE lesson_resources (
 -- STUDENT PROGRESS
 -- ============================================
 
-CREATE TABLE student_courses (
+CREATE TABLE IF NOT EXISTS student_courses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     student_id UUID REFERENCES users(id) ON DELETE CASCADE,
     course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
@@ -286,7 +286,7 @@ CREATE TABLE student_courses (
     UNIQUE(student_id, course_id)
 );
 
-CREATE TABLE lesson_progress (
+CREATE TABLE IF NOT EXISTS lesson_progress (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     student_id UUID REFERENCES users(id) ON DELETE CASCADE,
     lesson_id UUID REFERENCES lessons(id) ON DELETE CASCADE,
@@ -301,7 +301,7 @@ CREATE TABLE lesson_progress (
     UNIQUE(student_id, lesson_id)
 );
 
-CREATE TABLE study_sessions (
+CREATE TABLE IF NOT EXISTS study_sessions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     student_id UUID REFERENCES users(id) ON DELETE CASCADE,
     course_id UUID REFERENCES courses(id) ON DELETE SET NULL,
@@ -317,7 +317,7 @@ CREATE TABLE study_sessions (
 -- QUESTIONS & ASSESSMENTS
 -- ============================================
 
-CREATE TABLE questions (
+CREATE TABLE IF NOT EXISTS questions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     subject_id UUID REFERENCES subjects(id) ON DELETE SET NULL,
     topic_id UUID REFERENCES topics(id) ON DELETE SET NULL,
@@ -347,7 +347,7 @@ CREATE TABLE questions (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE quizzes (
+CREATE TABLE IF NOT EXISTS quizzes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
     lesson_id UUID REFERENCES lessons(id) ON DELETE SET NULL,
@@ -364,7 +364,7 @@ CREATE TABLE quizzes (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE quiz_questions (
+CREATE TABLE IF NOT EXISTS quiz_questions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     quiz_id UUID REFERENCES quizzes(id) ON DELETE CASCADE,
     question_id UUID REFERENCES questions(id) ON DELETE CASCADE,
@@ -373,7 +373,7 @@ CREATE TABLE quiz_questions (
     UNIQUE(quiz_id, question_id)
 );
 
-CREATE TABLE exams (
+CREATE TABLE IF NOT EXISTS exams (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title VARCHAR(300) NOT NULL,
     slug VARCHAR(300) UNIQUE NOT NULL,
@@ -399,7 +399,7 @@ CREATE TABLE exams (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE exam_questions (
+CREATE TABLE IF NOT EXISTS exam_questions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     exam_id UUID REFERENCES exams(id) ON DELETE CASCADE,
     question_id UUID REFERENCES questions(id) ON DELETE CASCADE,
@@ -413,7 +413,7 @@ CREATE TABLE exam_questions (
 -- EXAM ATTEMPTS & RESULTS
 -- ============================================
 
-CREATE TABLE exam_attempts (
+CREATE TABLE IF NOT EXISTS exam_attempts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     exam_id UUID REFERENCES exams(id) ON DELETE CASCADE,
     student_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -431,7 +431,7 @@ CREATE TABLE exam_attempts (
     UNIQUE(exam_id, student_id, attempt_number)
 );
 
-CREATE TABLE exam_answers (
+CREATE TABLE IF NOT EXISTS exam_answers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     attempt_id UUID REFERENCES exam_attempts(id) ON DELETE CASCADE,
     question_id UUID REFERENCES questions(id) ON DELETE CASCADE,
@@ -446,7 +446,7 @@ CREATE TABLE exam_answers (
 -- ASSIGNMENTS
 -- ============================================
 
-CREATE TABLE assignments (
+CREATE TABLE IF NOT EXISTS assignments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
     lesson_id UUID REFERENCES lessons(id) ON DELETE SET NULL,
@@ -466,7 +466,7 @@ CREATE TABLE assignments (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE submissions (
+CREATE TABLE IF NOT EXISTS submissions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     assignment_id UUID REFERENCES assignments(id) ON DELETE CASCADE,
     student_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -486,25 +486,25 @@ CREATE TABLE submissions (
 -- INDEXES FOR PERFORMANCE
 -- ============================================
 
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_phone ON users(phone);
-CREATE INDEX idx_sessions_user_id ON sessions(user_id);
-CREATE INDEX idx_sessions_token_hash ON sessions(token_hash);
-CREATE INDEX idx_topics_subject_class_term ON topics(subject_id, class_id, term_id);
-CREATE INDEX idx_lessons_course_section ON lessons(course_id, section_id);
-CREATE INDEX idx_student_courses_student ON student_courses(student_id);
-CREATE INDEX idx_lesson_progress_student_lesson ON lesson_progress(student_id, lesson_id);
-CREATE INDEX idx_questions_subject_topic ON questions(subject_id, topic_id);
-CREATE INDEX idx_quiz_questions_quiz ON quiz_questions(quiz_id);
-CREATE INDEX idx_exam_questions_exam ON exam_questions(exam_id);
-CREATE INDEX idx_submissions_assignment ON submissions(assignment_id);
-CREATE INDEX idx_study_sessions_student_date ON study_sessions(student_id, started_at);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_token_hash ON sessions(token_hash);
+CREATE INDEX IF NOT EXISTS idx_topics_subject_class_term ON topics(subject_id, class_id, term_id);
+CREATE INDEX IF NOT EXISTS idx_lessons_course_section ON lessons(course_id, section_id);
+CREATE INDEX IF NOT EXISTS idx_student_courses_student ON student_courses(student_id);
+CREATE INDEX IF NOT EXISTS idx_lesson_progress_student_lesson ON lesson_progress(student_id, lesson_id);
+CREATE INDEX IF NOT EXISTS idx_questions_subject_topic ON questions(subject_id, topic_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_questions_quiz ON quiz_questions(quiz_id);
+CREATE INDEX IF NOT EXISTS idx_exam_questions_exam ON exam_questions(exam_id);
+CREATE INDEX IF NOT EXISTS idx_submissions_assignment ON submissions(assignment_id);
+CREATE INDEX IF NOT EXISTS idx_study_sessions_student_date ON study_sessions(student_id, started_at);
 
 -- ============================================
 -- CLASS-SUBJECT RELATIONSHIP
 -- ============================================
 
-CREATE TABLE class_subjects (
+CREATE TABLE IF NOT EXISTS class_subjects (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     class_id UUID REFERENCES classes(id) ON DELETE CASCADE,
     subject_id UUID REFERENCES subjects(id) ON DELETE CASCADE,
@@ -518,7 +518,7 @@ CREATE TABLE class_subjects (
 -- TEACHERS
 -- ============================================
 
-CREATE TABLE teachers (
+CREATE TABLE IF NOT EXISTS teachers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     qualification VARCHAR(300),
@@ -535,13 +535,13 @@ CREATE TABLE teachers (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_teachers_user_id ON teachers(user_id);
+CREATE INDEX IF NOT EXISTS idx_teachers_user_id ON teachers(user_id);
 
 -- ============================================
 -- PARENTS
 -- ============================================
 
-CREATE TABLE parents (
+CREATE TABLE IF NOT EXISTS parents (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     occupation VARCHAR(200),
@@ -551,13 +551,13 @@ CREATE TABLE parents (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_parents_user_id ON parents(user_id);
+CREATE INDEX IF NOT EXISTS idx_parents_user_id ON parents(user_id);
 
 -- ============================================
 -- PARENT-CHILDREN RELATIONSHIP
 -- ============================================
 
-CREATE TABLE parent_children (
+CREATE TABLE IF NOT EXISTS parent_children (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     parent_id UUID REFERENCES parents(id) ON DELETE CASCADE,
     child_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -568,14 +568,14 @@ CREATE TABLE parent_children (
     UNIQUE(parent_id, child_user_id)
 );
 
-CREATE INDEX idx_parent_children_parent ON parent_children(parent_id);
-CREATE INDEX idx_parent_children_child ON parent_children(child_user_id);
+CREATE INDEX IF NOT EXISTS idx_parent_children_parent ON parent_children(parent_id);
+CREATE INDEX IF NOT EXISTS idx_parent_children_child ON parent_children(child_user_id);
 
 -- ============================================
 -- SCHOOLS
 -- ============================================
 
-CREATE TABLE schools (
+CREATE TABLE IF NOT EXISTS schools (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(300) NOT NULL,
     code VARCHAR(50) UNIQUE NOT NULL,
@@ -598,14 +598,14 @@ CREATE TABLE schools (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_schools_code ON schools(code);
-CREATE INDEX idx_schools_status ON schools(status);
+CREATE INDEX IF NOT EXISTS idx_schools_code ON schools(code);
+CREATE INDEX IF NOT EXISTS idx_schools_status ON schools(status);
 
 -- ============================================
 -- SCHOOL STUDENTS
 -- ============================================
 
-CREATE TABLE school_students (
+CREATE TABLE IF NOT EXISTS school_students (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     school_id UUID REFERENCES schools(id) ON DELETE CASCADE,
     student_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -617,14 +617,14 @@ CREATE TABLE school_students (
     UNIQUE(school_id, student_id)
 );
 
-CREATE INDEX idx_school_students_school ON school_students(school_id);
-CREATE INDEX idx_school_students_student ON school_students(student_id);
+CREATE INDEX IF NOT EXISTS idx_school_students_school ON school_students(school_id);
+CREATE INDEX IF NOT EXISTS idx_school_students_student ON school_students(student_id);
 
 -- ============================================
 -- SCHOOL TEACHERS
 -- ============================================
 
-CREATE TABLE school_teachers (
+CREATE TABLE IF NOT EXISTS school_teachers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     school_id UUID REFERENCES schools(id) ON DELETE CASCADE,
     teacher_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -636,14 +636,14 @@ CREATE TABLE school_teachers (
     UNIQUE(school_id, teacher_id)
 );
 
-CREATE INDEX idx_school_teachers_school ON school_teachers(school_id);
-CREATE INDEX idx_school_teachers_teacher ON school_teachers(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_school_teachers_school ON school_teachers(school_id);
+CREATE INDEX IF NOT EXISTS idx_school_teachers_teacher ON school_teachers(teacher_id);
 
 -- ============================================
 -- SCHOOL CLASSES
 -- ============================================
 
-CREATE TABLE school_classes (
+CREATE TABLE IF NOT EXISTS school_classes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     school_id UUID REFERENCES schools(id) ON DELETE CASCADE,
     class_id UUID REFERENCES classes(id),
@@ -656,13 +656,13 @@ CREATE TABLE school_classes (
     UNIQUE(school_id, class_id, term_id)
 );
 
-CREATE INDEX idx_school_classes_school ON school_classes(school_id);
+CREATE INDEX IF NOT EXISTS idx_school_classes_school ON school_classes(school_id);
 
 -- ============================================
 -- PAYMENT TRANSACTIONS
 -- ============================================
 
-CREATE TABLE transactions (
+CREATE TABLE IF NOT EXISTS transactions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     payment_id UUID REFERENCES payments(id) ON DELETE SET NULL,
     wallet_id UUID REFERENCES wallets(id) ON DELETE SET NULL,
@@ -678,15 +678,15 @@ CREATE TABLE transactions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_transactions_user_id ON transactions(user_id);
-CREATE INDEX idx_transactions_payment_id ON transactions(payment_id);
-CREATE INDEX idx_transactions_created_at ON transactions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_payment_id ON transactions(payment_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at DESC);
 
 -- ============================================
 -- NOTIFICATIONS
 -- ============================================
 
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     type VARCHAR(50) NOT NULL,
@@ -700,15 +700,15 @@ CREATE TABLE notifications (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX idx_notifications_read ON notifications(user_id, read_at);
-CREATE INDEX idx_notifications_type ON notifications(type);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(user_id, read_at);
+CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
 
 -- ============================================
 -- GAMIFICATION
 -- ============================================
 
-CREATE TABLE badges (
+CREATE TABLE IF NOT EXISTS badges (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(100) NOT NULL,
     code VARCHAR(50) UNIQUE NOT NULL,
@@ -720,7 +720,7 @@ CREATE TABLE badges (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE achievements (
+CREATE TABLE IF NOT EXISTS achievements (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     badge_id UUID REFERENCES badges(id) ON DELETE CASCADE,
@@ -729,7 +729,7 @@ CREATE TABLE achievements (
     UNIQUE(user_id, badge_id)
 );
 
-CREATE TABLE student_points (
+CREATE TABLE IF NOT EXISTS student_points (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     total_points INTEGER DEFAULT 0,
@@ -741,7 +741,7 @@ CREATE TABLE student_points (
     UNIQUE(user_id)
 );
 
-CREATE TABLE leaderboards (
+CREATE TABLE IF NOT EXISTS leaderboards (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     type VARCHAR(50) NOT NULL,
     period VARCHAR(20) NOT NULL,
@@ -755,14 +755,14 @@ CREATE TABLE leaderboards (
     UNIQUE(type, period, user_id)
 );
 
-CREATE INDEX idx_achievements_user_id ON achievements(user_id);
-CREATE INDEX idx_student_points_total ON student_points(total_points DESC);
+CREATE INDEX IF NOT EXISTS idx_achievements_user_id ON achievements(user_id);
+CREATE INDEX IF NOT EXISTS idx_student_points_total ON student_points(total_points DESC);
 
 -- ============================================
 -- AI SYSTEM
 -- ============================================
 
-CREATE TABLE ai_conversations (
+CREATE TABLE IF NOT EXISTS ai_conversations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     course_id UUID REFERENCES courses(id) ON DELETE SET NULL,
@@ -776,10 +776,10 @@ CREATE TABLE ai_conversations (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_ai_conversations_user ON ai_conversations(user_id);
-CREATE INDEX idx_ai_conversations_created ON ai_conversations(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_conversations_user ON ai_conversations(user_id);
+CREATE INDEX IF NOT EXISTS idx_ai_conversations_created ON ai_conversations(user_id, created_at DESC);
 
-CREATE TABLE ai_messages (
+CREATE TABLE IF NOT EXISTS ai_messages (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     conversation_id UUID REFERENCES ai_conversations(id) ON DELETE CASCADE,
     role VARCHAR(20) NOT NULL,
@@ -789,9 +789,9 @@ CREATE TABLE ai_messages (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_ai_messages_conversation ON ai_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_ai_messages_conversation ON ai_messages(conversation_id);
 
-CREATE TABLE ai_usage (
+CREATE TABLE IF NOT EXISTS ai_usage (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     date DATE NOT NULL,
@@ -801,13 +801,13 @@ CREATE TABLE ai_usage (
     UNIQUE(user_id, date)
 );
 
-CREATE INDEX idx_ai_usage_user ON ai_usage(user_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_user ON ai_usage(user_id, date DESC);
 
 -- ============================================
 -- FLASHCARDS
 -- ============================================
 
-CREATE TABLE flashcards (
+CREATE TABLE IF NOT EXISTS flashcards (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
     lesson_id UUID REFERENCES lessons(id) ON DELETE SET NULL,
@@ -825,11 +825,11 @@ CREATE TABLE flashcards (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_flashcards_course ON flashcards(course_id);
-CREATE INDEX idx_flashcards_topic ON flashcards(topic_id);
-CREATE INDEX idx_flashcards_subject ON flashcards(subject_id);
+CREATE INDEX IF NOT EXISTS idx_flashcards_course ON flashcards(course_id);
+CREATE INDEX IF NOT EXISTS idx_flashcards_topic ON flashcards(topic_id);
+CREATE INDEX IF NOT EXISTS idx_flashcards_subject ON flashcards(subject_id);
 
-CREATE TABLE flashcard_reviews (
+CREATE TABLE IF NOT EXISTS flashcard_reviews (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     flashcard_id UUID REFERENCES flashcards(id) ON DELETE CASCADE,
     card_index INTEGER NOT NULL,
@@ -844,14 +844,14 @@ CREATE TABLE flashcard_reviews (
     UNIQUE(flashcard_id, card_index, user_id)
 );
 
-CREATE INDEX idx_flashcard_reviews_user ON flashcard_reviews(user_id);
-CREATE INDEX idx_flashcard_reviews_next ON flashcard_reviews(next_review_at);
+CREATE INDEX IF NOT EXISTS idx_flashcard_reviews_user ON flashcard_reviews(user_id);
+CREATE INDEX IF NOT EXISTS idx_flashcard_reviews_next ON flashcard_reviews(next_review_at);
 
 -- ============================================
 -- DIGITAL LIBRARY
 -- ============================================
 
-CREATE TABLE library_resources (
+CREATE TABLE IF NOT EXISTS library_resources (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title VARCHAR(300) NOT NULL,
     slug VARCHAR(300) UNIQUE NOT NULL,
@@ -875,16 +875,16 @@ CREATE TABLE library_resources (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_library_resources_subject ON library_resources(subject_id);
-CREATE INDEX idx_library_resources_type ON library_resources(resource_type);
-CREATE INDEX idx_library_resources_exam ON library_resources(exam_board, exam_year);
-CREATE INDEX idx_library_resources_class ON library_resources(class_id);
+CREATE INDEX IF NOT EXISTS idx_library_resources_subject ON library_resources(subject_id);
+CREATE INDEX IF NOT EXISTS idx_library_resources_type ON library_resources(resource_type);
+CREATE INDEX IF NOT EXISTS idx_library_resources_exam ON library_resources(exam_board, exam_year);
+CREATE INDEX IF NOT EXISTS idx_library_resources_class ON library_resources(class_id);
 
 -- ============================================
 -- COMMUNITY
 -- ============================================
 
-CREATE TABLE community_posts (
+CREATE TABLE IF NOT EXISTS community_posts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     type VARCHAR(50) DEFAULT 'discussion',
@@ -904,11 +904,11 @@ CREATE TABLE community_posts (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_community_posts_subject ON community_posts(subject_id);
-CREATE INDEX idx_community_posts_course ON community_posts(course_id);
-CREATE INDEX idx_community_posts_status ON community_posts(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_community_posts_subject ON community_posts(subject_id);
+CREATE INDEX IF NOT EXISTS idx_community_posts_course ON community_posts(course_id);
+CREATE INDEX IF NOT EXISTS idx_community_posts_status ON community_posts(status, created_at DESC);
 
-CREATE TABLE comments (
+CREATE TABLE IF NOT EXISTS comments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     post_id UUID REFERENCES community_posts(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -920,14 +920,14 @@ CREATE TABLE comments (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_comments_post ON comments(post_id);
-CREATE INDEX idx_comments_user ON comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id);
+CREATE INDEX IF NOT EXISTS idx_comments_user ON comments(user_id);
 
 -- ============================================
 -- REPORTS & ANALYTICS
 -- ============================================
 
-CREATE TABLE reports (
+CREATE TABLE IF NOT EXISTS reports (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     type VARCHAR(50) NOT NULL,
     title VARCHAR(300) NOT NULL,
@@ -941,14 +941,14 @@ CREATE TABLE reports (
     completed_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE INDEX idx_reports_type ON reports(type);
-CREATE INDEX idx_reports_status ON reports(status);
+CREATE INDEX IF NOT EXISTS idx_reports_type ON reports(type);
+CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
 
 -- ============================================
 -- AUDIT LOGS
 -- ============================================
 
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     action VARCHAR(100) NOT NULL,
@@ -961,10 +961,10 @@ CREATE TABLE audit_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_audit_logs_user ON audit_logs(user_id);
-CREATE INDEX idx_audit_logs_action ON audit_logs(action);
-CREATE INDEX idx_audit_logs_resource ON audit_logs(resource_type, resource_id);
-CREATE INDEX idx_audit_logs_created ON audit_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_resource ON audit_logs(resource_type, resource_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at DESC);
 
 -- ============================================
 -- SEED ROLES

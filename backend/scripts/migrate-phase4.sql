@@ -48,9 +48,9 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_subscriptions_user_id ON subscriptions(user_id);
-CREATE INDEX idx_subscriptions_status ON subscriptions(status);
-CREATE INDEX idx_subscriptions_plan_id ON subscriptions(plan_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_plan_id ON subscriptions(plan_id);
 
 -- ============================================
 -- PAYMENTS
@@ -75,10 +75,10 @@ CREATE TABLE IF NOT EXISTS payments (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_payments_user_id ON payments(user_id);
-CREATE INDEX idx_payments_reference ON payments(reference);
-CREATE INDEX idx_payments_status ON payments(status);
-CREATE INDEX idx_payments_created_at ON payments(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
+CREATE INDEX IF NOT EXISTS idx_payments_reference ON payments(reference);
+CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
+CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at DESC);
 
 -- ============================================
 -- INVOICES
@@ -104,9 +104,9 @@ CREATE TABLE IF NOT EXISTS invoices (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_invoices_user_id ON invoices(user_id);
-CREATE INDEX idx_invoices_status ON invoices(status);
-CREATE INDEX idx_invoices_invoice_number ON invoices(invoice_number);
+CREATE INDEX IF NOT EXISTS idx_invoices_user_id ON invoices(user_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
+CREATE INDEX IF NOT EXISTS idx_invoices_invoice_number ON invoices(invoice_number);
 
 -- ============================================
 -- PAYMENT METHODS / WALLET
@@ -137,10 +137,10 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_wallets_user_id ON wallets(user_id);
-CREATE INDEX idx_wallet_transactions_wallet_id ON wallet_transactions(wallet_id);
-CREATE INDEX idx_wallet_transactions_user_id ON wallet_transactions(user_id);
-CREATE INDEX idx_wallet_transactions_created_at ON wallet_transactions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_wallets_user_id ON wallets(user_id);
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_wallet_id ON wallet_transactions(wallet_id);
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_user_id ON wallet_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_created_at ON wallet_transactions(created_at DESC);
 
 -- ============================================
 -- PAYMENT METHOD TOKENS
@@ -161,7 +161,7 @@ CREATE TABLE IF NOT EXISTS payment_methods (
     UNIQUE(user_id, gateway, gateway_token)
 );
 
-CREATE INDEX idx_payment_methods_user_id ON payment_methods(user_id);
+CREATE INDEX IF NOT EXISTS idx_payment_methods_user_id ON payment_methods(user_id);
 
 -- ============================================
 -- COUPONS
@@ -188,8 +188,8 @@ CREATE TABLE IF NOT EXISTS coupons (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_coupons_code ON coupons(code);
-CREATE INDEX idx_coupons_is_active ON coupons(is_active);
+CREATE INDEX IF NOT EXISTS idx_coupons_code ON coupons(code);
+CREATE INDEX IF NOT EXISTS idx_coupons_is_active ON coupons(is_active);
 
 -- ============================================
 -- COUPON USAGE
@@ -205,8 +205,8 @@ CREATE TABLE IF NOT EXISTS coupon_usages (
     UNIQUE(coupon_id, user_id)
 );
 
-CREATE INDEX idx_coupon_usages_user_id ON coupon_usages(user_id);
-CREATE INDEX idx_coupon_usages_coupon_id ON coupon_usages(coupon_id);
+CREATE INDEX IF NOT EXISTS idx_coupon_usages_user_id ON coupon_usages(user_id);
+CREATE INDEX IF NOT EXISTS idx_coupon_usages_coupon_id ON coupon_usages(coupon_id);
 
 -- ============================================
 -- INITIAL SEED DATA
@@ -240,5 +240,6 @@ INSERT INTO subscription_plans (name, code, description, price, billing_cycle, d
 
 ('School', 'school', 'Full school management with learning platform', 50000, 'monthly', 30,
  '["All teacher features", "School administration", "Student management", "Class scheduling", "Exam management", "Results reporting", "Bulk subscriptions", "Dedicated support"]'::jsonb,
- '{"maxStudents": 500, "maxTeachers": 50, "schoolsPerAccount": 1}'::jsonb,
- 5, FALSE);
+  '{"maxStudents": 500, "maxTeachers": 50, "schoolsPerAccount": 1}'::jsonb,
+  5, FALSE)
+ON CONFLICT (code) DO NOTHING;

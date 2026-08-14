@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { AcademicCapIcon, EyeIcon, EyeSlashIcon } from 'lucide-react';
+import { GraduationCap as AcademicCapIcon, EyeIcon, EyeOff as EyeSlashIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function RegisterPage() {
   const router = useRouter();
   const { register: registerUser, isAuthenticated } = useAuth();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{ firstName: string; lastName: string; email: string; password: string; confirmPassword: string; role: 'student' | 'teacher' | 'parent' }>({
     firstName: '', lastName: '', email: '', password: '', confirmPassword: '', role: 'student'
   });
   const [showPassword, setShowPassword] = useState(false);

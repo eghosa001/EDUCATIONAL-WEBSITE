@@ -4,22 +4,29 @@ import { dirname, join } from 'node:path';
 import { pool } from '../src/common/database/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const schemaPath = join(__dirname, 'init-db.sql');
+
+const SCHEMA_FILES = [
+  'migrate-phase4.sql',
+  'init-db.sql',
+  'migrate-phase5.sql',
+];
 
 const run = async () => {
-  const sql = await readFile(schemaPath, 'utf8');
   const client = await pool.connect();
   try {
-    const { rows } = await client.query(
-      "SELECT COUNT(*)::int AS n FROM pg_tables WHERE schemaname = 'public' AND tablename = 'users'"
-    );
-    if (rows[0].n > 0) {
-      console.log('Schema already applied — nothing to migrate.');
-    } else {
+    for (const file of SCHEMA_FILES) {
+      const path = join(__dirname, file);
+      let sql;
+      try {
+        sql = await readFile(path, 'utf8');
+      } catch {
+        console.log(`Skipping missing migration: ${file}`);
+        continue;
+      }
       await client.query('BEGIN');
       await client.query(sql);
       await client.query('COMMIT');
-      console.log('Migration applied.');
+      console.log(`Migration applied: ${file}`);
     }
     const tables = await client.query(
       "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename"

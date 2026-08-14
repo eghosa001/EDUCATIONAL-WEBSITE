@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { UsersIcon, TrendingUpIcon, StarIcon } from 'lucide-react';
+import { UsersIcon, TrendingUp, StarIcon } from 'lucide-react';
 
 const mockChildren = [
   { id: '1', name: 'Emeka Johnson', age: 12, grade: 'JSS 2', school: 'Federal Government College', avgScore: 78, streak: 5 },

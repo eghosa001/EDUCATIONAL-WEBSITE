@@ -8,7 +8,7 @@ import Link from 'next/link';
 export default function ExamResultsPage() {
   const params = useParams();
   const examId = params?.examId as string;
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -71,7 +71,7 @@ export default function ExamResultsPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="font-semibold text-gray-900 mb-4">Question Review</h2>
         <div className="space-y-4">
-          {result.questions?.map(q => (
+          {result.questions?.map((q: any) => (
             <div key={q.id} className="p-4 bg-gray-50 rounded-lg">
               <div className="flex items-start gap-3">
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${q.isCorrect ? 'bg-green-100' : 'bg-red-100'}`}>

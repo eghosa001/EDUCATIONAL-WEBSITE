@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { BuildingIcon, UsersIcon, SchoolIcon, TrendingUpIcon } from 'lucide-react';
+import { BuildingIcon, UsersIcon, SchoolIcon, TrendingUp } from 'lucide-react';
 
 const schools = [
   { id: '1', name: 'Federal Government College', location: 'Abuja', students: 1250, teachers: 45, type: 'Government' },
@@ -47,7 +47,7 @@ export default function SchoolPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
           { label: 'Total Students', value: '2,140', icon: UsersIcon, color: 'blue' },
-          { label: 'Total Teachers', value: '77', icon: TrendingUpIcon, color: 'green' },
+          { label: 'Total Teachers', value: '77', icon: TrendingUp, color: 'green' },
           { label: 'Schools', value: '2', icon: SchoolIcon, color: 'purple' },
         ].map(s => (
           <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-5">

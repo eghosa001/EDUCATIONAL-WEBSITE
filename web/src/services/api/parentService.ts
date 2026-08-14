@@ -156,9 +156,9 @@ export interface ChildStudyTime {
 
 export const fetchChildStudyTime = async (
   childUserId: string,
+  token: string,
   startDate?: string,
-  endDate?: string,
-  token: string
+  endDate?: string
 ): Promise<{ studyTime: ChildStudyTime[] }> => {
   const query = new URLSearchParams();
   if (startDate) query.append('startDate', startDate);

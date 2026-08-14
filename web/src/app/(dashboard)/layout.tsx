@@ -6,40 +6,40 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuthStore } from '@/state/auth/authStore';
 import {
-  HomeIcon, BookOpenIcon, AcademicCapIcon, ClipboardDocumentCheckIcon,
-  ChatBubbleLeftRightIcon, LibraryBookmarkIcon, LightBulbIcon,
-  UserGroupIcon, TrophyIcon, BellIcon, ChevronDownIcon,
-  ArrowRightOnRectangleIcon, Bars3Icon, XMarkIcon,
-  Cog6ToothIcon, ArrowLeftStartOnRectangleIcon,
+  Home, BookOpen, GraduationCap as AcademicCapIcon, ClipboardCheck as ClipboardDocumentCheckIcon,
+  MessageSquare as ChatBubbleLeftRightIcon, Bookmark as LibraryBookmarkIcon, Lightbulb as LightBulbIcon,
+  Users as UserGroupIcon, Trophy, Bell, ChevronDown,
+  LogOut as ArrowRightOnRectangleIcon, Menu as Bars3Icon, X as XMarkIcon,
+  Settings as Cog6ToothIcon, LogOut as ArrowLeftStartOnRectangleIcon,
 } from 'lucide-react';
 
 const studentNavItems = [
-  { label: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-  { label: 'Courses', href: '/dashboard/courses', icon: BookOpenIcon },
+  { label: 'Dashboard', href: '/dashboard', icon: Home },
+  { label: 'Courses', href: '/dashboard/courses', icon: BookOpen },
   { label: 'Lessons', href: '/dashboard/lessons', icon: AcademicCapIcon },
   { label: 'Exams', href: '/dashboard/exams', icon: ClipboardDocumentCheckIcon },
   { label: 'Past Questions', href: '/dashboard/past-questions', icon: LibraryBookmarkIcon },
   { label: 'AI Tutor', href: '/dashboard/ai/tutor', icon: LightBulbIcon },
   { label: 'Flashcards', href: '/dashboard/flashcards', icon: AcademicCapIcon },
   { label: 'Community', href: '/dashboard/community', icon: ChatBubbleLeftRightIcon },
-  { label: 'Progress', href: '/dashboard/progress', icon: TrophyIcon },
+  { label: 'Progress', href: '/dashboard/progress', icon: Trophy },
 ];
 
 const teacherNavItems = [
-  { label: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-  { label: 'My Courses', href: '/dashboard/courses', icon: BookOpenIcon },
+  { label: 'Dashboard', href: '/dashboard', icon: Home },
+  { label: 'My Courses', href: '/dashboard/courses', icon: BookOpen },
   { label: 'Lessons', href: '/dashboard/lessons', icon: AcademicCapIcon },
   { label: 'Assignments', href: '/dashboard/assignments', icon: ClipboardDocumentCheckIcon },
   { label: 'Students', href: '/dashboard/teacher', icon: UserGroupIcon },
-  { label: 'Earnings', href: '/dashboard/teacher', icon: TrophyIcon },
+  { label: 'Earnings', href: '/dashboard/teacher', icon: Trophy },
 ];
 
 const parentNavItems = [
-  { label: 'Dashboard', href: '/dashboard', icon: HomeIcon },
+  { label: 'Dashboard', href: '/dashboard', icon: Home },
   { label: 'My Children', href: '/dashboard/parent', icon: UserGroupIcon },
-  { label: 'Progress', href: '/dashboard/progress', icon: TrophyIcon },
+  { label: 'Progress', href: '/dashboard/progress', icon: Trophy },
   { label: 'Results', href: '/dashboard/exams', icon: ClipboardDocumentCheckIcon },
-  { label: 'Notifications', href: '/dashboard/notifications', icon: BellIcon },
+  { label: 'Notifications', href: '/dashboard/notifications', icon: Bell },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

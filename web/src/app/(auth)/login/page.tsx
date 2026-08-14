@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { AcademicCapIcon, EyeIcon, EyeSlashIcon } from 'lucide-react';
+import { GraduationCap as AcademicCapIcon, EyeIcon, EyeOff as EyeSlashIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {

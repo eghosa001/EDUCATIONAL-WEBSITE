@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuthStore } from '@/state/auth/authStore';
-import { login, register, logout as apiLogout, refreshToken as apiRefreshToken } from '@/services/api/authService';
+import { login as apiLogin, register as apiRegister, logout as apiLogout, refreshToken as apiRefreshToken } from '@/services/api/authService';
 import type { User } from '@/types/models/user';
 
 interface AuthContextType {
@@ -11,7 +11,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: { email: string; password: string }) => Promise<void>;
-  register: (data: { email: string; password: string; firstName: string; lastName: string; role: string }) => Promise<void>;
+  register: (data: { email: string; password: string; firstName: string; lastName: string; role: 'student' | 'teacher' | 'parent' }) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
 }
@@ -61,31 +61,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (credentials: { email: string; password: string }) => {
     setLoading(true);
     try {
-      const response = await login(credentials);
-      const { user: userData, tokens } = response.data;
+      const response = await apiLogin(credentials);
+      const { user: userData, token: accessToken } = response.data;
 
       setUser(userData as User);
-      setToken(tokens.accessToken);
+      setToken(accessToken);
       localStorage.setItem('edu_user', JSON.stringify(userData));
-      localStorage.setItem('edu_token', tokens.accessToken);
-      if (tokens.refreshToken) {
-        localStorage.setItem('edu_refresh_token', tokens.refreshToken);
-      }
+      localStorage.setItem('edu_token', accessToken);
     } finally {
       setLoading(false);
     }
   };
 
-  const register = async (data: { email: string; password: string; firstName: string; lastName: string; role: string }) => {
+  const register = async (data: { email: string; password: string; firstName: string; lastName: string; role: 'student' | 'teacher' | 'parent' }) => {
     setLoading(true);
     try {
-      const response = await register(data);
-      const { user: userData, tokens } = response.data;
+      const response = await apiRegister(data);
+      const { user: userData, token: accessToken } = response.data;
 
       setUser(userData as User);
-      setToken(tokens.accessToken);
+      setToken(accessToken);
       localStorage.setItem('edu_user', JSON.stringify(userData));
-      localStorage.setItem('edu_token', tokens.accessToken);
+      localStorage.setItem('edu_token', accessToken);
     } finally {
       setLoading(false);
     }
