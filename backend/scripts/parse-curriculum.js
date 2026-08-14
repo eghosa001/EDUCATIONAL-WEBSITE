@@ -1,5 +1,6 @@
 /**
  * Parse NERDC Scheme of Work TXT files into structured JSON.
+ * Handles multiple table formats: tab-separated, space-separated with periods, and mixed.
  * Usage: node scripts/parse-curriculum.js
  */
 import fs from 'fs/promises';
@@ -7,6 +8,21 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Normalize subject name variants across the curriculum
+const NAME_MAP = {
+  'CULTURAL & CREATIVE ARTS (CCA)': 'CULTURAL AND CREATIVE ARTS',
+  'PHYSICAL & HEALTH EDUCATION': 'PHYSICAL AND HEALTH EDUCATION',
+  'ISLAMIC RELIGIOUS STUDIES (IRS)': 'ISLAMIC RELIGIOUS STUDIES',
+  'CATERING AND CRAFT': 'CATERING AND CRAFT PRACTICE',
+  'FASHION DESIGN & GARMENT MAKING': 'FASHION DESIGN AND GARMENT MAKING',
+  'SOLAR PHOTOVOLTAIC INSTALLATION & MAINTENANCE': 'SOLAR PHOTOVOLTAIC INSTALLATION AND MAINTENANCE',
+  'SOLAR PHOTOVOLTAIC (PV) INSTALLATION AND MAINTENANCE': 'SOLAR PHOTOVOLTAIC INSTALLATION AND MAINTENANCE',
+};
+
+function normalizeSubject(name) {
+  return NAME_MAP[name] || name;
+}
 
 function parseSchemeFile(filepath) {
   const content = fs.readFile(filepath, 'utf-8');
@@ -21,37 +37,42 @@ function parseSchemeFile(filepath) {
       const line = lines[i];
       const stripped = line.trim();
 
-      // Class headers
-      if (/JUNIOR SECONDARY ONE|JSS1 SCHEME/.test(stripped) && /SCHEME/.test(stripped.toUpperCase())) {
-        currentClass = 'JSS1'; currentSubject = null; currentTerm = null; continue;
+      // ── Class headers ──────────────────────────────────────────────
+      const classRules = [
+        [/JUNIOR\s+SECONDARY\s+ONE.*SCHEME/i, 'JSS1'],
+        [/JUNIOR\s+SECONDARY\s+TWO.*SCHEME/i, 'JSS2'],
+        [/JUNIOR\s+SECONDARY\s+THREE.*SCHEME/i, 'JSS3'],
+        [/SENIOR\s+SECONDARY\s+ONE.*SCHEME/i, 'SSS1'],
+        [/SENIOR\s+SECONDARY\s+TWO.*SCHEME/i, 'SSS2'],
+        [/SENIOR\s+SECONDARY\s+THREE.*SCHEME/i, 'SSS3'],
+        [/PRIMARY\s*1.*SCHEME/i, 'P1'],
+        [/PRIMARY\s*2.*SCHEME/i, 'P2'],
+        [/PRIMARY\s*3.*SCHEME/i, 'P3'],
+        [/PRIMARY\s*4.*SCHEME/i, 'P4'],
+        [/PRIMARY\s*5.*SCHEME/i, 'P5'],
+        [/PRIMARY\s*6.*SCHEME/i, 'P6'],
+      ];
+      let foundClass = false;
+      for (const [pat, cls] of classRules) {
+        if (pat.test(stripped) && /SCHEME/.test(stripped.toUpperCase())) {
+          currentClass = cls;
+          currentSubject = null;
+          currentTerm = null;
+          foundClass = true;
+          break;
+        }
       }
-      if (/JUNIOR SECONDARY TWO|JSS2 SCHEME/.test(stripped) && /SCHEME/.test(stripped.toUpperCase())) {
-        currentClass = 'JSS2'; currentSubject = null; currentTerm = null; continue;
-      }
-      if (/JUNIOR SECONDARY THREE|JSS3 SCHEME/.test(stripped) && /SCHEME/.test(stripped.toUpperCase())) {
-        currentClass = 'JSS3'; currentSubject = null; currentTerm = null; continue;
-      }
-      if (/SENIOR SECONDARY ONE|SS1 SCHEME/.test(stripped) && /SCHEME/.test(stripped.toUpperCase())) {
-        currentClass = 'SSS1'; currentSubject = null; currentTerm = null; continue;
-      }
-      if (/SENIOR SECONDARY TWO|SS2 SCHEME/.test(stripped) && /SCHEME/.test(stripped.toUpperCase())) {
-        currentClass = 'SSS2'; currentSubject = null; currentTerm = null; continue;
-      }
-      if (/SENIOR SECONDARY THREE|SS3 SCHEME/.test(stripped) && /SCHEME/.test(stripped.toUpperCase())) {
-        currentClass = 'SSS3'; currentSubject = null; currentTerm = null; continue;
-      }
-      if (/PRIMARY\s+1.*SCHEME/.test(stripped)) { currentClass = 'P1'; currentSubject = null; currentTerm = null; continue; }
-      if (/PRIMARY\s+2.*SCHEME/.test(stripped)) { currentClass = 'P2'; currentSubject = null; currentTerm = null; continue; }
-      if (/PRIMARY\s+3.*SCHEME/.test(stripped)) { currentClass = 'P3'; currentSubject = null; currentTerm = null; continue; }
-      if (/PRIMARY\s+4.*SCHEME/.test(stripped)) { currentClass = 'P4'; currentSubject = null; currentTerm = null; continue; }
-      if (/PRIMARY\s+5.*SCHEME/.test(stripped)) { currentClass = 'P5'; currentSubject = null; currentTerm = null; continue; }
-      if (/PRIMARY\s+6.*SCHEME/.test(stripped)) { currentClass = 'P6'; currentSubject = null; currentTerm = null; continue; }
-      if (/PRE[- ]?NURSERY.*SCHEME/.test(stripped)) { currentClass = 'PRE-NURSERY'; currentSubject = null; currentTerm = null; continue; }
+      if (foundClass) continue;
 
-      // Subject headers
-      const subjMatch = stripped.match(/^(?:JSS[123]|SS[123]|PRIMARY\s*\d|PRE[- ]?NURSERY)\s+(.+?)\s+(?:SCHEME\s+OF\s+WORK|SCHEME)\s*$/i);
+      // ── Subject headers (lenient — strip optional SCHEME suffix) ───
+      const subjMatch = stripped.match(
+        /^(?:JSS\s*\d|SS\s*\d|PRIMARY\s*\d)\s+(.+?)(?:\s+(?:SCHEME\s+OF\s+WORK|SCHEME))?\s*$/i
+      );
       if (subjMatch && currentClass) {
-        currentSubject = subjMatch[1].trim().replace(/\s+/g, ' ');
+        let name = subjMatch[1].trim().replace(/\s+/g, ' ');
+        if (/^(FIRST|SECOND|THIRD)\s+TERM$/.test(name)) continue;
+        if (/WEEK/i.test(name) || /SUBJECTS/i.test(name)) continue;
+        currentSubject = normalizeSubject(name);
         if (!curriculum[currentClass]) curriculum[currentClass] = {};
         if (!curriculum[currentClass][currentSubject]) {
           curriculum[currentClass][currentSubject] = { first: [], second: [], third: [] };
@@ -60,25 +81,29 @@ function parseSchemeFile(filepath) {
         continue;
       }
 
-      // Term headers
+      // ── Term headers ───────────────────────────────────────────────
       if (/^FIRST\s+TERM$/.test(stripped)) { currentTerm = 'first'; continue; }
       if (/^SECOND\s+TERM$/.test(stripped)) { currentTerm = 'second'; continue; }
       if (/^THIRD\s+TERM$/.test(stripped)) { currentTerm = 'third'; continue; }
 
-      // Skip noise
-      if (/^(GET ACCESS|CLICK HERE|Scholarclopedia|Home|Back to|Website:|ALL Schemes|https?://|\d+\s*$|•|—+$|\s*$|Number of Weeks|Assessment Methods|Teaching and Learning|Evaluation Methods|Recommended Texts|Instructional Materials)/i.test(stripped)) {
+      // ── Skip noise lines ───────────────────────────────────────────
+      if (/^(GET ACCESS|CLICK HERE|Scholarclopedia|Home|Back to|Website:|ALL Schemes|https?:\/\/|\d+\s*$|•|—+$|\s*$|Number of Weeks|Assessment Methods|Teaching and Learning|Evaluation Methods|Recommended Texts|Instructional Materials|TRADE SUBJECTS)/i.test(stripped)) {
         continue;
       }
 
-      // Table rows: number + tabs + topic + more tabs + content
-      const tableMatch = stripped.match(/^(\d+)[\t]+(.+?)(?:[\t\s]{3,})(.+)$/);
-      if (tableMatch && currentClass && currentSubject && currentTerm) {
-        const topicName = tableMatch[2].trim().replace(/\s+/g, ' ');
-        const content = tableMatch[3].trim().replace(/\s+/g, ' ');
+      // ── Table rows — supports multiple formats: ────────────────────
+      //   Format A: "1\tTOPIC\t\tCONTENT"       (tab-separated)
+      //   Format B: "   1.   TOPIC    CONTENT"   (spaces + period)
+      //   Format C: "1   TOPIC       CONTENT"    (mixed spaces)
+      const tm = stripped.match(/^\s*(\d+)[.)]?\s+(.+?)(?:\t{2,}|   +)(.+)$/);
+      if (tm && currentClass && currentSubject && currentTerm) {
+        const topicName = tm[2].trim().replace(/\s+/g, ' ');
+        const content = tm[3].trim().replace(/\s+/g, ' ');
         const skipKw = ['MIDTERM', 'BREAK', 'EXAMINATION', 'CLOSING', 'VACATION', 'REVISION'];
-        if (!skipKw.some(kw => topicName.toUpperCase().includes(kw)) && topicName !== '-' && topicName !== '–') {
+        if (!skipKw.some(kw => topicName.toUpperCase().includes(kw))
+            && topicName !== '-' && topicName !== '–') {
           const topic = { name: topicName };
-          if (content && content !== '—' && content !== '-') {
+          if (content && content !== '—' && content !== '-' && content.length > 2) {
             topic.subtopics = [content];
           }
           curriculum[currentClass][currentSubject][currentTerm].push(topic);
@@ -86,9 +111,10 @@ function parseSchemeFile(filepath) {
         continue;
       }
 
-      // Continuation lines
-      if (currentClass && currentSubject && currentTerm && curriculum[currentClass]?.[currentSubject]?.[currentTerm]?.length > 0) {
-        const last = curriculum[currentClass][currentSubject][currentTerm][curriculum[currentClass][currentSubject][currentTerm].length - 1];
+      // ── Continuation lines (indented content under last topic) ─────
+      if (currentClass && currentSubject && currentTerm
+          && curriculum[currentClass]?.[currentSubject]?.[currentTerm]?.length > 0) {
+        const last = curriculum[currentClass][currentSubject][currentTerm].at(-1);
         if (stripped && stripped.length > 5 && !/^\d+/.test(stripped)) {
           if (!/^(SCHEME|TERM|WORK|WEEK|CLASS)/.test(stripped.toUpperCase())) {
             if (!last.subtopics) last.subtopics = [];
@@ -107,25 +133,51 @@ function parseSchemeFile(filepath) {
 async function main() {
   const jssSssPath = join(__dirname, '976039570-Jss-Sss-Nerdc-Scheme-2025.txt');
   const primaryPath = join(__dirname, '978433855-Pre-primary-Primary-Schools-Nerdc-Scheme-2025.txt');
-  const outputPath = join(__dirname, '..', '..', 'parsed_curriculum.json');
+  const outputPath = join(__dirname, '..', 'parsed_curriculum.json');
 
   console.log('Parsing JSS/SSS curriculum...');
   const jssSss = await parseSchemeFile(jssSssPath);
   console.log('Parsing Primary curriculum...');
   const primary = await parseSchemeFile(primaryPath);
 
-  const allData = { ...jssSss, ...primary };
+  let allData = { ...jssSss, ...primary };
+
+  // ── Clean up garbage subjects and merge near-duplicates ─────────
+  for (const cls in allData) {
+    // Remove invalid entries
+    for (const subj of Object.keys(allData[cls])) {
+      if (!subj || subj.length < 4) { delete allData[cls][subj]; continue; }
+      if (/^[\.\s]+/.test(subj)) { delete allData[cls][subj]; continue; }
+      if (subj.trim().toUpperCase() === 'SCHEME OF WORK') { delete allData[cls][subj]; continue; }
+      if (/SCHEME\s+OF/.test(subj.toUpperCase())) { delete allData[cls][subj]; continue; }
+    }
+    // Merge duplicates by normalized name
+    const seen = {};
+    for (const subj of Object.keys(allData[cls])) {
+      const norm = subj.toUpperCase().replace(/&/g, 'AND').trim();
+      if (seen[norm] && seen[norm] !== subj) {
+        const existing = seen[norm];
+        for (const term of ['first', 'second', 'third']) {
+          allData[cls][existing][term] = allData[cls][existing][term].concat(allData[cls][subj][term] || []);
+        }
+        delete allData[cls][subj];
+      } else {
+        seen[norm] = subj;
+      }
+    }
+  }
+
   const totalTopics = Object.values(allData).reduce((sum, cls) =>
     sum + Object.values(cls).reduce((s, subj) =>
-      s + ['first', 'second', 'third'].reduce((t, term) => t + (subj[term] || []).length, 0), 0), 0);
+      s + ['first','second','third'].reduce((t, term) => t + (subj[term] || []).length, 0), 0), 0);
+  const totalSubjects = Object.values(allData).reduce((s, c) => s + Object.keys(c).length, 0);
 
   console.log(`\nClasses: ${Object.keys(allData).length}`);
-  console.log(`Subjects: ${Object.values(allData).reduce((s, c) => s + Object.keys(c).length, 0)}`);
+  console.log(`Subjects: ${totalSubjects}`);
   console.log(`Total topics: ${totalTopics}`);
-
   for (const cls of Object.keys(allData).sort()) {
     const tc = Object.values(allData[cls]).reduce((s, subj) =>
-      s + ['first', 'second', 'third'].reduce((t, term) => t + (subj[term] || []).length, 0), 0);
+      s + ['first','second','third'].reduce((t, term) => t + (subj[term] || []).length, 0), 0);
     console.log(`  ${cls}: ${Object.keys(allData[cls]).length} subjects, ${tc} topics`);
   }
 
