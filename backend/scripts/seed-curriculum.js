@@ -98,6 +98,12 @@ async function ensureEducationStructure() {
 
   // Ensure levels exist
   const levels = [
+    { code: 'P1', name: 'Primary 1', orderIndex: 1, minAge: 6, maxAge: 7 },
+    { code: 'P2', name: 'Primary 2', orderIndex: 2, minAge: 7, maxAge: 8 },
+    { code: 'P3', name: 'Primary 3', orderIndex: 3, minAge: 8, maxAge: 9 },
+    { code: 'P4', name: 'Primary 4', orderIndex: 4, minAge: 9, maxAge: 10 },
+    { code: 'P5', name: 'Primary 5', orderIndex: 5, minAge: 10, maxAge: 11 },
+    { code: 'P6', name: 'Primary 6', orderIndex: 6, minAge: 11, maxAge: 12 },
     { code: 'JSS1', name: 'Junior Secondary 1', orderIndex: 7, minAge: 12, maxAge: 13 },
     { code: 'JSS2', name: 'Junior Secondary 2', orderIndex: 8, minAge: 13, maxAge: 14 },
     { code: 'JSS3', name: 'Junior Secondary 3', orderIndex: 9, minAge: 14, maxAge: 15 },

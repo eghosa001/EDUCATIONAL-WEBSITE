@@ -14,10 +14,15 @@ const NAME_MAP = {
   'CULTURAL & CREATIVE ARTS (CCA)': 'CULTURAL AND CREATIVE ARTS',
   'PHYSICAL & HEALTH EDUCATION': 'PHYSICAL AND HEALTH EDUCATION',
   'ISLAMIC RELIGIOUS STUDIES (IRS)': 'ISLAMIC RELIGIOUS STUDIES',
+  'ISLAMIC STUDIES': 'ISLAMIC RELIGIOUS STUDIES',
   'CATERING AND CRAFT': 'CATERING AND CRAFT PRACTICE',
   'FASHION DESIGN & GARMENT MAKING': 'FASHION DESIGN AND GARMENT MAKING',
   'SOLAR PHOTOVOLTAIC INSTALLATION & MAINTENANCE': 'SOLAR PHOTOVOLTAIC INSTALLATION AND MAINTENANCE',
   'SOLAR PHOTOVOLTAIC (PV) INSTALLATION AND MAINTENANCE': 'SOLAR PHOTOVOLTAIC INSTALLATION AND MAINTENANCE',
+  'BASIC SCIENCE': 'BASIC SCIENCE & TECHNOLOGY',
+  'BASIC SCIENCE & TECHNOLOGY': 'BASIC SCIENCE & TECHNOLOGY',
+  'ENGLISH LANGUAGE': 'ENGLISH LANGUAGE',
+  'ENGLISH STUDIES': 'ENGLISH LANGUAGE',
 };
 
 function normalizeSubject(name) {
@@ -38,6 +43,7 @@ function parseSchemeFile(filepath) {
       const stripped = line.trim();
 
       // ── Class headers ──────────────────────────────────────────────
+      // Match: "PRIMARY 1 SCHEME OF WORK" or "JUNIOR SECONDARY ONE SCHEME OF WORK"
       const classRules = [
         [/JUNIOR\s+SECONDARY\s+ONE.*SCHEME/i, 'JSS1'],
         [/JUNIOR\s+SECONDARY\s+TWO.*SCHEME/i, 'JSS2'],
@@ -64,14 +70,60 @@ function parseSchemeFile(filepath) {
       }
       if (foundClass) continue;
 
-      // ── Subject headers (lenient — strip optional SCHEME suffix) ───
-      const subjMatch = stripped.match(
+      // ── Subject headers — Format 1: "PRIMARY 1 MATHEMATICS SCHEME OF WORK" ──
+      const subjMatch1 = stripped.match(
         /^(?:JSS\s*\d|SS\s*\d|PRIMARY\s*\d)\s+(.+?)(?:\s+(?:SCHEME\s+OF\s+WORK|SCHEME))?\s*$/i
       );
-      if (subjMatch && currentClass) {
-        let name = subjMatch[1].trim().replace(/\s+/g, ' ');
+      if (subjMatch1 && currentClass) {
+        let name = subjMatch1[1].trim().replace(/\s+/g, ' ');
+        // Check if this is actually a term indicator
         if (/^(FIRST|SECOND|THIRD)\s+TERM$/.test(name)) continue;
         if (/WEEK/i.test(name) || /SUBJECTS/i.test(name)) continue;
+        // If we have a class mismatch, the subject line might contain class info
+        if (!/PRIMARY/i.test(stripped) && currentClass.startsWith('P')) {
+          // Already in primary context, accept subject
+        }
+        currentSubject = normalizeSubject(name);
+        if (!curriculum[currentClass]) curriculum[currentClass] = {};
+        if (!curriculum[currentClass][currentSubject]) {
+          curriculum[currentClass][currentSubject] = { first: [], second: [], third: [] };
+        }
+        currentTerm = null;
+        continue;
+      }
+
+      // ── Subject headers — Format 2: "ENGLISH LANGUAGE SCHEME OF WORK (PRIMARY 2)" ──
+      const subjMatch2 = stripped.match(
+        /^(.+?)\s+\(PRIMARY\s+(\d+)\)\s*(?:SCHEME\s+OF\s+WORK|SCHEME)?\s*$/i
+      );
+      if (subjMatch2) {
+        const name = subjMatch2[1].trim().replace(/\s+/g, ' ');
+        const clsNum = parseInt(subjMatch2.group?.(2) || subjMatch2[2]);
+        const cls = `P${clsNum}`;
+        if (/^(FIRST|SECOND|THIRD)\s+TERM$/.test(name)) continue;
+        if (/WEEK/i.test(name) || /SUBJECTS/i.test(name)) continue;
+        currentClass = cls;
+        currentSubject = normalizeSubject(name);
+        if (!curriculum[currentClass]) curriculum[currentClass] = {};
+        if (!curriculum[currentClass][currentSubject]) {
+          curriculum[currentClass][currentSubject] = { first: [], second: [], third: [] };
+        }
+        currentTerm = null;
+        continue;
+      }
+
+      // Also handle: "SUBJECT NAME SCHEME OF WORK (PRIMARY N)" where PRIMARY N comes at end after SCHEME
+      const subjMatch3 = stripped.match(
+        /^(.+?)\s+SCHEME\s+OF\s+WORK\s*\((?:JSS|SS|PRIMARY)\s*(\d+)\)$/i
+      );
+      if (subjMatch3) {
+        const name = subjMatch3[1].trim().replace(/\s+/g, ' ');
+        const clsNum = parseInt(subjMatch3[2]);
+        const clsPrefix = subjMatch3[0].toUpperCase().includes('JSS') ? 'JSS' :
+                          subjMatch3[0].toUpperCase().includes('SS') ? 'SS' : 'P';
+        const cls = `${clsPrefix}${clsNum}`;
+        if (/^(FIRST|SECOND|THIRD)\s+TERM$/.test(name)) continue;
+        currentClass = cls;
         currentSubject = normalizeSubject(name);
         if (!curriculum[currentClass]) curriculum[currentClass] = {};
         if (!curriculum[currentClass][currentSubject]) {
@@ -90,11 +142,10 @@ function parseSchemeFile(filepath) {
       if (/^(GET ACCESS|CLICK HERE|Scholarclopedia|Home|Back to|Website:|ALL Schemes|https?:\/\/|\d+\s*$|•|—+$|\s*$|Number of Weeks|Assessment Methods|Teaching and Learning|Evaluation Methods|Recommended Texts|Instructional Materials|TRADE SUBJECTS)/i.test(stripped)) {
         continue;
       }
+      // Skip dotted filler lines
+      if (/^\.+\s*$/.test(stripped)) continue;
 
       // ── Table rows — supports multiple formats: ────────────────────
-      //   Format A: "1\tTOPIC\t\tCONTENT"       (tab-separated)
-      //   Format B: "   1.   TOPIC    CONTENT"   (spaces + period)
-      //   Format C: "1   TOPIC       CONTENT"    (mixed spaces)
       const tm = stripped.match(/^\s*(\d+)[.)]?\s+(.+?)(?:\t{2,}|   +)(.+)$/);
       if (tm && currentClass && currentSubject && currentTerm) {
         const topicName = tm[2].trim().replace(/\s+/g, ' ');
@@ -111,7 +162,7 @@ function parseSchemeFile(filepath) {
         continue;
       }
 
-      // ── Continuation lines (indented content under last topic) ─────
+      // ── Continuation lines ─────────────────────────────────────────
       if (currentClass && currentSubject && currentTerm
           && curriculum[currentClass]?.[currentSubject]?.[currentTerm]?.length > 0) {
         const last = curriculum[currentClass][currentSubject][currentTerm].at(-1);
