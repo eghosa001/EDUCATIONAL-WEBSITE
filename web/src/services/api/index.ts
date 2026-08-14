@@ -21,3 +21,4 @@ export * from './analyticsService';
 export * from './schoolService';
 export * from './parentService';
 export * from './teacherService';
+export * from './assignmentService';
