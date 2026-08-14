@@ -50,8 +50,8 @@ export const schoolModel = {
     ]);
 
     return {
-      data: (rows || []).map(mapSchool),
-      pagination: { page, limit, total: countResult.rows[0].count, pages: Math.ceil(countResult.rows[0].count / limit) },
+      data: (rows?.rows || []).map(mapSchool),
+      pagination: { page, limit, total: countResult?.rows?.[0]?.count || 0, pages: Math.ceil(countResult?.rows?.[0]?.count || 0 / limit) },
     };
   },
 

@@ -35,8 +35,8 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
     const { verifyToken } = await import('../../auth/utils/jwt.js');
     const decoded = verifyToken(token);
 
-    const { getUserById } = await import('../../users/services/user.service.js');
-    const user = await getUserById(decoded.sub);
+    const userService = await import('../../users/services/user.service.js');
+    const user = await userService.default.getUserById(decoded.sub);
 
     if (!user || !user.isActive) {
       throw new AppError('User not found or inactive', HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.AUTHENTICATION_ERROR);
@@ -64,8 +64,8 @@ export const optionalAuthMiddleware = asyncHandler(async (req, res, next) => {
     const { verifyToken } = await import('../../auth/utils/jwt.js');
     const decoded = verifyToken(token);
 
-    const { getUserById } = await import('../../users/services/user.service.js');
-    const user = await getUserById(decoded.sub);
+    const userService = await import('../../users/services/user.service.js');
+    const user = await userService.default.getUserById(decoded.sub);
 
     if (user && user.isActive) {
       req.user = user;

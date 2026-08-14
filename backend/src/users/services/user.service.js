@@ -10,6 +10,28 @@ export const userService = {
     return userModel.findById(id);
   },
 
+  async getUserById(id) {
+    const result = await userModel.findById(id);
+    if (!result) return null;
+
+    // Enrich with roles and permissions
+    const roleResult = await query(
+      `SELECT r.name, r.permissions FROM roles r
+       JOIN user_roles ur ON ur.role_id = r.id
+       WHERE ur.user_id = $1`,
+      [id]
+    );
+
+    const roles = roleResult.rows.map(r => r.name);
+    const primaryRole = roles[0] || 'student';
+    const permissions = roleResult.rows.reduce((acc, r) => {
+      if (r.permissions) Object.assign(acc, r.permissions);
+      return acc;
+    }, {});
+
+    return { ...result, roles, primaryRole, permissions };
+  },
+
   async updateRole(userId, role) {
     return userModel.updateRole(userId, role);
   },
