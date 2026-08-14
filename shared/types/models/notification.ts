@@ -16,7 +16,11 @@ export type NotificationType =
   | 'study_reminder'
   | 'streak_milestone'
   | 'badge_earned'
-  | 'level_up';
+  | 'level_up'
+  | 'parent_alert'
+  | 'school_announcement'
+  | 'new_student'
+  | 'result_published';
 
 export type NotificationChannel = 'push' | 'email' | 'sms' | 'in_app' | 'whatsapp';
 
@@ -24,11 +28,23 @@ export interface Notification {
   id: string;
   userId: string;
   type: NotificationType;
-  channel: NotificationChannel;
   title: string;
   body: string;
   data: Record<string, unknown>;
+  actionUrl?: string;
+  channel: NotificationChannel;
   isRead: boolean;
   readAt?: string;
+  sentAt?: string;
   createdAt: string;
+}
+
+export interface NotificationPreferences {
+  userId: string;
+  push: boolean;
+  email: boolean;
+  sms: boolean;
+  inApp: boolean;
+  whatsapp?: boolean;
+  types: Partial<Record<NotificationType, boolean>>;
 }

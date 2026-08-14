@@ -3,17 +3,23 @@ export type LibraryResourceType = 'textbook' | 'study_notes' | 'past_question' |
 export interface LibraryResource {
   id: string;
   title: string;
-  description?: string;
+  slug: string;
   resourceType: LibraryResourceType;
-  subjectId?: string;
-  classId?: string;
   fileUrl: string;
+  thumbnailUrl?: string;
+  description?: string;
+  subjectId?: string;
+  topicId?: string;
+  classId?: string;
+  examBoard?: string;
+  examYear?: number;
+  authorId?: string;
+  downloadCount: number;
+  viewCount: number;
+  isFree: boolean;
   fileSizeBytes?: number;
   mimeType?: string;
-  author?: string;
-  isDownloadable: boolean;
-  isPremium: boolean;
-  downloadCount: number;
+  tags: string[];
   createdAt: string;
   updatedAt: string;
 }

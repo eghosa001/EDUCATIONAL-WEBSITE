@@ -5,34 +5,41 @@ export interface Badge {
   description?: string;
   iconUrl?: string;
   criteria: Record<string, unknown>;
+  xpReward: number;
+  isActive: boolean;
   createdAt: string;
 }
 
 export interface Achievement {
   id: string;
   userId: string;
-  type: string;
-  badgeId?: string;
-  title: string;
-  description?: string;
-  pointsAwarded: number;
+  badgeId: string;
   earnedAt: string;
+  metadata: Record<string, unknown>;
 }
 
 export interface StudentPoint {
   id: string;
-  studentId: string;
-  points: number;
-  source: string;
-  referenceId?: string;
-  createdAt: string;
+  userId: string;
+  totalPoints: number;
+  currentStreak: number;
+  longestStreak: number;
+  level: number;
+  xpToNextLevel: number;
+  updatedAt: string;
 }
 
 export interface LeaderboardEntry {
-  studentId: string;
-  name: string;
-  avatarUrl?: string;
-  points: number;
+  id: string;
+  type: string;
+  period: string;
+  userId: string;
+  userName: string;
+  userAvatarUrl?: string;
   rank: number;
-  streakDays: number;
+  points: number;
+  stats: Record<string, unknown>;
+  periodStart?: string;
+  periodEnd?: string;
+  createdAt: string;
 }

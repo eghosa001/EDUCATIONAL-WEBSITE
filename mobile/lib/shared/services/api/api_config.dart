@@ -1,5 +1,5 @@
 class ApiConfig {
-  static const String baseUrl = 'http://localhost:3001/api/v1';
+  static const String baseUrl = 'http://localhost:3000/api/v1';
   static const Duration timeout = Duration(seconds: 10);
   static const String contentType = 'application/json';
 

@@ -43,13 +43,13 @@ class ApiClient {
 
     final requestBody = body != null ? jsonEncode(body) : null;
 
-    final response = await http
+    final request = http
         .Request(method, requestUri)
-        .headers.addAll(requestHeaders)
-        .body = requestBody
-        .timeout(timeout)
-        .send()
-        .then(http.Response.fromStream);
+        ..headers.addAll(requestHeaders)
+        ..body = requestBody;
+
+    final response = await request.timeout(timeout).send();
+    return http.Response.fromStream(response);
 
     return response;
   }
