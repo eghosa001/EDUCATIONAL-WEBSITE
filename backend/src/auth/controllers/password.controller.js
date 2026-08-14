@@ -69,7 +69,7 @@ export const changePassword = async (req, res) => {
 
   const passwordHash = await hashPassword(newPassword);
   await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
-  await pool.query('DELETE FROM sessions WHERE user_id = $1 AND id != $2', [userId, req.sessionId]);
+  await pool.query('DELETE FROM sessions WHERE user_id = $1', [userId]);
 
   res.json({ success: true, message: 'Password changed successfully' });
 };

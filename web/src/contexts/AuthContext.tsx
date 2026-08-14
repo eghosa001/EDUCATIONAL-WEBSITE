@@ -40,18 +40,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [setUser, setToken]);
 
   const refreshSession = async () => {
-    const currentToken = localStorage.getItem('edu_token');
-    if (!currentToken) return;
+    const currentRefreshToken = localStorage.getItem('edu_refresh_token');
+    if (!currentRefreshToken) return;
 
     try {
-      const response = await apiRefreshToken(currentToken);
+      const response = await apiRefreshToken(currentRefreshToken);
       if (response.data?.tokens) {
         setToken(response.data.tokens.accessToken);
+        setRefreshToken(response.data.tokens.refreshToken);
         localStorage.setItem('edu_token', response.data.tokens.accessToken);
-        if (response.data.user) {
-          setUser(response.data.user as User);
-          localStorage.setItem('edu_user', JSON.stringify(response.data.user));
-        }
+        localStorage.setItem('edu_refresh_token', response.data.tokens.refreshToken);
       }
     } catch {
       handleLogout();
@@ -62,12 +60,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       const response = await apiLogin(credentials);
-      const { user: userData, token: accessToken } = response.data;
+      const { user: userData, tokens } = response.data;
 
       setUser(userData as User);
-      setToken(accessToken);
+      setToken(tokens.accessToken);
+      setRefreshToken(tokens.refreshToken);
       localStorage.setItem('edu_user', JSON.stringify(userData));
-      localStorage.setItem('edu_token', accessToken);
+      localStorage.setItem('edu_token', tokens.accessToken);
+      localStorage.setItem('edu_refresh_token', tokens.refreshToken);
     } finally {
       setLoading(false);
     }
@@ -77,12 +77,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       const response = await apiRegister(data);
-      const { user: userData, token: accessToken } = response.data;
+      const { user: userData, tokens } = response.data;
 
-      setUser(userData as User);
-      setToken(accessToken);
-      localStorage.setItem('edu_user', JSON.stringify(userData));
-      localStorage.setItem('edu_token', accessToken);
+      setUser({ ...userData, role: data.role } as User);
+      setToken(tokens.accessToken);
+      setRefreshToken(tokens.refreshToken);
+      localStorage.setItem('edu_user', JSON.stringify({ ...userData, role: data.role }));
+      localStorage.setItem('edu_token', tokens.accessToken);
+      localStorage.setItem('edu_refresh_token', tokens.refreshToken);
     } finally {
       setLoading(false);
     }

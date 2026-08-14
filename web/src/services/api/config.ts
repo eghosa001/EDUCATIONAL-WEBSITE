@@ -22,11 +22,16 @@ export const handleApiError = async (response: Response) => {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     const error = new Error(
-      errorData.message || response.statusText || 'An error occurred'
-    );
-    (error as any).status = response.status;
-    (error as any).data = errorData;
+      errorData?.error?.message || response.statusText || 'An error occurred'
+    ) as any;
+    error.status = response.status;
+    error.data = errorData;
     throw error;
   }
   return response.json();
+};
+
+export const handleApiResponse = async <T>(response: Response): Promise<T> => {
+  const data = await handleApiError(response);
+  return data as T;
 };

@@ -14,8 +14,11 @@ export interface LoginResponse {
   success: boolean;
   message: string;
   data: {
-    token: string;
     user: User;
+    tokens: {
+      accessToken: string;
+      refreshToken: string;
+    };
   };
 }
 
@@ -24,32 +27,26 @@ export interface RegisterData {
   password: string;
   firstName: string;
   lastName: string;
-  role: 'student' | 'teacher' | 'parent';
+  role?: 'student' | 'teacher' | 'parent';
 }
 
 export interface RegisterResponse {
   success: boolean;
   message: string;
   data: {
-    token: string;
-    user: User;
+    user: { id: string; email: string; firstName: string; lastName: string; isVerified: boolean };
+    tokens: { accessToken: string; refreshToken: string };
   };
 }
 
-export interface ForgotPasswordData {
-  email: string;
+export interface TokenResponse {
+  success: boolean;
+  data: { tokens: { accessToken: string; refreshToken: string } };
 }
 
-export interface ResetPasswordData {
-  token: string;
-  password: string;
-  confirmPassword: string;
-}
-
-export interface ChangePasswordData {
-  currentPassword: string;
-  newPassword: string;
-  confirmPassword: string;
+export interface AuthMessageResponse {
+  success: boolean;
+  message: string;
 }
 
 export const login = async (credentials: LoginCredentials): Promise<LoginResponse> => {
@@ -78,7 +75,7 @@ export const logout = async (token: string) => {
   return handleApiError(response);
 };
 
-export const refreshToken = async (refreshToken: string) => {
+export const refreshToken = async (refreshToken: string): Promise<TokenResponse> => {
   const response = await fetch(`${baseUrl}/auth/refresh`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -87,7 +84,7 @@ export const refreshToken = async (refreshToken: string) => {
   return handleApiError(response);
 };
 
-export const forgotPassword = async (data: ForgotPasswordData) => {
+export const forgotPassword = async (data: { email: string }): Promise<AuthMessageResponse> => {
   const response = await fetch(`${baseUrl}/auth/forgot-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -96,7 +93,7 @@ export const forgotPassword = async (data: ForgotPasswordData) => {
   return handleApiError(response);
 };
 
-export const resetPassword = async (data: ResetPasswordData) => {
+export const resetPassword = async (data: { token: string; password: string }): Promise<AuthMessageResponse> => {
   const response = await fetch(`${baseUrl}/auth/reset-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -105,7 +102,7 @@ export const resetPassword = async (data: ResetPasswordData) => {
   return handleApiError(response);
 };
 
-export const changePassword = async (data: ChangePasswordData, token: string) => {
+export const changePassword = async (data: { currentPassword: string; newPassword: string }, token: string) => {
   const response = await fetch(`${baseUrl}/auth/change-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -114,11 +111,26 @@ export const changePassword = async (data: ChangePasswordData, token: string) =>
   return handleApiError(response);
 };
 
-export const verifyEmail = async (token: string) => {
-  const response = await fetch(`${baseUrl}/auth/verify-email`, {
+export const verifyEmail = async (userId: string, token: string) => {
+  const response = await fetch(`${baseUrl}/auth/verify-email/${userId}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token }),
+  });
+  return handleApiError(response);
+};
+
+export const resendVerification = async (token: string) => {
+  const response = await fetch(`${baseUrl}/auth/resend-verification`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+  });
+  return handleApiError(response);
+};
+
+export const getCurrentUser = async (token: string) => {
+  const response = await fetch(`${baseUrl}/auth/me`, {
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
   });
   return handleApiError(response);
 };

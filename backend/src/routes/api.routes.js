@@ -13,7 +13,7 @@ import { progressRoutes } from './progress.routes.js';
 import { libraryRoutes } from './library.routes.js';
 import { teacherRoutes } from './teacher.routes.js';
 import { parentRoutes } from './parent.routes.js';
-import { schoolRoutes } from './school.routes.js';
+import { schoolRoutes } from '../schools/routes/school.routes.js';
 import { subscriptionRoutes } from './subscription.routes.js';
 import { paymentRoutes } from './payment.routes.js';
 import { notificationRoutes } from './notification.routes.js';
