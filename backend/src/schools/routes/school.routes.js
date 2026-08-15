@@ -33,6 +33,10 @@ schoolRoutes.get('/:id/stats',
   asyncHandler(schoolController.getSchoolStats)
 );
 
+schoolRoutes.post('/join',
+  asyncHandler(schoolController.joinSchool)
+);
+
 schoolRoutes.post('/:id/students',
   requireRole('super_admin', 'content_admin'),
   asyncHandler(schoolController.addStudent)

@@ -1,103 +1,208 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { BookOpen, Award, TrendingUp, Clock } from 'lucide-react';
 import { useAuthStore } from '@/state/auth/authStore';
 import { fetchMyCourses } from '@/services/api/courseService';
+import { fetchStudentOverview } from '@/services/api/progressService';
 
 interface CourseProgress {
-  id: string;
   courseId: string;
   courseTitle: string;
-  courseThumbnail: string;
+  courseSlug: string;
+  courseThumbnail?: string;
   progressPercentage: number;
-  completedAt: string | null;
-  lastAccessedAt: string;
-  totalLessons: number;
   completedLessons: number;
+  totalLessons: number;
+  completedAt?: string;
 }
 
 export default function ProgressPage() {
   const { token } = useAuthStore();
-  const [progress, setProgress] = useState<CourseProgress[]>([]);
+  const [courses, setCourses] = useState<CourseProgress[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalStudyTime, setTotalStudyTime] = useState(0);
+  const [totalQuizzes, setTotalQuizzes] = useState(0);
+  const [averageScore, setAverageScore] = useState(0);
+  const [currentStreak, setCurrentStreak] = useState(0);
 
   useEffect(() => {
-    if (token) {
-      fetchMyCourses(token)
-        .then((res) => setProgress(res.courses || []))
-        .catch(console.error)
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    if (!token) return;
+    (async () => {
+      try {
+        const [coursesRes, progressRes, streakRes] = await Promise.all([
+          fetchMyCourses(token),
+          fetchStudentOverview(token),
+          import('@/services/api/gamificationService').then(m => m.fetchMyStreak(token)),
+        ]);
+
+        const courseList: CourseProgress[] = (coursesRes.courses || []).map((c: any) => ({
+          courseId: c.courseId || c.id,
+          courseTitle: c.courseTitle || c.title,
+          courseSlug: c.courseSlug || c.slug,
+          courseThumbnail: c.courseThumbnail || c.thumbnailUrl,
+          progressPercentage: c.progressPercentage || 0,
+          completedLessons: c.completedLessons || 0,
+          totalLessons: c.totalLessons || 0,
+          completedAt: c.completedAt || null,
+        }));
+        setCourses(courseList);
+
+        setTotalStudyTime(progressRes.overview?.totalStudyTimeSeconds || 0);
+        setTotalQuizzes(progressRes.overview?.examsTaken || 0);
+        setAverageScore(progressRes.overview?.averageExamScore || 0);
+      } catch (err) {
+        console.error('Failed to load progress:', err);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [token]);
 
-  const stats = {
-    totalCourses: progress.length,
-    completed: progress.filter(p => p.progressPercentage >= 100).length,
-    inProgress: progress.filter(p => p.progressPercentage > 0 && p.progressPercentage < 100).length,
-    totalLessons: progress.reduce((sum, p) => sum + (p.completedLessons || 0), 0),
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-500">Loading progress...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const formatTime = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
   };
+
+  const sortedCourses = [...courses].sort((a, b) => b.progressPercentage - a.progressPercentage);
+  const completedCount = courses.filter(c => c.progressPercentage >= 100).length;
+  const inProgressCount = courses.filter(c => c.progressPercentage > 0 && c.progressPercentage < 100).length;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">My Progress</h1>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Enrolled', value: stats.totalCourses, color: 'blue' },
-          { label: 'In Progress', value: stats.inProgress, color: 'yellow' },
-          { label: 'Completed', value: stats.completed, color: 'green' },
-          { label: 'Lessons Done', value: stats.totalLessons, color: 'purple' },
-        ].map(s => (
-          <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-2xl font-bold text-gray-900">{s.value}</p>
-            <p className="text-sm text-gray-500">{s.label}</p>
-          </div>
-        ))}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">My Progress</h1>
+        <p className="text-gray-500 mt-1">Track your learning journey and achievements</p>
       </div>
 
-      {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse flex gap-4">
-              <div className="w-16 h-16 bg-gray-200 rounded-lg" />
-              <div className="flex-1 space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-2/3" />
-                <div className="h-3 bg-gray-100 rounded w-1/2" />
-                <div className="h-2 bg-gray-100 rounded w-full" />
-              </div>
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+              <BookOpen className="w-5 h-5 text-blue-600" />
             </div>
-          ))}
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{courses.length}</p>
+              <p className="text-xs text-gray-500">Enrolled</p>
+            </div>
+          </div>
         </div>
-      ) : progress.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <p className="text-gray-500">No courses enrolled yet. Go to Courses to get started!</p>
-          <a href="/dashboard/courses" className="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium">Browse Courses</a>
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+              <Award className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{completedCount}</p>
+              <p className="text-xs text-gray-500">Completed</p>
+            </div>
+          </div>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {progress.map(item => (
-            <a key={item.courseId} href={`/dashboard/courses/${item.courseId}`} className="block bg-white rounded-xl border border-gray-200 p-4 hover:border-blue-300 transition-colors">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-lg">
-                  {item.courseTitle?.[0] || 'C'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 truncate">{item.courseTitle}</p>
-                  <p className="text-sm text-gray-500">{item.completedLessons}/{item.totalLessons} lessons</p>
-                  <div className="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-600 rounded-full transition-all" style={{ width: `${item.progressPercentage}%` }} />
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+              <Clock className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{formatTime(totalStudyTime)}</p>
+              <p className="text-xs text-gray-500">Study Time</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{averageScore.toFixed(0)}%</p>
+              <p className="text-xs text-gray-500">Avg Score</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Progress bars */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <h2 className="font-semibold text-gray-900 mb-4">Course Progress</h2>
+        {sortedCourses.length === 0 ? (
+          <div className="text-center py-8">
+            <BookOpen className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500 text-sm">No courses enrolled yet.</p>
+            <a href="/dashboard/courses" className="inline-block mt-3 text-blue-600 text-sm font-medium hover:text-blue-700">
+              Browse Courses
+            </a>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {sortedCourses.map(course => (
+              <a key={course.courseId} href={`/dashboard/courses/${course.courseSlug}`} className="block">
+                <div className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-indigo-200 flex items-center justify-center text-blue-600 font-bold text-sm flex-shrink-0">
+                    {course.courseTitle?.[0] || 'C'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-medium text-gray-900 truncate">{course.courseTitle}</p>
+                      <span className={`text-sm font-semibold ${course.progressPercentage >= 100 ? 'text-green-600' : 'text-blue-600'}`}>
+                        {course.progressPercentage}%
+                      </span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          course.progressPercentage >= 100 ? 'bg-green-500' : 'bg-blue-600'
+                        }`}
+                        style={{ width: `${course.progressPercentage}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {course.completedLessons}/{course.totalLessons} lessons
+                    </p>
                   </div>
                 </div>
-                <span className={`text-sm font-semibold ${item.progressPercentage >= 100 ? 'text-green-600' : 'text-blue-600'}`}>
-                  {item.progressPercentage}%
-                </span>
-              </div>
-            </a>
-          ))}
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Weekly activity */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <h2 className="font-semibold text-gray-900 mb-4">Activity Summary</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center p-4 bg-gray-50 rounded-xl">
+            <p className="text-2xl font-bold text-gray-900">{inProgressCount}</p>
+            <p className="text-sm text-gray-500">In Progress</p>
+          </div>
+          <div className="text-center p-4 bg-gray-50 rounded-xl">
+            <p className="text-2xl font-bold text-gray-900">{completedCount}</p>
+            <p className="text-sm text-gray-500">Completed</p>
+          </div>
+          <div className="text-center p-4 bg-gray-50 rounded-xl">
+            <p className="text-2xl font-bold text-gray-900">{totalQuizzes}</p>
+            <p className="text-sm text-gray-500">Exams Taken</p>
+          </div>
+          <div className="text-center p-4 bg-gray-50 rounded-xl">
+            <p className="text-2xl font-bold text-gray-900">{formatTime(totalStudyTime)}</p>
+            <p className="text-sm text-gray-500">Total Time</p>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

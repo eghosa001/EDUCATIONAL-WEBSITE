@@ -40,7 +40,11 @@ export const fetchAdminLessons = async (
   const response = await fetch(`${baseUrl}/lessons?${params.toString()}`, {
     headers: getAuthHeaders(token),
   });
-  return handleApiError(response);
+  const body = (await handleApiError(response)) as {
+    data?: { lessons?: Lesson[] };
+    pagination?: Pagination;
+  };
+  return { lessons: body.data?.lessons ?? [], pagination: body.pagination ?? { page: 1, limit: 50, total: 0, totalPages: 0 } };
 };
 
 export const createAdminLesson = async (

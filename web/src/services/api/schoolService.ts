@@ -15,12 +15,24 @@ export interface CreateSchoolData {
 }
 
 export const fetchSchools = async (
-  page: number = 1,
-  limit: number = 20,
+  filters: { page?: number; limit?: number; search?: string } = {},
   token?: string
-): Promise<PaginatedResponse<School>> => {
-  const response = await fetch(`${baseUrl}/schools?page=${page}&limit=${limit}`, {
+): Promise<{ data: any[]; pagination: any }> => {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) params.append(key, String(value));
+  });
+  const response = await fetch(`${baseUrl}/schools?${params.toString()}`, {
     headers: getAuthHeaders(token),
+  });
+  return handleApiError(response);
+};
+
+export const joinSchool = async (schoolCode: string, token: string) => {
+  const response = await fetch(`${baseUrl}/schools/join`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ schoolCode }),
   });
   return handleApiError(response);
 };

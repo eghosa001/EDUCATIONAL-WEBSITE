@@ -49,7 +49,11 @@ export const fetchAdminExams = async (
   const response = await fetch(`${baseUrl}/exams?${params.toString()}`, {
     headers: getAuthHeaders(token),
   });
-  return handleApiError(response);
+  const body = (await handleApiError(response)) as {
+    data?: { exams?: AdminExam[] };
+    pagination?: Pagination;
+  };
+  return { exams: body.data?.exams ?? [], pagination: body.pagination ?? { page: 1, limit: 50, total: 0, totalPages: 0 } };
 };
 
 export const createAdminExam = async (

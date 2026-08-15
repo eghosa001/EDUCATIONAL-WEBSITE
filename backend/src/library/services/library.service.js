@@ -71,9 +71,10 @@ export const libraryService = {
     const values = [board];
     let idx = 2;
     if (year) { conditions.push(`exam_year = $${idx++}`); values.push(year); }
+    const limitParam = idx;
     const result = await query(
       `SELECT * FROM library_resources WHERE ${conditions.join(' AND ')} AND resource_type = 'past_question'
-       ORDER BY exam_year DESC, created_at DESC LIMIT $${idx}`,
+       ORDER BY exam_year DESC, created_at DESC LIMIT $${limitParam}`,
       [...values, limit]
     );
     return result.rows;

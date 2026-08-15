@@ -48,7 +48,7 @@ export default function DashboardPage() {
           fetchStudentOverview(token),
           fetchMyCourses(token),
         ]);
-        setOverview(overviewRes.data?.overview || overviewRes.overview);
+        setOverview(overviewRes.overview || null);
         setRecentCourses(coursesRes.courses?.slice(0, 3) || []);
       } catch (err) {
         console.error('Failed to load dashboard data:', err);

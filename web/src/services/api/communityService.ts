@@ -129,28 +129,56 @@ export interface CreatePostData {
 
 export const fetchPosts = async (
   forumId: string,
-  page: number = 1,
-  limit: number = 20,
+  filters: { page?: number; limit?: number } = {},
   token?: string
-): Promise<PaginatedResponse<Post>> => {
-  const response = await fetch(`${baseUrl}/community/forums/${forumId}/posts?page=${page}&limit=${limit}`, {
+): Promise<{ data: Post[]; pagination: any }> => {
+  const url = forumId
+    ? `${baseUrl}/community/forums/${forumId}/posts?page=${filters.page || 1}&limit=${filters.limit || 20}`
+    : `${baseUrl}/community/posts?page=${filters.page || 1}&limit=${filters.limit || 20}`;
+  const response = await fetch(url, {
     headers: getAuthHeaders(token),
   });
-  return handleApiError(response);
+  const res = await handleApiError(response) as any;
+  return { data: res.data?.posts || res.data || [], pagination: res.pagination || {} };
+};
+
+export const fetchCommunityPosts = async (
+  filters: { page?: number; limit?: number } = {},
+  token?: string
+): Promise<{ data: Post[]; pagination: any }> => {
+  const response = await fetch(`${baseUrl}/community/posts?page=${filters.page || 1}&limit=${filters.limit || 20}`, {
+    headers: getAuthHeaders(token),
+  });
+  const res = await handleApiError(response) as any;
+  return { data: res.data?.posts || res.data || [], pagination: res.pagination || {} };
+};
+
+export const createCommunityPost = async (
+  data: CreatePostData,
+  token: string
+): Promise<{ post: Post }> => {
+  const response = await fetch(`${baseUrl}/community/posts`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(data),
+  });
+  const res = await handleApiError(response) as any;
+  return { post: res.data?.post || res.data || {} };
+};
+
+export const createPost = async (data: CreatePostData, token: string): Promise<{ post: Post }> => {
+  const response = await fetch(`${baseUrl}/community/posts`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(data),
+  });
+  const res = await handleApiError(response) as any;
+  return { post: res.data?.post || res.data || {} };
 };
 
 export const fetchPostById = async (postId: string, token?: string): Promise<{ post: Post }> => {
   const response = await fetch(`${baseUrl}/community/posts/${postId}`, {
     headers: getAuthHeaders(token),
-  });
-  return handleApiError(response);
-};
-
-export const createPost = async (data: CreatePostData, token: string) => {
-  const response = await fetch(`${baseUrl}/community/posts`, {
-    method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
   });
   return handleApiError(response);
 };

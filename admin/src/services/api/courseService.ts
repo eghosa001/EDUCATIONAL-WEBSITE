@@ -24,7 +24,11 @@ export const fetchAdminCourses = async (
   const response = await fetch(`${baseUrl}/courses?${params.toString()}`, {
     headers: getAuthHeaders(token),
   });
-  return handleApiError(response);
+  const body = (await handleApiError(response)) as {
+    data?: { courses?: Course[] };
+    pagination?: Pagination;
+  };
+  return { courses: body.data?.courses ?? [], pagination: body.pagination ?? { page: 1, limit: 50, total: 0, totalPages: 0 } };
 };
 
 export const createAdminCourse = async (

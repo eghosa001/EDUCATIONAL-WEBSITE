@@ -39,7 +39,7 @@ export const fetchPaymentGateways = async (): Promise<{ gateways: PaymentGateway
 export const fetchPayments = async (
   token: string,
   filters?: { page?: number; limit?: number; status?: string; startDate?: string; endDate?: string }
-): Promise<{ data: Payment[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> => {
+): Promise<{ data: { data: Payment[]; pagination: { page: number; limit: number; total: number; totalPages: number } } }> => {
   const params = new URLSearchParams();
   if (filters?.page) params.append('page', String(filters.page));
   if (filters?.limit) params.append('limit', String(filters.limit));
@@ -53,10 +53,19 @@ export const fetchPayments = async (
   return handleApiError(response);
 };
 
-export const fetchPaymentStats = async (token: string, userId?: string): Promise<{ stats: PaymentStats }> => {
+export const fetchPaymentStats = async (token: string, userId?: string): Promise<{ data: { stats: PaymentStats } }> => {
   const params = userId ? `?userId=${userId}` : '';
   const response = await fetch(`${baseUrl}/payments/stats${params}`, {
     headers: getAuthHeaders(token),
+  });
+  return handleApiError(response);
+};
+
+export const refundPayment = async (token: string, paymentId: string, reason?: string): Promise<{ success: boolean; message: string }> => {
+  const response = await fetch(`${baseUrl}/payments/${paymentId}/refund`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ reason: reason || 'Refund requested by admin' }),
   });
   return handleApiError(response);
 };

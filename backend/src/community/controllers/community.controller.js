@@ -48,6 +48,33 @@ export const listForumPosts = async (req, res) => {
   res.json({ success: true, data: { posts: data }, pagination });
 };
 
+export const listAllPosts = async (req, res) => {
+  const { page, limit } = req.query;
+  const { query } = await import('../../common/database/index.js');
+  const offset = ((parseInt(page) || 1) - 1) * (parseInt(limit) || 20);
+  const result = await query(
+    `SELECT cp.*, u.first_name, u.last_name, u.avatar_url, s.name AS subject_name
+     FROM community_posts cp
+     LEFT JOIN users u ON u.id = cp.user_id
+     LEFT JOIN subjects s ON s.id = cp.subject_id
+     WHERE cp.status = 'published'
+     ORDER BY cp.created_at DESC
+     LIMIT $1 OFFSET $2`,
+    [parseInt(limit) || 20, offset]
+  );
+  const countResult = await query(`SELECT COUNT(*)::int AS total FROM community_posts WHERE status = 'published'`);
+  res.json({
+    success: true,
+    data: { posts: result.rows.map(r => ({
+      ...r,
+      authorName: r.first_name + ' ' + r.last_name,
+      authorAvatar: r.avatar_url,
+      subjectName: r.subject_name,
+    })) },
+    pagination: { page: parseInt(page) || 1, limit: parseInt(limit) || 20, total: parseInt(countResult.rows[0].total || 0), totalPages: Math.ceil(parseInt(countResult.rows[0].total || 0) / (parseInt(limit) || 20)) },
+  });
+};
+
 export const getPost = async (req, res) => {
   const post = await communityService.getPost(req.params.postId);
   res.json({ success: true, data: { post } });

@@ -50,6 +50,7 @@ communityRoutes.post('/forums/:forumId/leave', authMiddleware, asyncHandler(comm
 communityRoutes.get('/forums/:forumId/members', authMiddleware, validateRequest({ query: schemas.pagination }), asyncHandler(communityController.listForumMembers));
 
 communityRoutes.get('/forums/:forumId/posts', optionalAuthMiddleware, validateRequest({ query: schemas.pagination }), asyncHandler(communityController.listForumPosts));
+communityRoutes.get('/posts', optionalAuthMiddleware, validateRequest({ query: schemas.pagination }), asyncHandler(communityController.listAllPosts));
 communityRoutes.get('/posts/:postId', optionalAuthMiddleware, asyncHandler(communityController.getPost));
 communityRoutes.post('/posts', authMiddleware, validateRequest(postSchema), asyncHandler(communityController.createPost));
 communityRoutes.patch('/posts/:postId', authMiddleware, validateRequest(postSchema), asyncHandler(communityController.updatePost));

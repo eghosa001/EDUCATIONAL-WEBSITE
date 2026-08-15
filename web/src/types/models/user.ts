@@ -9,6 +9,9 @@ export interface User {
   avatar?: string;
   createdAt: string;
   updatedAt: string;
+  schoolId?: string;
+  schoolName?: string;
+  className?: string;
 }
 
 export interface Student extends User {

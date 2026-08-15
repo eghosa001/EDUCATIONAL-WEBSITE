@@ -2,24 +2,39 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAdminAuthStore } from '@/state/auth';
+import { useAdminAuthStore, hydrateAdminAuth } from '@/state/auth';
 
 export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { isAuthenticated } = useAdminAuthStore();
+  const { isAuthenticated, hydrated, user, logout } = useAdminAuthStore();
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    hydrateAdminAuth();
+  }, []);
+
+  useEffect(() => {
+    if (hydrated && !isAuthenticated) {
       router.push('/login');
     }
-  }, [isAuthenticated, router]);
+  }, [hydrated, isAuthenticated, router]);
+
+  if (!hydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">Loading...</p>
+          <p className="text-gray-500">Redirecting...</p>
         </div>
       </div>
     );
@@ -39,8 +54,8 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
           <span className="font-bold text-gray-900">EduPlatform Admin</span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-500">Super Admin</span>
-          <button onClick={() => { localStorage.removeItem('admin_token'); localStorage.removeItem('admin_user'); window.location.href = '/login'; }}
+          <span className="text-sm text-gray-500">{user?.firstName} {user?.lastName}</span>
+          <button onClick={() => { logout(); window.location.href = '/login'; }}
             className="text-sm text-red-600 hover:text-red-700 font-medium">
             Logout
           </button>

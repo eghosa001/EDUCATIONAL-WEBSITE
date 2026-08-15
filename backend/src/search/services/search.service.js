@@ -17,6 +17,8 @@ export const searchService = {
       questions: [],
       subjects: [],
       teachers: [],
+      library: [],
+      pastQuestions: [],
     };
 
     // Search courses
@@ -60,6 +62,39 @@ export const searchService = {
       name: `${r.first_name} ${r.last_name}`,
       specialization: r.specialization,
     }));
+
+    // Search lessons
+    const lessonResult = await query(
+      `SELECT l.id, l.title, l.slug, l.description, l.video_duration_seconds,
+              l.written_content, c.title AS course_title, c.slug AS course_slug
+       FROM lessons l
+       JOIN courses c ON c.id = l.course_id
+       WHERE (l.title ILIKE $1 OR l.written_content ILIKE $1) AND l.is_published = TRUE
+       ORDER BY l.created_at DESC LIMIT 10`,
+      [`%${queryText}%`]
+    );
+    results.lessons = lessonResult.rows;
+
+    // Search library resources
+    const libraryResult = await query(
+      `SELECT id, title, resource_type, file_url, description, subject_id, exam_board, exam_year,
+              is_free, view_count
+       FROM library_resources
+       WHERE title ILIKE $1 OR description ILIKE $1
+       ORDER BY view_count DESC LIMIT 10`,
+      [`%${queryText}%`]
+    );
+    results.library = libraryResult.rows;
+
+    // Search past questions
+    const pastQResult = await query(
+      `SELECT id, title, resource_type, file_url, description, exam_board, exam_year
+       FROM library_resources
+       WHERE resource_type = 'past_question' AND (title ILIKE $1 OR description ILIKE $1)
+       ORDER BY exam_year DESC LIMIT 10`,
+      [`%${queryText}%`]
+    );
+    results.pastQuestions = pastQResult.rows;
 
     return results;
   },

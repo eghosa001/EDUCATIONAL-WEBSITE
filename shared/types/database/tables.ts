@@ -62,3 +62,5 @@ export const TABLE_DEFINITIONS: TableDefinition[] = [
   { name: 'reports', module: 'reports', phase: 'ecosystem' },
   { name: 'audit_logs', module: 'administration', phase: 'ecosystem' },
 ];
+
+export * from './rows';

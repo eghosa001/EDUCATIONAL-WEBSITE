@@ -1,5 +1,6 @@
 import { schoolService } from '../services/school.service.js';
 import { HTTP_STATUS } from '../../common/constants/index.js';
+import { requireAuth } from '../../common/middleware/index.js';
 
 export const listSchools = async (req, res) => {
   const params = {
@@ -45,4 +46,14 @@ export const addStudent = async (req, res) => {
 export const removeStudent = async (req, res) => {
   await schoolService.removeStudent(req.params.id, req.params.studentId);
   res.json({ success: true, message: 'Student removed from school' });
+};
+
+export const joinSchool = async (req, res) => {
+  const { schoolCode } = req.body;
+  const userId = req.user?.id || req.user?.userId;
+  if (!userId) {
+    return res.status(HTTP_STATUS.UNAUTHORIZED).json({ success: false, error: 'Unauthorized' });
+  }
+  const result = await schoolService.joinSchool(schoolCode, userId);
+  res.status(HTTP_STATUS.CREATED).json({ success: true, data: result, message: 'Successfully joined school' });
 };

@@ -15,7 +15,11 @@ export const fetchSubscriptionPlans = async (token: string, filters?: { isActive
   const response = await fetch(`${baseUrl}/subscriptions/plans?${params.toString()}`, {
     headers: getAuthHeaders(token),
   });
-  return handleApiError(response);
+  const body = (await handleApiError(response)) as {
+    data?: { plans?: SubscriptionPlan[] };
+    pagination?: { page: number; limit: number; total: number; totalPages: number };
+  };
+  return { plans: body.data?.plans ?? [], pagination: body.pagination };
 };
 
 export const createPlan = async (data: Partial<SubscriptionPlan> & { name: string; code: string; price: number; durationDays: number; billingCycle: string }, token: string) => {

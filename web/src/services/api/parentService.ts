@@ -55,6 +55,7 @@ export interface Child {
   avatar?: string;
   schoolId?: string;
   classId?: string;
+  relationship?: string;
   joinedAt: string;
 }
 

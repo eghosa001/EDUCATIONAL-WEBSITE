@@ -43,7 +43,11 @@ export const fetchAdminQuestions = async (
   const response = await fetch(`${baseUrl}/questions?${params.toString()}`, {
     headers: getAuthHeaders(token),
   });
-  return handleApiError(response);
+  const body = (await handleApiError(response)) as {
+    data?: { questions?: Question[] };
+    pagination?: Pagination;
+  };
+  return { questions: body.data?.questions ?? [], pagination: body.pagination ?? { page: 1, limit: 50, total: 0, totalPages: 0 } };
 };
 
 export const createAdminQuestion = async (

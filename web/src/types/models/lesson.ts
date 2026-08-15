@@ -16,12 +16,25 @@ export interface LessonResource {
 export interface Lesson {
   id: string;
   courseId: string;
+  sectionId?: string;
+  topicId?: string;
   title: string;
+  slug?: string;
   description?: string;
+  learningObjectives?: string[];
   type: LessonType;
-  contentUrl?: string;
+  contentType?: string;
+  videoUrl?: string;
+  videoDurationSeconds?: number;
+  writtenContent?: string;
+  keyPoints?: string[];
   durationMinutes?: number;
+  estimatedMinutes?: number;
   order: number;
+  orderIndex?: number;
+  isFree?: boolean;
+  isPublished?: boolean;
+  resources?: LessonResource[];
   createdAt: string;
   updatedAt: string;
 }

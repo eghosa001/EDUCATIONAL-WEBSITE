@@ -1115,35 +1115,48 @@ audit_logs
 ```text
 backend/
 │
-├── auth/
-├── users/
-├── education/
-├── curriculum/
-├── courses/
-├── lessons/
-├── assessments/
-├── questions/
-├── exams/
-├── assignments/
-├── progress/
-├── library/
-├── teachers/
-├── parents/
-├── schools/
-├── subscriptions/
-├── payments/
-├── notifications/
-├── ai/
-├── gamification/
-├── community/
-├── search/
-├── analytics/
-├── reports/
-├── storage/
-└── administration/
+├── src/
+│   │
+│   ├── auth/
+│   ├── users/
+│   ├── education/
+│   ├── curriculum/
+│   ├── courses/
+│   ├── lessons/
+│   ├── assessments/
+│   ├── questions/
+│   ├── exams/
+│   ├── assignments/
+│   ├── progress/
+│   ├── library/
+│   ├── teachers/
+│   ├── parents/
+│   ├── schools/
+│   ├── subscriptions/
+│   ├── payments/
+│   ├── notifications/
+│   ├── ai/
+│   ├── gamification/
+│   ├── community/
+│   ├── search/
+│   ├── analytics/
+│   ├── reports/
+│   ├── storage/
+│   ├── certificates/
+│   ├── administration/
+│   │
+│   ├── common/            # Shared config, middleware, utils, validators,
+│   │                      # errors, constants, database, queue, cache, events
+│   ├── routes/            # Express route definitions (one file per module)
+│   ├── index.js           # App entry point
+│   └── *.test.mjs         # Backend integration tests
+│
+├── scripts/               # DB migrations, seeding, curriculum parsing
+├── package.json
+└── jest.config.mjs
 ```
 
-Each module owns its own business logic.
+Each module owns its own business logic, organized into `controllers/`, `models/`, and `services/` sub-directories.
 
 ---
 

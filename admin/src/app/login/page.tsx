@@ -3,14 +3,23 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { GraduationCap, EyeIcon, EyeOff } from 'lucide-react';
+import { useAdminAuthStore, hydrateAdminAuth } from '@/state/auth';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { isAuthenticated, login } = useAdminAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    hydrateAdminAuth();
+    if (isAuthenticated) {
+      router.replace('/dashboard');
+    }
+  }, [isAuthenticated, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,15 +29,17 @@ export default function LoginPage() {
     try {
       // Demo credentials check
       if (email === 'admin@eduplatform.ng' && password === 'admin123') {
-        localStorage.setItem('admin_token', 'demo-token');
-        localStorage.setItem('admin_user', JSON.stringify({
-          id: '1',
-          email,
-          firstName: 'Super',
-          lastName: 'Admin',
-          role: 'super_admin',
-          roles: ['super_admin'],
-        }));
+        login(
+          {
+            id: '1',
+            email,
+            firstName: 'Super',
+            lastName: 'Admin',
+            role: 'super_admin',
+            roles: ['super_admin'],
+          },
+          'demo-token'
+        );
         router.push('/dashboard');
       } else {
         setError('Invalid credentials. Use admin@eduplatform.ng / admin123');

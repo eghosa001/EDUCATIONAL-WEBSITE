@@ -36,6 +36,20 @@ export interface Assignment {
   updatedAt: string;
 }
 
+export const fetchAssignments = async (
+  filters: { page?: number; limit?: number; courseId?: string } = {},
+  token?: string
+): Promise<{ data: Assignment[]; pagination?: any }> => {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) params.append(key, String(value));
+  });
+  const response = await fetch(`${baseUrl}/assignments?${params.toString()}`, {
+    headers: getAuthHeaders(token),
+  });
+  return handleApiError(response);
+};
+
 export const fetchMyAssignments = async (
   token: string,
   courseId?: string

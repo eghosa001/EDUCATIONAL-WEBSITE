@@ -7,21 +7,29 @@ import 'core/theme/app_theme.dart';
 import 'routing/app_router.dart';
 import 'shared/services/api/api_client.dart';
 import 'shared/services/storage/storage_service.dart';
+import 'core/network/api_client.dart' as network;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive
   await Hive.initFlutter();
   await StorageService().init();
 
-  final apiClient = ApiClient(
-    baseUrl: AppConfig.apiBaseUrl,
-  );
+  // Initialize network client
+  final apiClient = network.ApiClient();
   await apiClient.initialize();
 
+  // Configure system UI
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
   ));
+
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
 
   runApp(const ProviderScope(child: EduPlatformApp()));
 }
@@ -32,12 +40,12 @@ class EduPlatformApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
-      title: 'EduPlatform',
+      title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,
-      routerConfig: AppRouter.router,
+      routerConfig: router,
       builder: (context, child) {
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(1.0)),

@@ -25,6 +25,7 @@ import { analyticsRoutes } from './analytics.routes.js';
 import { reportRoutes } from './report.routes.js';
 import { adminRoutes } from './admin.routes.js';
 import { storageRoutes } from './storage.routes.js';
+import { certificateRoutes } from './certificate.routes.js';
 
 export const apiRoutes = Router();
 
@@ -54,6 +55,7 @@ apiRoutes.use('/analytics', analyticsRoutes);
 apiRoutes.use('/reports', reportRoutes);
 apiRoutes.use('/admin', adminRoutes);
 apiRoutes.use('/storage', storageRoutes);
+apiRoutes.use('/certificates', certificateRoutes);
 
 apiRoutes.get('/', (req, res) => {
   res.json({

@@ -1,10 +1,14 @@
 export interface School {
   id: string;
   name: string;
+  code?: string;
   address?: string;
   phone?: string;
   email?: string;
-  logo?: string;
+  logoUrl?: string;
+  studentCount?: number;
+  teacherCount?: number;
+  subscriptionStatus?: string;
   createdAt: string;
   updatedAt: string;
 }
