@@ -5,6 +5,7 @@ import { educationRoutes } from './education.routes.js';
 import { curriculumRoutes } from './curriculum.routes.js';
 import { courseRoutes } from './course.routes.js';
 import { lessonRoutes } from './lesson.routes.js';
+import { flashcardRoutes } from './flashcard.routes.js';
 import { assessmentRoutes } from './assessment.routes.js';
 import { questionRoutes } from './question.routes.js';
 import { examRoutes } from './exam.routes.js';
@@ -26,6 +27,8 @@ import { reportRoutes } from './report.routes.js';
 import { adminRoutes } from './admin.routes.js';
 import { storageRoutes } from './storage.routes.js';
 import { certificateRoutes } from './certificate.routes.js';
+import { liveClassRoutes } from './live-classes.routes.js';
+import { pastQuestionRoutes } from './past-questions.routes.js';
 
 export const apiRoutes = Router();
 
@@ -35,6 +38,7 @@ apiRoutes.use('/education', educationRoutes);
 apiRoutes.use('/curriculum', curriculumRoutes);
 apiRoutes.use('/courses', courseRoutes);
 apiRoutes.use('/lessons', lessonRoutes);
+apiRoutes.use('/flashcards', flashcardRoutes);
 apiRoutes.use('/assessments', assessmentRoutes);
 apiRoutes.use('/questions', questionRoutes);
 apiRoutes.use('/exams', examRoutes);
@@ -56,6 +60,8 @@ apiRoutes.use('/reports', reportRoutes);
 apiRoutes.use('/admin', adminRoutes);
 apiRoutes.use('/storage', storageRoutes);
 apiRoutes.use('/certificates', certificateRoutes);
+apiRoutes.use('/live-classes', liveClassRoutes);
+apiRoutes.use('/past-questions', pastQuestionRoutes);
 
 apiRoutes.get('/', (req, res) => {
   res.json({
@@ -69,6 +75,7 @@ apiRoutes.get('/', (req, res) => {
       curriculum: '/api/v1/curriculum',
       courses: '/api/v1/courses',
       lessons: '/api/v1/lessons',
+      flashcards: '/api/v1/flashcards',
       assessments: '/api/v1/assessments',
       questions: '/api/v1/questions',
       exams: '/api/v1/exams',
@@ -89,6 +96,8 @@ apiRoutes.get('/', (req, res) => {
       reports: '/api/v1/reports',
       admin: '/api/v1/admin',
       storage: '/api/v1/storage',
+      liveClasses: '/api/v1/live-classes',
+      pastQuestions: '/api/v1/past-questions',
     },
   });
 });

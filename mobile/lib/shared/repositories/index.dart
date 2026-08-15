@@ -4,3 +4,5 @@ export 'exam_repository.dart';
 export 'progress_repository.dart';
 export 'gamification_repository.dart';
 export 'library_repository.dart';
+export 'live_class_repository.dart';
+export 'ai_tutor_repository.dart';

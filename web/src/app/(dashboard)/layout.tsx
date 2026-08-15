@@ -8,7 +8,7 @@ import { useAuthStore } from '@/state/auth/authStore';
 import {
   Home, BookOpen, GraduationCap as AcademicCapIcon, ClipboardCheck as ClipboardDocumentCheckIcon,
   MessageSquare as ChatBubbleLeftRightIcon, Bookmark as LibraryBookmarkIcon, Lightbulb as LightBulbIcon,
-  Users as UserGroupIcon, Trophy, Bell, ChevronDown,
+  Users as UserGroupIcon, Trophy, Bell, ChevronDown, FileText as DocumentTextIcon,
   LogOut as ArrowRightOnRectangleIcon, Menu as Bars3Icon, X as XMarkIcon,
   Settings as Cog6ToothIcon, LogOut as ArrowLeftStartOnRectangleIcon,
 } from 'lucide-react';
@@ -23,6 +23,7 @@ const studentNavItems = [
   { label: 'Flashcards', href: '/dashboard/flashcards', icon: AcademicCapIcon },
   { label: 'Community', href: '/dashboard/community', icon: ChatBubbleLeftRightIcon },
   { label: 'Progress', href: '/dashboard/progress', icon: Trophy },
+  { label: 'Reports', href: '/dashboard/reports', icon: DocumentTextIcon },
 ];
 
 const teacherNavItems = [
@@ -32,6 +33,7 @@ const teacherNavItems = [
   { label: 'Assignments', href: '/dashboard/assignments', icon: ClipboardDocumentCheckIcon },
   { label: 'Students', href: '/dashboard/teacher', icon: UserGroupIcon },
   { label: 'Earnings', href: '/dashboard/teacher', icon: Trophy },
+  { label: 'Reports', href: '/dashboard/teacher/report', icon: DocumentTextIcon },
 ];
 
 const parentNavItems = [

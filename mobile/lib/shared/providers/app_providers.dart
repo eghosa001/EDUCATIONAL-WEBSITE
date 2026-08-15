@@ -7,6 +7,8 @@ import '../services/auth/auth_service.dart';
 import '../services/notifications/notification_service.dart';
 import '../services/ai/ai_service.dart';
 import '../services/analytics/analytics_service.dart';
+import '../services/ai_tutor_service.dart';
+import '../repositories/ai_tutor_repository.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient();
@@ -37,6 +39,16 @@ final aiServiceProvider = Provider<AIService>((ref) {
 final analyticsServiceProvider = Provider<AnalyticsService>((ref) {
   final client = ref.watch(apiClientProvider);
   return AnalyticsService(client: client);
+});
+
+final aiTutorServiceProvider = Provider<AiTutorService>((ref) {
+  return AiTutorService();
+});
+
+final aiTutorRepositoryProvider = Provider<AiTutorRepository>((ref) {
+  final service = ref.watch(aiTutorServiceProvider);
+  final storage = ref.watch(storageServiceProvider);
+  return AiTutorRepository(service: service, storage: storage);
 });
 
 final authStateProvider = StateProvider<bool>((ref) => false);

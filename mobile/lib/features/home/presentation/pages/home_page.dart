@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/widgets/index.dart';
 
 class HomePage extends ConsumerWidget {
@@ -32,6 +33,10 @@ class HomePage extends ConsumerWidget {
                   'Student Name!',
                   style: theme.textTheme.headlineSmall,
                 ),
+                const SizedBox(height: 24),
+
+                // Live Classes quick access
+                _LiveClassesQuickSection(),
                 const SizedBox(height: 24),
 
                 // Continue Learning
@@ -342,6 +347,68 @@ class _UpcomingExamsSection extends StatelessWidget {
                 height: 36,
                 onPressed: () {},
               ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LiveClassesQuickSection extends StatelessWidget {
+  const _LiveClassesQuickSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Live Classes', style: theme.textTheme.titleMedium),
+            TextButton(
+              onPressed: () => context.push('/live-classes'),
+              child: const Text('See All'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        EduCard(
+          onTap: () => context.push('/live-classes'),
+          child: Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.error.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.videocam, color: Colors.red, size: 28),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Join Live Session',
+                      style: theme.textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Interactive video classes with teachers',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.arrow_forward_ios, size: 16, color: theme.colorScheme.onSurfaceVariant),
             ],
           ),
         ),

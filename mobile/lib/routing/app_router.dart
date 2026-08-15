@@ -26,6 +26,8 @@ import '../features/subscriptions/presentation/pages/plans_page.dart';
 import '../features/parent/presentation/pages/parent_dashboard_page.dart';
 import '../features/teacher/presentation/pages/teacher_dashboard_page.dart';
 import '../features/school/presentation/pages/school_page.dart';
+import '../features/live_classes/presentation/pages/live_classes_page.dart';
+import '../features/live_classes/presentation/pages/class_session_page.dart';
 import '../features/home/presentation/pages/forgot_password_page.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -232,6 +234,22 @@ final GoRouter _router = GoRouter(
             transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
           ),
         ),
+        GoRoute(
+          path: '/live-classes',
+          parentNavigatorKey: _rootNavigatorKey,
+          pageBuilder: (_, __) => const CustomTransitionPage(
+            child: LiveClassesPage(),
+            transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
+          ),
+        ),
+        GoRoute(
+          path: '/live-classes/:classId',
+          parentNavigatorKey: _rootNavigatorKey,
+          pageBuilder: (_, state) => CustomTransitionPage(
+            child: ClassSessionPage(classId: state.pathParameters['classId']!),
+            transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
+          ),
+        ),
       ],
     ),
   ],
@@ -263,6 +281,7 @@ class MainBottomNav extends ConsumerWidget {
       NavItem(label: 'Home', icon: Icons.home_outlined, activeIcon: Icons.home, path: '/home'),
       NavItem(label: 'Courses', icon: Icons.school_outlined, activeIcon: Icons.school, path: '/courses'),
       NavItem(label: 'Exams', icon: Icons.assignment_outlined, activeIcon: Icons.assignment, path: '/exams'),
+      NavItem(label: 'Live', icon: Icons.videocam_outlined, activeIcon: Icons.videocam, path: '/live-classes'),
       NavItem(label: 'Community', icon: Icons.groups_outlined, activeIcon: Icons.groups, path: '/community'),
       NavItem(label: 'Profile', icon: Icons.person_outline, activeIcon: Icons.person, path: '/profile'),
     ];

@@ -1,6 +1,6 @@
 # Educational Platform — Remaining Implementation Gaps
 
-> **Status: 95% complete.** All 5 implementation tracks (Shared Layer, Backend, Web, Admin, Mobile) have been substantially delivered. This file tracks the remaining work from the ARCHITECTURE.md.
+> **Status: ~80% complete.** Core architecture, database, backend services, admin panel, and web app are substantially built. This file tracks remaining gaps from the ARCHITECTURE.md.
 
 ---
 
@@ -8,127 +8,153 @@
 
 | Track | Status |
 |---|---|
-| **Track 1 — Shared Layer** | ✅ All 6 tasks done (schemas, enums, API config, utils, events, DB rows) |
-| **Track 2 — Backend Completion** | ✅ All 12 tasks done (flashcards, past-questions, assessments, workflow, notifications, AI tutor, live-classes, migrations, search indexer, security middleware, certificates, moderation) |
-| **Track 3 — Web App Features** | ✅ All 16 feature directories populated (ai, auth, community, courses, exams, flashcards, gamification, lessons, library, notifications, parent, profile, progress, school, subscriptions, teacher) |
-| **Track 4 — Admin Panel** | ✅ 16 of 18 features done (all except library & notifications sub-features which have empty directories) |
-| **Track 5 — Mobile App** | ✅ Core + shared infra done; feature pages exist for all major modules |
+| **Track 1 — Shared Layer** | ✅ All schemas, enums, API config, utils, events, DB rows implemented |
+| **Track 2 — Backend Core** | ✅ Auth, users, education, curriculum, courses, lessons, questions, exams, assignments, progress, library, teachers, parents, schools, payments, subscriptions, notifications, gamification, community, search, certificates, analytics, reports, administration, storage, ai all have controllers + services + routes |
+| **Track 3 — Web App** | ✅ Auth flows, dashboard, courses, lessons, exams, flashcards, gamification, library, notifications, progress, community, parent, profile, school, subscriptions, teacher, AI, reports all have page implementations with real API integration |
+| **Track 4 — Admin Panel** | ✅ Dashboard, users, teachers, schools, curriculum, courses, lessons, questions, exams, payments, subscriptions, reports, moderation, content-approval, AI, settings, library (LibraryManager + ResourceForm), notifications (BroadcastComposer + TemplateManager) all implemented |
+| **Track 5 — Mobile App** | ✅ Core infra, routing, auth, onboarding (180-line multi-step), library (real API), flashcards, gamification (715-line with API), courses, lessons, exams, progress, community, profile, parent, teacher, school, subscriptions all have implementations |
+| **Database Migrations** | ✅ 77+ tables across init-db.sql, migrate-phase4.sql, migrate-phase5.sql, add-missing-tables.sql, add-school-management.sql, migrate-certificates.sql |
 
 ---
 
 ## Remaining Gaps
 
-### 1. Admin Panel — Library Feature (ARCHITECTURE §16, §20)
+### 1. Backend — Flashcards Module (ARCHITECTURE §13)
 
-`admin/src/features/library/` is an empty directory. The nav link exists (`/dashboard/library`) but the page and feature code have not been built.
-
-| Task | What to create | Target path |
-|---|---|---|
-| 1.1 | Resource browsing table (textbooks, notes, PDFs, videos) | `admin/src/features/library/LibraryManager.tsx` |
-| 1.2 | Upload/create resource form | `admin/src/features/library/ResourceForm.tsx` |
-| 1.3 | API service for library CRUD | `admin/src/services/api/libraryService.ts` |
-| 1.4 | Page component | `admin/src/app/(dashboard)/library/page.tsx` |
-
----
-
-### 2. ~~Admin Panel — Notifications Feature~~ ✅ DONE
-
-Broadcast composer, notification history, and template manager are all implemented.
-
----
-
-### 3. Web App — Reports Page (ARCHITECTURE §20, §36)
-
-No web-facing reports page exists. Admin has `reports/` but students/teachers/parents have no visibility.
+Service exists (`flashcards/services/flashcard.service.js`) but no controller, models, or routes.
 
 | Task | What to create | Target path |
 |---|---|---|
-| 3.1 | Student progress report (exports) | `web/src/app/(dashboard)/reports/page.tsx` |
-| 3.2 | Teacher analytics page (course performance, revenue) | `web/src/app/(dashboard)/teacher/report/page.tsx` |
-| 3.3 | Parent child report page | `web/src/app/(dashboard)/parent/[childId]/page.tsx` |
+| 1.1 | Flashcard model | `backend/src/flashcards/models/flashcard.model.js` |
+| 1.2 | Flashcard controller | `backend/src/flashcards/flashcard.controller.js` |
+| 1.3 | Flashcard routes | `backend/src/routes/flashcard.routes.js` |
 
 ---
 
-### 4. ~~School Management Module~~ ✅ DONE
+### 2. Backend — Live Classes Module (ARCHITECTURE §15)
 
-Full school management with classes, timetable, attendance, fees, and results is implemented.
+Service exists (`live-classes/services/liveClass.service.js`) but no controller, models, or routes. Table `live_class_attendance` is also missing from migrations.
+
+| Task | What to create | Target path |
+|---|---|---|
+| 2.1 | Live class model | `backend/src/live-classes/models/liveClass.model.js` |
+| 2.2 | Live class controller | `backend/src/live-classes/liveClass.controller.js` |
+| 2.3 | Live class routes | `backend/src/routes/live-classes.routes.js` |
+| 2.4 | Missing `live_class_attendance` table migration | `backend/scripts/migrations/add-live-class-attendance.sql` |
+
+---
+
+### 3. Backend — Past Questions Module (ARCHITECTURE §8)
+
+Service exists (`past-questions/services/pastQuestion.service.js`) but no controller, models, or routes.
+
+| Task | What to create | Target path |
+|---|---|---|
+| 3.1 | Past question model | `backend/src/past-questions/models/pastQuestion.model.js` |
+| 3.2 | Past question controller | `backend/src/past-questions/pastQuestion.controller.js` |
+| 3.3 | Past question routes | `backend/src/routes/past-questions.routes.js` |
+
+---
+
+### 4. Backend — Library Models (ARCHITECTURE §16)
+
+Controller and service exist but the models directory is empty.
+
+| Task | What to create | Target path |
+|---|---|---|
+| 4.1 | Library resource model | `backend/src/library/models/libraryResource.model.js` |
 
 ---
 
 ### 5. Mobile — Live Classes (ARCHITECTURE §15)
 
-The mobile live classes page is a stub ("Coming Soon"). The backend service exists but the mobile app has no real implementation.
+Page is a 33-line stub showing "Coming Soon". No repository, no real implementation.
 
 | Task | What to create | Target path |
 |---|---|---|
-| 5.1 | Live class list page with upcoming/live/recorded tabs | `mobile/lib/features/live_classes/presentation/pages/live_classes_page.dart` (expand) |
-| 5.2 | In-class page with video placeholder + chat | `mobile/lib/features/live_classes/presentation/pages/class_session_page.dart` |
-| 5.3 | API service for live classes | `mobile/lib/shared/repositories/live_class_repository.dart` |
-| 5.4 | WebRTC or third-party video integration (Jitsi/Twilio) | `mobile/lib/features/live_classes/infrastructure/` |
+| 5.1 | Live class list page with upcoming/live/recorded tabs | `mobile/lib/features/live_classes/presentation/pages/live_classes_page.dart` (expand from stub) |
+| 5.2 | In-class session page with video + chat | `mobile/lib/features/live_classes/presentation/pages/class_session_page.dart` |
+| 5.3 | Live class repository | `mobile/lib/shared/repositories/live_class_repository.dart` |
+| 5.4 | Video integration (Jitsi/Twilio/external provider) | `mobile/lib/features/live_classes/infrastructure/` |
 
 ---
 
-### 6. Mobile — Gamification Stub (ARCHITECTURE §26)
+### 6. Mobile — AI Tutor (ARCHITECTURE §11, §12)
 
-The gamification page is a stub. Backend has XP/points/streaks but the mobile UI doesn't display them.
+Page has 324 lines of UI but uses hardcoded mock responses (`_getAIResponse`). No API service or repository.
 
 | Task | What to create | Target path |
 |---|---|---|
-| 6.1 | Full gamification dashboard (XP, badges, leaderboards, streaks) | `mobile/lib/features/gamification/presentation/pages/gamification_page.dart` (expand) |
-| 6.2 | API service for gamification data | `mobile/lib/shared/repositories/gamification_repository.dart` |
+| 6.1 | AI tutor API service | `mobile/lib/shared/services/ai_tutor_service.dart` |
+| 6.2 | AI tutor repository | `mobile/lib/shared/repositories/ai_tutor_repository.dart` |
+| 6.3 | Wire up real API calls in AI tutor page | `mobile/lib/features/ai_tutor/presentation/pages/ai_tutor_page.dart` |
 
 ---
 
-### 7. Mobile — Questions Stub (ARCHITECTURE §7, §9)
+### 7. Mobile — Notifications (ARCHITECTURE §25)
 
-Only a stub page exists. No question bank browsing or practice UI.
+Page has 138 lines with hardcoded notifications. No repository or API integration.
 
 | Task | What to create | Target path |
 |---|---|---|
-| 7.1 | Full questions/practice page with subject/topic filter | `mobile/lib/features/questions/presentation/pages/questions_page.dart` (expand) |
-| 7.2 | API service for questions | `mobile/lib/shared/repositories/question_repository.dart` |
+| 7.1 | Notification repository | `mobile/lib/shared/repositories/notification_repository.dart` |
+| 7.2 | Wire up real API calls in notifications page | `mobile/lib/features/notifications/presentation/pages/notifications_page.dart` |
 
 ---
 
-### 8. Mobile — Onboarding Stub (ARCHITECTURE §2, §31)
+### 8. Mobile — Questions / Past Questions (ARCHITECTURE §7, §8)
 
-Only a stub page exists. No multi-step onboarding flow.
+Page has hardcoded JAMB/WAEC/NECO/NABTEB data with empty callbacks. No repository or API integration.
 
 | Task | What to create | Target path |
 |---|---|---|
-| 8.1 | Multi-step onboarding (role selection, level, class) | `mobile/lib/features/onboarding/presentation/pages/onboarding_page.dart` (expand) |
+| 8.1 | Question repository | `mobile/lib/shared/repositories/question_repository.dart` |
+| 8.2 | Wire up real API calls in questions page | `mobile/lib/features/questions/presentation/pages/questions_page.dart` |
 
 ---
 
-### 9. ~~Mobile — Library Page~~ ✅ DONE
+### 9. Mobile — DI Container (ARCHITECTURE §31)
 
-Library page is now wired to real API with `LibraryItem` model, `LibraryRepository`, and Riverpod provider.
+The `mobile/lib/di/` directory exists but is completely empty. No dependency injection setup.
+
+| Task | What to create | Target path |
+|---|---|---|
+| 9.1 | DI container with all repositories and services | `mobile/lib/di/container.dart` |
+| 9.2 | Register all features in DI | `mobile/lib/di/` |
 
 ---
 
-### 10. Database — Remaining Tables (ARCHITECTURE §29)
+### 10. Database — Missing Tables (ARCHITECTURE §29)
 
-The migration script covers most tables but the following from the architecture are still missing:
+The following tables referenced in architecture and backend code are not in any migration:
 
 | Table | Purpose |
 |---|---|
-| `reviews` | Course/lesson reviews and ratings |
+| `reviews` | Course/lesson reviews |
 | `ratings` | Aggregate rating data |
-| `comments` | General content comments (separate from community comments) |
-| `leaderboards` | Global and subject-based leaderboards |
-
-> **Done:** `timetables`, `attendance`, `school_fees`, `school_results` were added in the school management module migration (`add-school-management.sql`).
+| `profiles` | Extended user profiles |
+| `permissions` | Fine-grained permissions |
+| `question_options` | MCQ/answer options |
+| `question_topics` | Question-topic associations |
+| `question_explanations` | Question explanations |
+| `exam_results` | Exam result summaries |
+| `grades` | Assignment/course grades |
+| `student_progress` | Aggregated student progress |
+| `teacher_courses` | Teacher-course assignments |
+| `videos` | Video metadata (if separate from lesson_resources) |
+| `documents` | Document metadata |
+| `images` | Image metadata |
+| `semesters` | Semester tracking |
 
 | Task | What to create | Target path |
 |---|---|---|
-| 10.1 | Migration for reviews, ratings, comments tables | `backend/scripts/migrations/add-content-tables.sql` |
-| 10.2 | Leaderboards table | `backend/scripts/migrations/add-leaderboards.sql` |
+| 10.1 | Migration for content tables (reviews, ratings, profiles, permissions) | `backend/scripts/migrations/add-content-tables.sql` |
+| 10.2 | Migration for question/exam tables | `backend/scripts/migrations/add-question-exam-tables.sql` |
+| 10.3 | Migration for progress/grades tables | `backend/scripts/migrations/add-progress-tables.sql` |
 
 ---
 
 ### 11. Phase 7 — Scale Features (ARCHITECTURE §39)
-
-These are future-phase items not yet started:
 
 | Feature | Status |
 |---|---|
@@ -143,8 +169,8 @@ These are future-phase items not yet started:
 ## Execution Priority
 
 ```
-Priority 1 (Now):     #1 Admin Library, #2 Admin Notifications, #4 School Mgmt
-Priority 2 (Soon):    #5 Mobile Live Classes, #6 Mobile Gamification, #9 Mobile Library
-Priority 3 (Later):   #3 Web Reports, #7 Mobile Questions, #8 Mobile Onboarding
+Priority 1 (Now):     #1 Flashcards backend, #2 Live Classes backend, #3 Past Questions backend, #4 Library models
+Priority 2 (Soon):    #5 Mobile Live Classes, #6 Mobile AI Tutor, #7 Mobile Notifications, #8 Mobile Questions
+Priority 3 (Later):   #9 Mobile DI Container, #10 Database missing tables
 Priority 4 (Phase 7): #11 Scale features
 ```

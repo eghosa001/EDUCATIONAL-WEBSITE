@@ -164,6 +164,18 @@ class AppEndpoints {
   static const String adminReports = '/admin/reports';
   static const String adminSettings = '/admin/settings';
 
+  // Live Classes
+  static const String liveClasses = '/live-classes';
+  static const String liveClassesDetail = '/live-classes/{id}';
+  static const String liveClassesMy = '/live-classes/my';
+  static const String liveClassesUpcoming = '/live-classes/upcoming';
+  static const String liveClassesJoin = '/live-classes/{id}/join';
+  static const String liveClassesLeave = '/live-classes/{id}/leave';
+  static const String liveClassesEnd = '/live-classes/{id}/end';
+  static const String liveClassesParticipants = '/live-classes/{id}/participants';
+  static const String liveClassesAttendance = '/live-classes/{id}/attendance';
+  static const String liveClassesAnalytics = '/live-classes/{id}/analytics';
+
   // Certificates
   static const String certificates = '/certificates';
   static const String certificatesVerify = '/certificates/verify';

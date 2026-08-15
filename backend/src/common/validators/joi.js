@@ -102,6 +102,17 @@ export const schemas = {
     }),
   },
 
+  flashcard: {
+    create: Joi.object({
+      courseId: Joi.string().uuid().required(),
+      subjectId: Joi.string().uuid().optional(),
+      topicId: Joi.string().uuid().optional(),
+      front: Joi.string().min(1).max(500).required(),
+      back: Joi.string().min(1).max(1000).required(),
+      difficulty: Joi.string().valid('beginner', 'easy', 'medium', 'hard', 'expert').default('medium'),
+    }),
+  },
+
   lesson: {
     create: Joi.object({
       courseId: Joi.string().uuid().required(),
