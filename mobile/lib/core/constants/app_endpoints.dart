@@ -75,8 +75,12 @@ class AppEndpoints {
 
   // Library
   static const String library = '/library';
+  static const String libraryStats = '/library/stats';
   static const String librarySearch = '/library/search';
-  static const String libraryDownload = '/library/download';
+  static const String libraryDownload = '/library/download/{id}';
+  static const String libraryPastQuestions = '/library/past-questions';
+  static const String libraryPastQuestionsExams = '/library/past-questions/exams';
+  static const String libraryDetail = '/library/{id}';
 
   // AI
   static const String aiChat = '/ai/chat';
@@ -117,10 +121,17 @@ class AppEndpoints {
   static const String communityForum = '/community/forums';
 
   // Gamification
-  static const String gamificationXp = '/gamification/xp';
-  static const String gamificationBadges = '/gamification/badges';
+  static const String gamificationPoints = '/gamification/points/me';
+  static const String gamificationPointsHistory = '/gamification/points/history';
   static const String gamificationLeaderboard = '/gamification/leaderboard';
+  static const String gamificationBadges = '/gamification/badges';
+  static const String gamificationMyBadges = '/gamification/badges/me';
   static const String gamificationAchievements = '/gamification/achievements';
+  static const String gamificationMyAchievements = '/gamification/achievements/me';
+  static const String gamificationStreak = '/gamification/streaks/me';
+  static const String gamificationRewards = '/gamification/rewards';
+  static const String gamificationMyRewards = '/gamification/rewards/me';
+  static const String gamificationRedeemReward = '/gamification/rewards/{id}/redeem';
 
   // Search
   static const String search = '/search';
