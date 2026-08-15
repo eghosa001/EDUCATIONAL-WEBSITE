@@ -49,19 +49,9 @@ No web-facing reports page exists. Admin has `reports/` but students/teachers/pa
 
 ---
 
-### 4. School Management Module (ARCHITECTURE §19)
+### 4. ~~School Management Module~~ ✅ DONE
 
-Backend school service only has basic CRUD (list/create/update/delete/join). Missing the full school management system: classes, timetable, attendance, fees, results.
-
-| Task | What to create | Target path |
-|---|---|---|
-| 4.1 | School classes service + controller | `backend/src/schools/services/classes.service.js` |
-| 4.2 | Timetable service + controller | `backend/src/schools/services/timetable.service.js` |
-| 4.3 | Attendance service + controller | `backend/src/schools/services/attendance.service.js` |
-| 4.4 | Fees/billing service + controller | `backend/src/schools/services/fees.service.js` |
-| 4.5 | Results/service + controller | `backend/src/schools/services/results.service.js` |
-| 4.6 | Admin school detail tab for classes/timetable/attendance | `admin/src/features/schools/SchoolDetail.tsx` (expand) |
-| 4.7 | Migration for new school management tables | `backend/scripts/migrations/add-school-management.sql` |
+Full school management with classes, timetable, attendance, fees, and results is implemented.
 
 ---
 
