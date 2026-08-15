@@ -31,17 +31,9 @@
 
 ---
 
-### 2. Admin Panel — Notifications Feature (ARCHITECTURE §25, §20)
+### 2. ~~Admin Panel — Notifications Feature~~ ✅ DONE
 
-`admin/src/features/notifications/` is an empty directory. No admin UI for sending broadcasts or managing notification templates.
-
-| Task | What to create | Target path |
-|---|---|---|
-| 2.1 | Broadcast composer (select recipients, message, channel) | `admin/src/features/notifications/BroadcastComposer.tsx` |
-| 2.2 | Notification history table | `admin/src/features/notifications/NotificationHistory.tsx` |
-| 2.3 | Template manager (email/SMS templates) | `admin/src/features/notifications/TemplateManager.tsx` |
-| 2.4 | API service | `admin/src/services/api/notificationService.ts` |
-| 2.5 | Page component | `admin/src/app/(dashboard)/notifications/page.tsx` |
+Broadcast composer, notification history, and template manager are all implemented.
 
 ---
 
