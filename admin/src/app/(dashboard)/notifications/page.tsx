@@ -1,55 +1,63 @@
 'use client';
 
 import { useState } from 'react';
+import { BellIcon, UsersIcon, LayoutTemplateIcon, HistoryIcon } from 'lucide-react';
+import PageHeader from '@/components/ui/PageHeader';
+import Card from '@/components/ui/Card';
+import StatCard from '@/components/ui/StatCard';
+import BroadcastComposer from '@/features/notifications/BroadcastComposer';
+import NotificationHistory from '@/features/notifications/NotificationHistory';
+import TemplateManager from '@/features/notifications/TemplateManager';
+import { useNotificationStats } from '@/features/notifications/hooks';
 
-export default function NotificationsAdminPage() {
-  const [notifications, setNotifications] = useState([
-    { id: '1', type: 'exam_reminder', title: 'Exam Starting Soon', recipients: 234, sent: true, time: '2h ago' },
-    { id: '2', type: 'assignment_due', title: 'Assignment Deadline', recipients: 156, sent: false, time: '5h ago' },
-    { id: '3', type: 'result_published', title: 'Results Available', recipients: 89, sent: true, time: '1d ago' },
-  ]);
-  const [showCompose, setShowCompose] = useState(false);
+type Tab = 'broadcast' | 'history' | 'templates';
+
+export default function NotificationsPage() {
+  const [activeTab, setActiveTab] = useState<Tab>('broadcast');
+  const { stats, loading } = useNotificationStats();
+
+  const tabs: Array<{ id: Tab; label: string; icon: typeof BellIcon }> = [
+    { id: 'broadcast', label: 'Broadcast', icon: BellIcon },
+    { id: 'history', label: 'History', icon: HistoryIcon },
+    { id: 'templates', label: 'Templates', icon: LayoutTemplateIcon },
+  ];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
-        <button onClick={() => setShowCompose(!showCompose)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">Send Notification</button>
-      </div>
+      <PageHeader
+        title="Notifications"
+        subtitle="Send broadcasts and manage notification templates"
+      />
 
-      {showCompose && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="font-semibold text-gray-900 mb-4">Compose Notification</h2>
-          <div className="space-y-4">
-            <input placeholder="Title" className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500" />
-            <textarea placeholder="Message" className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500" rows={3} />
-            <select className="w-full px-3 py-2 border border-gray-300 rounded-lg outline-none">
-              <option>All Students</option>
-              <option>By Class</option>
-              <option>By School</option>
-            </select>
-            <div className="flex gap-2">
-              <button onClick={() => setShowCompose(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm">Cancel</button>
-              <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium">Send</button>
-            </div>
-          </div>
+      {!loading && stats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard label="Total Sent" value={String(stats.total)} icon={BellIcon} tone="indigo" />
+          <StatCard label="Sent Today" value={String(stats.today)} icon={BellIcon} tone="blue" />
+          <StatCard label="Unread" value={String(stats.unread)} icon={UsersIcon} tone="yellow" />
+          <StatCard label="Channels" value="4" icon={BellIcon} tone="green" />
         </div>
       )}
 
-      <div className="space-y-3">
-        {notifications.map(n => (
-          <div key={n.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${n.sent ? 'bg-green-100' : 'bg-yellow-100'}`}>
-              <span className="text-sm">{n.sent ? '✓' : '⏳'}</span>
-            </div>
-            <div className="flex-1">
-              <p className="font-medium text-gray-900">{n.title}</p>
-              <p className="text-sm text-gray-500">{n.recipients} recipients · {n.time}</p>
-            </div>
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${n.sent ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{n.sent ? 'Sent' : 'Pending'}</span>
-          </div>
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === tab.id
+                ? 'bg-white text-indigo-700 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+          </button>
         ))}
       </div>
+
+      {activeTab === 'broadcast' && <BroadcastComposer />}
+      {activeTab === 'history' && <NotificationHistory />}
+      {activeTab === 'templates' && <TemplateManager />}
     </div>
   );
 }
