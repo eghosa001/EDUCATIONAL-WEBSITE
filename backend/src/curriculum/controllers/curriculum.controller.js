@@ -24,10 +24,10 @@ export const listEducationLevels = async (req, res) => {
 };
 
 export const listSubjects = async (req, res) => {
-  const { page, limit, educationSystemId, classId } = req.query;
+  const { page, limit, educationSystemId, classId, levelCode } = req.query;
 
   const { data, pagination } = await subjectModel.list({
-    page, limit, educationSystemId, classId,
+    page, limit, educationSystemId, classId, levelCode,
   });
 
   res.json({ success: true, data: { subjects: data }, pagination });
@@ -77,10 +77,10 @@ export const deleteSubject = async (req, res) => {
 };
 
 export const listTopics = async (req, res) => {
-  const { page, limit, subjectId, classId, termId } = req.query;
+  const { page, limit, subjectId, classId, termId, levelCode } = req.query;
 
   const { data, pagination } = await topicModel.list({
-    page, limit, subjectId, classId, termId,
+    page, limit, subjectId, classId, termId, levelCode,
   });
 
   res.json({ success: true, data: { topics: data }, pagination });

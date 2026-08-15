@@ -43,9 +43,10 @@ export const subjectModel = {
     return result.rows[0] || null;
   },
 
-  async list({ page = 1, limit = 20, educationSystemId, classId } = {}) {
+  async list({ page = 1, limit = 20, educationSystemId, classId, levelCode } = {}) {
     const conditions = [];
     const values = [];
+    let joins = '';
 
     if (educationSystemId) {
       conditions.push(`education_system_id = $${values.length + 1}`);
@@ -57,12 +58,22 @@ export const subjectModel = {
       values.push(classId);
     }
 
+    if (levelCode) {
+      joins = `
+        JOIN topics ON topics.subject_id = subjects.id
+        JOIN classes ON classes.id = topics.class_id
+        JOIN programs ON programs.id = classes.program_id
+        JOIN education_levels ON education_levels.id = programs.education_level_id`;
+      conditions.push(`education_levels.code = $${values.length + 1}`);
+      values.push(levelCode);
+    }
+
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const offset = (page - 1) * limit;
     values.push(limit, offset);
 
     const result = await query(
-      `SELECT * FROM subjects ${whereClause} ORDER BY order_index LIMIT $${values.length - 1} OFFSET $${values.length}`,
+      `SELECT DISTINCT subjects.* FROM subjects ${joins} ${whereClause} ORDER BY subjects.name LIMIT $${values.length - 1} OFFSET $${values.length}`,
       values
     );
 

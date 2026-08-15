@@ -33,21 +33,30 @@ export const topicModel = {
     return result.rows[0] || null;
   },
 
-  async list({ page = 1, limit = 20, subjectId, classId, termId } = {}) {
+  async list({ page = 1, limit = 20, subjectId, classId, termId, levelCode } = {}) {
     const conditions = [];
     const values = [];
+    let joins = '';
 
     if (subjectId) {
-      conditions.push(`subject_id = $${values.length + 1}`);
+      conditions.push(`topic.subject_id = $${values.length + 1}`);
       values.push(subjectId);
     }
     if (classId) {
-      conditions.push(`class_id = $${values.length + 1}`);
+      conditions.push(`topic.class_id = $${values.length + 1}`);
       values.push(classId);
     }
     if (termId) {
-      conditions.push(`term_id = $${values.length + 1}`);
+      conditions.push(`topic.term_id = $${values.length + 1}`);
       values.push(termId);
+    }
+    if (levelCode) {
+      joins = `
+        JOIN classes ON classes.id = topic.class_id
+        JOIN programs ON programs.id = classes.program_id
+        JOIN education_levels ON education_levels.id = programs.education_level_id`;
+      conditions.push(`education_levels.code = $${values.length + 1}`);
+      values.push(levelCode);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -55,7 +64,10 @@ export const topicModel = {
     values.push(limit, offset);
 
     const result = await query(
-      `SELECT * FROM topics ${whereClause} ORDER BY order_index LIMIT $${values.length - 1} OFFSET $${values.length}`,
+      `SELECT topic.*, terms.name AS term_name
+       FROM topics topic
+       JOIN terms ON terms.id = topic.term_id
+       ${joins} ${whereClause} ORDER BY topic.order_index LIMIT $${values.length - 1} OFFSET $${values.length}`,
       values
     );
 

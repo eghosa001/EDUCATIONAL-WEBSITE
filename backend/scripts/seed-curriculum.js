@@ -71,6 +71,19 @@ function makeCode(name) {
     'INTERMEDIATE SCIENCE': 'ISC',
     'FRENCH': 'FRE',
     'FURTHER MATHEMATICS': 'FMATH',
+    'HEALTH HABITS': 'HLTH',
+    'HANDWRITING': 'HAND',
+    'LITERACY (LETTER WORK)': 'LITLET',
+    'LITERACY (LANGUAGE DOMAIN)': 'LITLANG',
+    'NUMERACY': 'NUM',
+    'PRE-SCIENCE': 'PRESCI',
+    'SOCIAL HABITS': 'SOC',
+    'CIVIC EDUCATION': 'CIVED',
+    'CREATIVITY': 'CREA',
+    'PERSONAL DEVELOPMENT': 'PERS',
+    'SONGS AND RHYMES': 'SONG',
+    'PREVOCATIONAL STUDIES': 'PREVOC',
+    'BASIC SCIENCE & TECHNOLOGY': 'BST',
   };
   return shorthand[name] || name.toUpperCase()
     .replace(/[^A-Z0-9]/g, '')
@@ -90,26 +103,30 @@ async function ensureEducationStructure() {
   const sysRes = await query(
     `INSERT INTO education_systems (name, code, country, description)
      VALUES ('Nigerian National Curriculum', 'NG-NCC', 'Nigeria',
-             'The Nigerian national education curriculum across junior and senior secondary education.')
+             'The Nigerian national education curriculum across early childhood (pre-nursery), primary, junior secondary and senior secondary education.')
      ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
     []
   );
   const systemId = sysRes.rows[0].id;
 
-  // Ensure levels exist
+  // Ensure levels exist (Pre-Nursery → SSS3)
   const levels = [
-    { code: 'P1', name: 'Primary 1', orderIndex: 1, minAge: 6, maxAge: 7 },
-    { code: 'P2', name: 'Primary 2', orderIndex: 2, minAge: 7, maxAge: 8 },
-    { code: 'P3', name: 'Primary 3', orderIndex: 3, minAge: 8, maxAge: 9 },
-    { code: 'P4', name: 'Primary 4', orderIndex: 4, minAge: 9, maxAge: 10 },
-    { code: 'P5', name: 'Primary 5', orderIndex: 5, minAge: 10, maxAge: 11 },
-    { code: 'P6', name: 'Primary 6', orderIndex: 6, minAge: 11, maxAge: 12 },
-    { code: 'JSS1', name: 'Junior Secondary 1', orderIndex: 7, minAge: 12, maxAge: 13 },
-    { code: 'JSS2', name: 'Junior Secondary 2', orderIndex: 8, minAge: 13, maxAge: 14 },
-    { code: 'JSS3', name: 'Junior Secondary 3', orderIndex: 9, minAge: 14, maxAge: 15 },
-    { code: 'SSS1', name: 'Senior Secondary 1', orderIndex: 10, minAge: 15, maxAge: 16 },
-    { code: 'SSS2', name: 'Senior Secondary 2', orderIndex: 11, minAge: 16, maxAge: 17 },
-    { code: 'SSS3', name: 'Senior Secondary 3', orderIndex: 12, minAge: 17, maxAge: 18 },
+    { code: 'PRE-NURSERY', name: 'Pre-Nursery', orderIndex: 1, minAge: 2, maxAge: 3 },
+    { code: 'NURSERY1', name: 'Nursery 1', orderIndex: 2, minAge: 3, maxAge: 4 },
+    { code: 'NURSERY2', name: 'Nursery 2', orderIndex: 3, minAge: 4, maxAge: 5 },
+    { code: 'NURSERY3', name: 'Nursery 3', orderIndex: 4, minAge: 5, maxAge: 6 },
+    { code: 'P1', name: 'Primary 1', orderIndex: 5, minAge: 6, maxAge: 7 },
+    { code: 'P2', name: 'Primary 2', orderIndex: 6, minAge: 7, maxAge: 8 },
+    { code: 'P3', name: 'Primary 3', orderIndex: 7, minAge: 8, maxAge: 9 },
+    { code: 'P4', name: 'Primary 4', orderIndex: 8, minAge: 9, maxAge: 10 },
+    { code: 'P5', name: 'Primary 5', orderIndex: 9, minAge: 10, maxAge: 11 },
+    { code: 'P6', name: 'Primary 6', orderIndex: 10, minAge: 11, maxAge: 12 },
+    { code: 'JSS1', name: 'Junior Secondary 1', orderIndex: 11, minAge: 12, maxAge: 13 },
+    { code: 'JSS2', name: 'Junior Secondary 2', orderIndex: 12, minAge: 13, maxAge: 14 },
+    { code: 'JSS3', name: 'Junior Secondary 3', orderIndex: 13, minAge: 14, maxAge: 15 },
+    { code: 'SSS1', name: 'Senior Secondary 1', orderIndex: 14, minAge: 15, maxAge: 16 },
+    { code: 'SSS2', name: 'Senior Secondary 2', orderIndex: 15, minAge: 16, maxAge: 17 },
+    { code: 'SSS3', name: 'Senior Secondary 3', orderIndex: 16, minAge: 17, maxAge: 18 },
   ];
 
   const levelIds = {};
@@ -144,7 +161,7 @@ async function ensureEducationStructure() {
       );
     }
   }
-  console.log('Ensured programs and classes for all 6 classes');
+  console.log(`Ensured programs and classes for all ${levels.length} levels`);
 
   // Ensure terms exist
   const termCodes = ['TERM-1', 'TERM-2', 'TERM-3'];
@@ -440,7 +457,15 @@ const run = async () => {
   // Seed database
   const { levelIds, termIdMap } = await ensureEducationStructure();
   await seedSubjectsAndTopics(subjectMap, levelIds, termIdMap);
-  await generateAILessons(subjectMap, levelIds, termIdMap);
+
+  // AI lesson generation is opt-in (pass --ai). With 5,700+ topics it would
+  // otherwise make thousands of API calls and take hours.
+  const runAI = process.argv.includes('--ai');
+  if (runAI) {
+    await generateAILessons(subjectMap, levelIds, termIdMap);
+  } else {
+    console.log('\nSkipping AI lesson generation (pass --ai to enable).');
+  }
 
   await closePool();
   console.log('\n✅ Curriculum seed complete.');

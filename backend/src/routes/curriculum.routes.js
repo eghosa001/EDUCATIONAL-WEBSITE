@@ -39,6 +39,19 @@ const topicUpdateSchema = topicSchema.fork(
   (s) => s.optional()
 ).keys({ isActive: Joi.boolean().optional() });
 
+const subjectListQuery = schemas.pagination.keys({
+  educationSystemId: Joi.string().uuid().optional(),
+  classId: Joi.string().uuid().optional(),
+  levelCode: Joi.string().max(50).optional(),
+});
+
+const topicListQuery = schemas.pagination.keys({
+  subjectId: Joi.string().uuid().optional(),
+  classId: Joi.string().uuid().optional(),
+  termId: Joi.string().uuid().optional(),
+  levelCode: Joi.string().max(50).optional(),
+});
+
 const subtopicSchema = Joi.object({
   topicId: Joi.string().uuid().required(),
   name: Joi.string().min(2).max(100).required(),
@@ -67,7 +80,7 @@ curriculumRoutes.get('/tree',
 );
 
 curriculumRoutes.get('/subjects',
-  validateRequest({ query: schemas.pagination }),
+  validateRequest({ query: subjectListQuery }),
   asyncHandler(curriculumController.listSubjects)
 );
 
@@ -96,7 +109,7 @@ curriculumRoutes.delete('/subjects/:id',
 );
 
 curriculumRoutes.get('/topics',
-  validateRequest({ query: schemas.pagination }),
+  validateRequest({ query: topicListQuery }),
   asyncHandler(curriculumController.listTopics)
 );
 
