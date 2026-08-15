@@ -100,15 +100,9 @@ Only a stub page exists. No multi-step onboarding flow.
 
 ---
 
-### 9. Mobile — Library Page Missing Business Logic (ARCHITECTURE §16)
+### 9. ~~Mobile — Library Page~~ ✅ DONE
 
-Library page exists but has no models, repositories, or hooks connected.
-
-| Task | What to create | Target path |
-|---|---|---|
-| 9.1 | Library repository | `mobile/lib/shared/repositories/library_repository.dart` |
-| 9.2 | Resource model | `mobile/lib/shared/models/library/resource_model.dart` |
-| 9.3 | Wire up library page to real API | `mobile/lib/features/library/presentation/pages/library_page.dart` |
+Library page is now wired to real API with `LibraryItem` model, `LibraryRepository`, and Riverpod provider.
 
 ---
 
