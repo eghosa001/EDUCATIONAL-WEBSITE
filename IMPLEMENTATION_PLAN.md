@@ -116,17 +116,13 @@ The migration script covers most tables but the following from the architecture 
 | `ratings` | Aggregate rating data |
 | `comments` | General content comments (separate from community comments) |
 | `leaderboards` | Global and subject-based leaderboards |
-| `school_classes` | School-specific class management |
-| `timetables` | School timetable data |
-| `attendance` | Student attendance records |
-| `fees` | School fee billing |
-| `results` | School exam results |
+
+> **Done:** `timetables`, `attendance`, `school_fees`, `school_results` were added in the school management module migration (`add-school-management.sql`).
 
 | Task | What to create | Target path |
 |---|---|---|
 | 10.1 | Migration for reviews, ratings, comments tables | `backend/scripts/migrations/add-content-tables.sql` |
-| 10.2 | Migration for school management tables | `backend/scripts/migrations/add-school-management.sql` |
-| 10.3 | Leaderboards table | `backend/scripts/migrations/add-leaderboards.sql` |
+| 10.2 | Leaderboards table | `backend/scripts/migrations/add-leaderboards.sql` |
 
 ---
 
