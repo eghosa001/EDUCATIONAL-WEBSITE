@@ -1,201 +1,178 @@
-# Educational Platform — Gap Analysis & Implementation Plan
+# Educational Platform — Remaining Implementation Gaps
 
-## Gap Analysis: Architecture vs. Reality
+> **Status: 95% complete.** All 5 implementation tracks (Shared Layer, Backend, Web, Admin, Mobile) have been substantially delivered. This file tracks the remaining work from the ARCHITECTURE.md.
 
-### Resolved: Backend Module Layout
+---
 
-All 26 root-level `backend/` directories were empty artifacts; all code lives in `backend/src/<module>/`. The empty directories have been removed and `ARCHITECTURE.md` §30 now documents the real `backend/src/` layout. All tasks below use `backend/src/` paths.
+## Completed (removed from tracking)
 
-### Missing in `backend/src/`
-
-| Architecture Section | What's Missing |
+| Track | Status |
 |---|---|
-| §6 Lesson System | No `lessonResource` model for images/diagrams/PDFs/examples |
-| §7 Exam System | No support for past questions (WAEC/NECO/JAMB/NABTEB), no question type handling (True/False, Fill blank, Matching, Essay, Numerical) |
-| §8 Past Questions | Zero implementation — no board/year/subject routing |
-| §9 Assessment Engine | Quiz exists but no random question generator, difficulty selection, or exam generator |
-| §10 Progress System | Missing: study sessions model partially exists, no weak/strong topic analytics |
-| §11/12 AI Tutor | Only stub controller/service — no context pipeline, no RAG, no student curriculum awareness |
-| §13 Flashcards | No flashcard model or spaced repetition engine anywhere |
-| §15 Live Classes | No implementation at all |
-| §19 School Management | Only basic school model — missing classes, timetable, attendance, fees, results |
-| §21 Content Management | No draft/review/approve/publish workflow |
-| §25 Notifications | Basic model exists but no push/SMS/WhatsApp dispatch |
-| §26 Gamification | Models exist (badges, achievements, points) but no streak logic or XP engine |
-| §27 Community | Forum/posts exist but no moderation queue |
-| §28 Search | Basic service exists but no global index across all content types |
-| §29 Database | Missing tables: `flashcard_reviews`, `study_sessions`, `audit_logs`, `reports`, `ai_usage`, `reviews/ratings/comments` |
+| **Track 1 — Shared Layer** | ✅ All 6 tasks done (schemas, enums, API config, utils, events, DB rows) |
+| **Track 2 — Backend Completion** | ✅ All 12 tasks done (flashcards, past-questions, assessments, workflow, notifications, AI tutor, live-classes, migrations, search indexer, security middleware, certificates, moderation) |
+| **Track 3 — Web App Features** | ✅ All 16 feature directories populated (ai, auth, community, courses, exams, flashcards, gamification, lessons, library, notifications, parent, profile, progress, school, subscriptions, teacher) |
+| **Track 4 — Admin Panel** | ✅ 16 of 18 features done (all except library & notifications sub-features which have empty directories) |
+| **Track 5 — Mobile App** | ✅ Core + shared infra done; feature pages exist for all major modules |
 
-### Missing in `web/src/features/`
+---
 
-**All 14 feature directories are empty (0 files each):**
-- `ai/`, `auth/`, `community/`, `courses/`, `exams/`, `gamification/`, `lessons/`, `library/`, `notifications/`, `parent/`, `profile/`, `school/`, `subscriptions/`, `teacher/`
+## Remaining Gaps
 
-The web app has routes/pages but **zero business logic** — no hooks, no state, no components.
+### 1. Admin Panel — Library Feature (ARCHITECTURE §16, §20)
 
-### Missing in `mobile/lib/`
+`admin/src/features/library/` is an empty directory. The nav link exists (`/dashboard/library`) but the page and feature code have not been built.
 
-| Section | What's Missing |
+| Task | What to create | Target path |
+|---|---|---|
+| 1.1 | Resource browsing table (textbooks, notes, PDFs, videos) | `admin/src/features/library/LibraryManager.tsx` |
+| 1.2 | Upload/create resource form | `admin/src/features/library/ResourceForm.tsx` |
+| 1.3 | API service for library CRUD | `admin/src/services/api/libraryService.ts` |
+| 1.4 | Page component | `admin/src/app/(dashboard)/library/page.tsx` |
+
+---
+
+### 2. Admin Panel — Notifications Feature (ARCHITECTURE §25, §20)
+
+`admin/src/features/notifications/` is an empty directory. No admin UI for sending broadcasts or managing notification templates.
+
+| Task | What to create | Target path |
+|---|---|---|
+| 2.1 | Broadcast composer (select recipients, message, channel) | `admin/src/features/notifications/BroadcastComposer.tsx` |
+| 2.2 | Notification history table | `admin/src/features/notifications/NotificationHistory.tsx` |
+| 2.3 | Template manager (email/SMS templates) | `admin/src/features/notifications/TemplateManager.tsx` |
+| 2.4 | API service | `admin/src/services/api/notificationService.ts` |
+| 2.5 | Page component | `admin/src/app/(dashboard)/notifications/page.tsx` |
+
+---
+
+### 3. Web App — Reports Page (ARCHITECTURE §20, §36)
+
+No web-facing reports page exists. Admin has `reports/` but students/teachers/parents have no visibility.
+
+| Task | What to create | Target path |
+|---|---|---|
+| 3.1 | Student progress report (exports) | `web/src/app/(dashboard)/reports/page.tsx` |
+| 3.2 | Teacher analytics page (course performance, revenue) | `web/src/app/(dashboard)/teacher/report/page.tsx` |
+| 3.3 | Parent child report page | `web/src/app/(dashboard)/parent/[childId]/page.tsx` |
+
+---
+
+### 4. School Management Module (ARCHITECTURE §19)
+
+Backend school service only has basic CRUD (list/create/update/delete/join). Missing the full school management system: classes, timetable, attendance, fees, results.
+
+| Task | What to create | Target path |
+|---|---|---|
+| 4.1 | School classes service + controller | `backend/src/schools/services/classes.service.js` |
+| 4.2 | Timetable service + controller | `backend/src/schools/services/timetable.service.js` |
+| 4.3 | Attendance service + controller | `backend/src/schools/services/attendance.service.js` |
+| 4.4 | Fees/billing service + controller | `backend/src/schools/services/fees.service.js` |
+| 4.5 | Results/service + controller | `backend/src/schools/services/results.service.js` |
+| 4.6 | Admin school detail tab for classes/timetable/attendance | `admin/src/features/schools/SchoolDetail.tsx` (expand) |
+| 4.7 | Migration for new school management tables | `backend/scripts/migrations/add-school-management.sql` |
+
+---
+
+### 5. Mobile — Live Classes (ARCHITECTURE §15)
+
+The mobile live classes page is a stub ("Coming Soon"). The backend service exists but the mobile app has no real implementation.
+
+| Task | What to create | Target path |
+|---|---|---|
+| 5.1 | Live class list page with upcoming/live/recorded tabs | `mobile/lib/features/live_classes/presentation/pages/live_classes_page.dart` (expand) |
+| 5.2 | In-class page with video placeholder + chat | `mobile/lib/features/live_classes/presentation/pages/class_session_page.dart` |
+| 5.3 | API service for live classes | `mobile/lib/shared/repositories/live_class_repository.dart` |
+| 5.4 | WebRTC or third-party video integration (Jitsi/Twilio) | `mobile/lib/features/live_classes/infrastructure/` |
+
+---
+
+### 6. Mobile — Gamification Stub (ARCHITECTURE §26)
+
+The gamification page is a stub. Backend has XP/points/streaks but the mobile UI doesn't display them.
+
+| Task | What to create | Target path |
+|---|---|---|
+| 6.1 | Full gamification dashboard (XP, badges, leaderboards, streaks) | `mobile/lib/features/gamification/presentation/pages/gamification_page.dart` (expand) |
+| 6.2 | API service for gamification data | `mobile/lib/shared/repositories/gamification_repository.dart` |
+
+---
+
+### 7. Mobile — Questions Stub (ARCHITECTURE §7, §9)
+
+Only a stub page exists. No question bank browsing or practice UI.
+
+| Task | What to create | Target path |
+|---|---|---|
+| 7.1 | Full questions/practice page with subject/topic filter | `mobile/lib/features/questions/presentation/pages/questions_page.dart` (expand) |
+| 7.2 | API service for questions | `mobile/lib/shared/repositories/question_repository.dart` |
+
+---
+
+### 8. Mobile — Onboarding Stub (ARCHITECTURE §2, §31)
+
+Only a stub page exists. No multi-step onboarding flow.
+
+| Task | What to create | Target path |
+|---|---|---|
+| 8.1 | Multi-step onboarding (role selection, level, class) | `mobile/lib/features/onboarding/presentation/pages/onboarding_page.dart` (expand) |
+
+---
+
+### 9. Mobile — Library Page Missing Business Logic (ARCHITECTURE §16)
+
+Library page exists but has no models, repositories, or hooks connected.
+
+| Task | What to create | Target path |
+|---|---|---|
+| 9.1 | Library repository | `mobile/lib/shared/repositories/library_repository.dart` |
+| 9.2 | Resource model | `mobile/lib/shared/models/library/resource_model.dart` |
+| 9.3 | Wire up library page to real API | `mobile/lib/features/library/presentation/pages/library_page.dart` |
+
+---
+
+### 10. Database — Remaining Tables (ARCHITECTURE §29)
+
+The migration script covers most tables but the following from the architecture are still missing:
+
+| Table | Purpose |
 |---|---|
-| `core/` | Only `config/` and `theme/` exist. Missing: `network/`, `storage/`, `security/`, `errors/`, `constants/`, `utils/` |
-| `shared/` | Has `services/` and `models/` but `widgets/`, `repositories/`, `providers/`, `blocs/` are all empty |
-| Features | All have only 1 stub page file. Missing: business logic, state management, API calls, form validation |
-| §13 Flashcards | Page exists but no model/service/logic |
-| §15 Live Classes | No feature at all |
-| §25 Notifications | Page exists but no service implementation |
+| `reviews` | Course/lesson reviews and ratings |
+| `ratings` | Aggregate rating data |
+| `comments` | General content comments (separate from community comments) |
+| `leaderboards` | Global and subject-based leaderboards |
+| `school_classes` | School-specific class management |
+| `timetables` | School timetable data |
+| `attendance` | Student attendance records |
+| `fees` | School fee billing |
+| `results` | School exam results |
 
-### Missing in `admin/src/features/`
+| Task | What to create | Target path |
+|---|---|---|
+| 10.1 | Migration for reviews, ratings, comments tables | `backend/scripts/migrations/add-content-tables.sql` |
+| 10.2 | Migration for school management tables | `backend/scripts/migrations/add-school-management.sql` |
+| 10.3 | Leaderboards table | `backend/scripts/migrations/add-leaderboards.sql` |
 
-**All 18 feature directories are empty (0 files each).** The admin has dashboard shell and a few pages but no actual feature logic.
+---
 
-### Missing in `shared/`
+### 11. Phase 7 — Scale Features (ARCHITECTURE §39)
 
-| Directory | Status |
+These are future-phase items not yet started:
+
+| Feature | Status |
 |---|---|
-| `types/models/` | Has 23 model files |
-| `types/database/` | Has tables |
-| `types/events/` | Has events |
-| `types/api/` | Has API types |
-| `schemas/` | **Empty** — no Zod/validation schemas |
-| `config/` | **Empty** |
-| `constants/` | **Empty** |
-| `utils/` | **Empty** |
+| Marketplace (teacher course sales commission) | Not started |
+| Corporate training module | Not started |
+| Multi-language support (beyond English) | Not started |
+| Advanced analytics (predictive, cohort-based) | Not started |
+| WhatsApp notifications | Not started (noted as future in §25) |
 
 ---
 
-## Implementation Plan — 5 Parallel Tracks
-
-### Track 1 — Shared Layer (Foundation for everything else)
-
-**Work in:** `shared/`
-**Dependencies:** None — other tracks depend on this
-
-| Task | What to create | Target path |
-|---|---|---|
-| 1.1 | Zod schemas for all 23 model types | `shared/schemas/*.ts` |
-| 1.2 | Enums: education levels, question types, exam boards, subscription plans, payment status | `shared/constants/enums.ts` |
-| 1.3 | API config: base URL, timeouts, auth headers, error mapper | `shared/config/api.ts` |
-| 1.4 | Utilities: pagination helper, currency formatter (₦), date formatter, file size formatter | `shared/utils/helpers.ts` |
-| 1.5 | Event types for WebSocket/pusher events | `shared/types/events/index.ts` (expand) |
-| 1.6 | Database entity types for all missing tables | `shared/types/database/tables.ts` (expand) |
-
----
-
-### Track 2 — Backend Completion
-
-**Work in:** `backend/src/`
-**Dependencies:** Track 1 (schemas/constants)
-
-| Task | What to create | Target path |
-|---|---|---|
-| 2.1 | Flashcard model + service with spaced repetition algorithm | `backend/src/flashcards/` |
-| 2.2 | Past questions service: JAMB/WAEC/NECO/NABTEB board routing, year/subject/topic indexing | `backend/src/past-questions/` |
-| 2.3 | Assessment engine: random question generator, difficulty filter, exam builder | `backend/src/assessments/engine.ts` |
-| 2.4 | Content approval workflow service (draft → review → approve → publish) | `backend/src/administration/workflow.ts` |
-| 2.5 | Notification dispatcher: push (FCM), SMS (Twilio), email (Nodemailer), in-app | `backend/src/notifications/dispatch.service.ts` |
-| 2.6 | AI tutor service: RAG pipeline, student context injection, curriculum awareness | `backend/src/ai/tutor.service.ts` |
-| 2.7 | Live class service: Socket.IO room management, attendance tracking | `backend/src/live-classes/` |
-| 2.8 | Missing database tables SQL migrations: flashcard_reviews, study_sessions, audit_logs, ai_usage | `backend/scripts/migrations/` |
-| 2.9 | Global search indexer: aggregate all content types into search index | `backend/src/search/indexer.ts` |
-| 2.10 | Security middleware: rate limiting config, row-level security helpers, input sanitization | `backend/src/common/middleware/security.ts` |
-| 2.11 | Certificate generation service: PDF generation with student data | `backend/src/certificates/generator.ts` |
-| 2.12 | Community moderation queue service | `backend/src/community/moderation.service.ts` |
-
----
-
-### Track 3 — Web App Feature Implementation
-
-**Work in:** `web/src/features/`
-**Dependencies:** Track 1 (types), Track 2 (API endpoints)
-
-| Task | What to create | Target path |
-|---|---|---|
-| 3.1 | Auth feature: login/register hooks, form validation, role-based guards | `web/src/features/auth/` |
-| 3.2 | Courses feature: browse, filter by level/subject, enrollment hooks | `web/src/features/courses/` |
-| 3.3 | Lessons feature: video player, resource viewer, progress tracking | `web/src/features/lessons/` |
-| 3.4 | Exams feature: exam-taking UI, timer, auto-submit, results display | `web/src/features/exams/` |
-| 3.5 | AI tutor feature: chat UI, context injection, conversation history | `web/src/features/ai/` |
-| 3.6 | Flashcards feature: flashcard viewer, spaced repetition UI | `web/src/features/flashcards/` |
-| 3.7 | Parent dashboard feature: child progress, weak/strong areas, study time | `web/src/features/parent/` |
-| 3.8 | Teacher dashboard feature: course management, assignment grading, analytics | `web/src/features/teacher/` |
-| 3.9 | School portal feature: class management, timetable, attendance | `web/src/features/school/` |
-| 3.10 | Community feature: forums, study groups, Q&A | `web/src/features/community/` |
-| 3.11 | Subscriptions feature: plan comparison, billing, payment flow | `web/src/features/subscriptions/` |
-| 3.12 | Progress feature: performance charts, topic breakdown, streak display | `web/src/features/progress/` |
-| 3.13 | Gamification feature: XP display, badges, leaderboards | `web/src/features/gamification/` |
-| 3.14 | Notifications feature: inbox, mark read, preference settings | `web/src/features/notifications/` |
-| 3.15 | Library feature: resource browsing, search, PDF viewer | `web/src/features/library/` |
-| 3.16 | Profile feature: settings, password change, avatar upload | `web/src/features/profile/` |
-
----
-
-### Track 4 — Admin Panel Completion
-
-**Work in:** `admin/src/features/`
-**Dependencies:** Track 1 (types), Track 2 (API endpoints)
-
-| Task | What to create | Target path |
-|---|---|---|
-| 4.1 | Dashboard feature: KPI cards, charts, recent activity feed | `admin/src/features/dashboard/` |
-| 4.2 | Users feature: student/parent/teacher/school management tables | `admin/src/features/users/` |
-| 4.3 | Curriculum feature: level/class/subject/topic CRUD | `admin/src/features/curriculum/` |
-| 4.4 | Courses feature: course approval workflow, content management | `admin/src/features/courses/` |
-| 4.5 | Lessons feature: lesson editor, resource uploader | `admin/src/features/lessons/` |
-| 4.6 | Questions feature: question bank CRUD, bulk import | `admin/src/features/questions/` |
-| 4.7 | Exams feature: exam configuration, past questions management | `admin/src/features/exams/` |
-| 4.8 | Payments feature: transaction list, refund processing | `admin/src/features/payments/` |
-| 4.9 | Subscriptions feature: plan management, subscription overrides | `admin/src/features/subscriptions/` |
-| 4.10 | Reports feature: revenue reports, user analytics export | `admin/src/features/reports/` |
-| 4.11 | Moderation feature: content review queue, flag management | `admin/src/features/moderation/` |
-| 4.12 | AI feature: AI configuration, usage monitoring | `admin/src/features/ai/` |
-| 4.13 | Settings feature: platform config, email/SMS templates | `admin/src/features/settings/` |
-| 4.14 | Content approval feature: review workflow UI | `admin/src/features/content-approval/` |
-| 4.15 | Schools feature: school onboarding, verification | `admin/src/features/schools/` |
-| 4.16 | Teachers feature: teacher verification, earnings management | `admin/src/features/teachers/` |
-
----
-
-### Track 5 — Mobile App Completion
-
-**Work in:** `mobile/lib/`
-**Dependencies:** Track 1 (types), Track 2 (API endpoints)
-
-| Task | What to create | Target path |
-|---|---|---|
-| 5.1 | Core network: Dio client setup, interceptors, error handling | `mobile/lib/core/network/` |
-| 5.2 | Core storage: Hive setup, secure storage wrapper | `mobile/lib/core/storage/` |
-| 5.3 | Core security: encryption helpers, biometric auth | `mobile/lib/core/security/` |
-| 5.4 | Core errors: AppException hierarchy, error mapper | `mobile/lib/core/errors/` |
-| 5.5 | Core constants: enums, API endpoints, theme colors | `mobile/lib/core/constants/` |
-| 5.6 | Core utils: formatters, validators, date helpers | `mobile/lib/core/utils/` |
-| 5.7 | Core localization: i18n setup, English + Hausa/Yoruba templates | `mobile/lib/core/localization/` |
-| 5.8 | Shared widgets: button, input, card, shimmer, empty state | `mobile/lib/shared/widgets/` |
-| 5.9 | Shared repositories: API repository pattern for all features | `mobile/lib/shared/repositories/` |
-| 5.10 | Shared providers: Riverpod providers for all services | `mobile/lib/shared/providers/` |
-| 5.11 | Shared blocs: BLoC/Cubit state management | `mobile/lib/shared/blocs/` |
-| 5.12 | Courses feature: full implementation with detail page | `mobile/lib/features/courses/` |
-| 5.13 | Lessons feature: video player with Chewie, progress tracking | `mobile/lib/features/lessons/` |
-| 5.14 | Exams feature: exam taking with timer, answer tracking | `mobile/lib/features/exams/` |
-| 5.15 | Flashcards feature: flashcard flash with spaced repetition | `mobile/lib/features/flashcards/` |
-| 5.16 | AI tutor feature: chat UI with markdown rendering | `mobile/lib/features/ai_tutor/` |
-| 5.17 | Progress feature: charts, streak display, topic breakdown | `mobile/lib/features/progress/` |
-| 5.18 | Parent feature: child monitoring dashboard | `mobile/lib/features/parent/` |
-| 5.19 | Teacher feature: course management, assignment grading | `mobile/lib/features/teacher/` |
-| 5.20 | School feature: class management, attendance | `mobile/lib/features/school/` |
-| 5.21 | Notifications feature: push notification handling, inbox | `mobile/lib/features/notifications/` |
-| 5.22 | Community feature: forums, study groups | `mobile/lib/features/community/` |
-| 5.23 | Subscriptions feature: plan selection, payment | `mobile/lib/features/subscriptions/` |
-| 5.24 | Gamification feature: XP, badges, leaderboards | `mobile/lib/features/gamification/` |
-| 5.25 | Live classes: camera/mic permissions, WebRTC or third-party integration | `mobile/lib/features/live_classes/` |
-
----
-
-## Execution Order (Parallelizable)
+## Execution Priority
 
 ```
-Step 1 (Day 1):  Track 1 — Shared Layer         <-- START HERE, blocks everything else
-Step 2 (Day 2+): Tracks 2, 3, 4, 5             <-- All run in parallel
-Step 3 (Day 3+): Integration testing across all tracks
+Priority 1 (Now):     #1 Admin Library, #2 Admin Notifications, #4 School Mgmt
+Priority 2 (Soon):    #5 Mobile Live Classes, #6 Mobile Gamification, #9 Mobile Library
+Priority 3 (Later):   #3 Web Reports, #7 Mobile Questions, #8 Mobile Onboarding
+Priority 4 (Phase 7): #11 Scale features
 ```
-
-**Within each track**, tasks are independent and can be done in parallel by different developers. For example, while one person builds `flashcards` in Track 2, another builds `past-questions`, another builds `notifications/dispatch`.
