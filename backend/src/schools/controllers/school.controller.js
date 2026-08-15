@@ -1,6 +1,6 @@
 import { schoolService } from '../services/school.service.js';
 import { HTTP_STATUS } from '../../common/constants/index.js';
-import { requireAuth } from '../../common/middleware/index.js';
+import { authMiddleware } from '../../common/middleware/index.js';
 
 export const listSchools = async (req, res) => {
   const params = {
