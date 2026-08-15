@@ -132,14 +132,14 @@ async function main() {
 
   for (const forum of FORUMS) {
     await query(
-      `INSERT INTO forums (name, description, type, is_active)
+      `INSERT INTO forums (name, slug, description, is_public)
        VALUES ($1, $2, $3, TRUE)
        ON CONFLICT DO NOTHING`,
-      [forum.name, forum.forum?.description || forum.name, forum.type]
+      [forum.name, forum.name.toLowerCase().replace(/\s+/g, '-'), forum.description]
     );
   }
 
-  const forumsRes = await query('SELECT id, name FROM forums WHERE is_active = TRUE');
+  const forumsRes = await query('SELECT id, name FROM forums WHERE is_public = TRUE');
   const forumMap = {};
   for (const f of forumsRes.rows) {
     forumMap[f.name] = f.id;
