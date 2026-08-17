@@ -19,6 +19,14 @@ export const config = {
     },
   },
 
+  supabase: {
+    url: process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    anonKey: process.env.SUPABASE_ANON_KEY || '',
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+    dbPassword: process.env.SUPABASE_DB_PASSWORD || '',
+    projectId: process.env.SUPABASE_URL?.match(/https:\/\/([^/.]+)\.supabase/)?.[1] || '',
+  },
+
   redis: {
     host: process.env.REDIS_HOST || 'localhost',
     port: parseInt(process.env.REDIS_PORT || '6379', 10),

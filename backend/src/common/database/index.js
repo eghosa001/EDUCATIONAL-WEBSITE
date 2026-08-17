@@ -3,22 +3,50 @@ import { config } from '../config/index.js';
 
 const { Pool } = pg;
 
-export const pool = new Pool({
-  host: config.database.host,
-  port: config.database.port,
-  user: config.database.username,
-  password: config.database.password,
-  database: config.database.name,
-  ssl: config.database.ssl ? { rejectUnauthorized: false } : false,
-  min: config.database.pool.min,
-  max: config.database.pool.max,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-});
+const isSupabase = !!config.supabase.url && !!config.supabase.dbPassword;
+
+let pool;
+
+if (isSupabase) {
+  const projectId = config.supabase.projectId;
+  const dbHost = `db.${projectId}.supabase.co`;
+  const dbPort = 5432;
+  const dbUser = 'postgres';
+  const dbPassword = config.supabase.dbPassword;
+  const dbName = 'postgres';
+
+  pool = new Pool({
+    host: dbHost,
+    port: dbPort,
+    user: dbUser,
+    password: dbPassword,
+    database: dbName,
+    ssl: { rejectUnauthorized: false },
+    min: config.database.pool.min,
+    max: config.database.pool.max,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000,
+  });
+} else {
+  pool = new Pool({
+    host: config.database.host,
+    port: config.database.port,
+    user: config.database.username,
+    password: config.database.password,
+    database: config.database.name,
+    ssl: config.database.ssl ? { rejectUnauthorized: false } : false,
+    min: config.database.pool.min,
+    max: config.database.pool.max,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
+  });
+}
 
 pool.on('error', (err) => {
   console.error('Unexpected database error:', err);
 });
+
+export { pool };
 
 export const query = async (text, params) => {
   const start = Date.now();

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "providers": {
+    "bynara": {
+      "name": "Bynara",
+      "package": "openai-compatible",
+      "env": ["BYNARA_API_KEY"],
+      "settings": {
+        "baseURL": "https://router.bynara.id/v1"
+      },
+      "models": {
+        "agnes-2.0-flash": {
+          "name": "Agnes 2.0 Flash"
+        },
+        "agnes-2.5-flash": {
+          "name": "Agnes 2.5 Flash"
+        },
+        "agnes-2.5-pro": {
+          "name": "Agnes 2.5 Pro"
+        }
+      }
+    }
+  },
+  "mcp": {
+    "supabase": {
+      "type": "remote",
+      "url": "https://mcp.supabase.com/mcp?project_ref=xanrzsszrysianxhpprk&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching",
+      "enabled": true
+    }
+  }
+}
