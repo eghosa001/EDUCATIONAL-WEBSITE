@@ -9,41 +9,36 @@ export const listLibrary = async (req, res) => {
   const { page, limit, resourceType, search } = req.query;
   const offset = (page - 1) * limit;
 
-  const conditions = ['lr.is_downloadable = TRUE'];
+  const conditions = [];
   const values = [];
 
   if (resourceType) {
     values.push(resourceType);
-    conditions.push(`lr.resource_type = $${values.length}`);
+    conditions.push(`resource_type = $${values.length}`);
   }
 
   if (search) {
     values.push(`%${search}%`);
-    conditions.push(`(lr.title ILIKE $${values.length} OR l.title ILIKE $${values.length} OR c.title ILIKE $${values.length})`);
+    conditions.push(`(title ILIKE $${values.length} OR description ILIKE $${values.length})`);
   }
 
-  const whereClause = `WHERE ${conditions.join(' AND ')}`;
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   const countResult = await query(
     `SELECT COUNT(*)::int AS total
-     FROM lesson_resources lr
-     JOIN lessons l ON l.id = lr.lesson_id
-     JOIN courses c ON c.id = l.course_id
+     FROM library_resources
      ${whereClause}`,
     values
   );
 
   const result = await query(
-    `SELECT lr.id, lr.title, lr.resource_type, lr.file_url, lr.file_size_bytes,
-            lr.mime_type, lr.description, lr.is_downloadable,
-            l.id AS lesson_id, l.title AS lesson_title,
-            c.id AS course_id, c.title AS course_title,
-            c.subject_id, c.class_id
-     FROM lesson_resources lr
-     JOIN lessons l ON l.id = lr.lesson_id
-     JOIN courses c ON c.id = l.course_id
+    `SELECT id, title, slug, resource_type, file_url, file_size_bytes,
+            mime_type, description, subject_id, class_id,
+            exam_board, exam_year, is_free, tags,
+            download_count, view_count
+     FROM library_resources
      ${whereClause}
-     ORDER BY lr.created_at DESC
+     ORDER BY created_at DESC
      LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
     [...values, limit, offset]
   );
@@ -67,8 +62,9 @@ export const listLibrary = async (req, res) => {
 export const getLibraryStats = async (req, res) => {
   const result = await query(
     `SELECT
-       (SELECT COUNT(*)::int FROM lesson_resources WHERE is_downloadable = TRUE) AS total_resources,
-       (SELECT COUNT(*)::int FROM questions WHERE source IS NOT NULL OR exam_name IS NOT NULL) AS past_questions,
+       (SELECT COUNT(*)::int FROM library_resources) AS total_resources,
+       (SELECT COUNT(*)::int FROM documents WHERE category = 'past_question') AS past_question_documents,
+       (SELECT COUNT(*)::int FROM documents WHERE category = 'curriculum_document') AS curriculum_documents,
        (SELECT COUNT(*)::int FROM subjects WHERE is_active = TRUE) AS total_subjects,
        (SELECT COUNT(*)::int FROM courses WHERE status = 'published') AS published_courses`
   );
@@ -77,40 +73,38 @@ export const getLibraryStats = async (req, res) => {
 };
 
 export const listPastQuestions = async (req, res) => {
-  const { page, limit, subjectId, classId, examName, examYear } = req.query;
+  const { page, limit, subjectId, examBoard, examYear } = req.query;
   const offset = (page - 1) * limit;
 
-  const conditions = ['(source IS NOT NULL OR exam_name IS NOT NULL)'];
+  const conditions = [];
   const values = [];
 
   if (subjectId) {
     values.push(subjectId);
     conditions.push(`subject_id = $${values.length}`);
   }
-  if (classId) {
-    values.push(classId);
-    conditions.push(`class_id = $${values.length}`);
-  }
-  if (examName) {
-    values.push(examName);
-    conditions.push(`exam_name = $${values.length}`);
+  if (examBoard) {
+    values.push(examBoard);
+    conditions.push(`exam_board = $${values.length}`);
   }
   if (examYear) {
     values.push(examYear);
     conditions.push(`exam_year = $${values.length}`);
   }
 
-  const whereClause = `WHERE ${conditions.join(' AND ')}`;
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   const countResult = await query(
-    `SELECT COUNT(*)::int AS total FROM questions ${whereClause}`,
+    `SELECT COUNT(*)::int AS total FROM library_resources ${whereClause}`,
     values
   );
 
   const result = await query(
-    `SELECT id, subject_id, class_id, question_type, question_text, options,
-            difficulty, source, exam_year, exam_name, tags
-     FROM questions
+    `SELECT id, title, slug, resource_type, file_url, file_size_bytes,
+            mime_type, description, subject_id, class_id,
+            exam_board, exam_year, is_free, tags,
+            download_count, view_count
+     FROM library_resources
      ${whereClause}
      ORDER BY exam_year DESC, created_at DESC
      LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
@@ -135,12 +129,12 @@ export const listPastQuestions = async (req, res) => {
 
 export const getPastQuestionExams = async (req, res) => {
   const result = await query(
-    `SELECT COALESCE(exam_name, source) AS name,
+    `SELECT exam_board AS name,
             COUNT(*)::int AS question_count,
             array_agg(DISTINCT exam_year) AS years
-     FROM questions
-     WHERE exam_name IS NOT NULL OR source IS NOT NULL
-     GROUP BY COALESCE(exam_name, source)
+     FROM library_resources
+     WHERE exam_board IS NOT NULL
+     GROUP BY exam_board
      ORDER BY name`
   );
 
@@ -149,12 +143,7 @@ export const getPastQuestionExams = async (req, res) => {
 
 export const getLibraryResource = async (req, res) => {
   const result = await query(
-    `SELECT lr.*, l.id AS lesson_id, l.title AS lesson_title,
-            c.id AS course_id, c.title AS course_title
-     FROM lesson_resources lr
-     JOIN lessons l ON l.id = lr.lesson_id
-     JOIN courses c ON c.id = l.course_id
-     WHERE lr.id = $1`,
+    `SELECT * FROM library_resources WHERE id = $1`,
     [req.params.id]
   );
 

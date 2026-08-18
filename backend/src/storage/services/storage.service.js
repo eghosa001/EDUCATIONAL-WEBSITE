@@ -3,6 +3,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { config } from '../../common/config/index.js';
 import { AppError, FileUploadError, HTTP_STATUS, ERROR_CODES } from '../../common/errors/index.js';
+import { supabase, supabaseAdmin } from '../../common/supabase/index.js';
 
 const EXTENSION_MIME_MAP = Object.fromEntries(
   config.fileUpload.allowedExtensions.map((ext, i) => [ext, config.fileUpload.allowedMimeTypes[i]])
@@ -137,6 +138,28 @@ export const storageService = {
       throw error;
     }
     return { key };
+  },
+
+  getSupabasePublicUrl(bucket, fileName) {
+    if (!supabase) return null;
+    const { data } = supabase.storage.from(bucket).getPublicUrl(fileName);
+    return data?.publicUrl || null;
+  },
+
+  async getSupabaseSignedUrl(bucket, fileName, expiresIn = 3600) {
+    if (!supabaseAdmin) return null;
+    const { data, error } = await supabaseAdmin.storage
+      .from(bucket)
+      .createSignedUrl(fileName, expiresIn);
+    if (error) return null;
+    return data?.signedUrl || null;
+  },
+
+  async listSupabaseBucket(bucket) {
+    if (!supabaseAdmin) return [];
+    const { data, error } = await supabaseAdmin.storage.from(bucket).list();
+    if (error) return [];
+    return data || [];
   },
 };
 

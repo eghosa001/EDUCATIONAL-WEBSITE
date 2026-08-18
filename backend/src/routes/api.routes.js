@@ -29,6 +29,7 @@ import { storageRoutes } from './storage.routes.js';
 import { certificateRoutes } from './certificate.routes.js';
 import { liveClassRoutes } from './live-classes.routes.js';
 import { pastQuestionRoutes } from './past-questions.routes.js';
+import { documentRoutes } from './document.routes.js';
 
 export const apiRoutes = Router();
 
@@ -62,6 +63,7 @@ apiRoutes.use('/storage', storageRoutes);
 apiRoutes.use('/certificates', certificateRoutes);
 apiRoutes.use('/live-classes', liveClassRoutes);
 apiRoutes.use('/past-questions', pastQuestionRoutes);
+apiRoutes.use('/documents', documentRoutes);
 
 apiRoutes.get('/', (req, res) => {
   res.json({
@@ -98,6 +100,7 @@ apiRoutes.get('/', (req, res) => {
       storage: '/api/v1/storage',
       liveClasses: '/api/v1/live-classes',
       pastQuestions: '/api/v1/past-questions',
+      documents: '/api/v1/documents',
     },
   });
 });

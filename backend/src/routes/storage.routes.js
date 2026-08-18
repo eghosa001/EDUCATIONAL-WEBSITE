@@ -10,4 +10,4 @@ storageRoutes.use(authMiddleware);
 
 storageRoutes.post('/upload', asyncHandler(storageController.uploadFile));
 storageRoutes.delete('/:key', asyncHandler(storageController.deleteFile));
-storageRoutes.get('/files/:key', asyncHandler(storageController.downloadFile));
+storageRoutes.get('/files/:key', asyncHandler(storageController.getFile));

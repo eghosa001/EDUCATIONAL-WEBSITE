@@ -39,22 +39,19 @@ export const libraryResourceModel = {
     values.push(limit, offset);
 
     const result = await query(
-      `SELECT lr.id, lr.title, lr.resource_type, lr.file_url, lr.file_size_bytes,
-           lr.mime_type, lr.description, lr.is_downloadable,
-           l.id AS lesson_id, l.title AS lesson_title,
-           c.id AS course_id, c.title AS course_title,
-           c.subject_id, c.class_id
-      FROM lesson_resources lr
-      JOIN lessons l ON l.id = lr.lesson_id
-      JOIN courses c ON c.id = l.course_id
+      `SELECT id, title, resource_type, file_url, file_size_bytes,
+           mime_type, description, subject_id, class_id,
+           exam_board, exam_year, is_free, tags,
+           download_count, view_count
+      FROM library_resources
       ${whereClause}
-      ORDER BY lr.created_at DESC LIMIT $${paramIndex - 1} OFFSET $${paramIndex}
+      ORDER BY created_at DESC LIMIT $${paramIndex - 1} OFFSET $${paramIndex}
       `,
       values
     );
 
     const countResult = await query(
-      `SELECT COUNT(*)::int AS total FROM lesson_resources lr JOIN lessons l ON l.id = lr.lesson_id JOIN courses c ON c.id = l.course_id ${whereClause}`,
+      `SELECT COUNT(*)::int AS total FROM library_resources ${whereClause}`,
       values.slice(0, paramIndex - 2)
     );
 
@@ -65,51 +62,53 @@ export const libraryResourceModel = {
   },
 
   async findById(id) {
-    const result = await query('SELECT lr.*, l.title AS lesson_title, c.title AS course_title FROM lesson_resources lr JOIN lessons l ON l.id = lr.lesson_id JOIN courses c ON c.id = l.course_id WHERE lr.id = $1', [id]);
+    const result = await query('SELECT * FROM library_resources WHERE id = $1', [id]);
     return result.rows[0] || null;
   },
 
   async findBySlug(slug) {
-    const result = await query('SELECT lr.*, l.title AS lesson_title, c.title AS course_title FROM lesson_resources lr JOIN lessons l ON l.id = lr.lesson_id JOIN courses c ON c.id = l.course_id WHERE lr.slug = $1', [slug]);
+    const result = await query('SELECT * FROM library_resources WHERE slug = $1', [slug]);
     return result.rows[0] || null;
   },
 
   async create(data) {
-    const { title, resourceType, fileUrl, fileSizeBytes, mimeType, description, isDownloadable, lessonId, subjectId, classId, examBoard, examYear, isFree, tags } = data;
+    const { title, resourceType, fileUrl, fileSizeBytes, mimeType, description, isDownloadable, subjectId, classId, examBoard, examYear, isFree, tags } = data;
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const result = await query(
-      `INSERT INTO lesson_resources (title, resource_type, file_url, file_size_bytes, mime_type, description, is_downloadable, lesson_id, subject_id, class_id, exam_board, exam_year, is_free, tags)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
-      [title, resourceType, fileUrl, fileSizeBytes, mimeType, description, isDownloadable, lessonId, subjectId, classId, examBoard, examYear, isFree, JSON.stringify(tags || [])]
+      `INSERT INTO library_resources (title, slug, resource_type, file_url, file_size_bytes, mime_type, description, subject_id, class_id, exam_board, exam_year, is_free, tags)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+      [title, slug, resourceType, fileUrl, fileSizeBytes, mimeType, description, subjectId, classId, examBoard, examYear, isFree, JSON.stringify(tags || [])]
     );
     return result.rows[0];
   },
 
   async update(id, data) {
-    const { title, resourceType, fileUrl, fileSizeBytes, mimeType, description, isDownloadable, lessonId, subjectId, classId, examBoard, examYear, isFree, tags } = data;
+    const { title, resourceType, fileUrl, fileSizeBytes, mimeType, description, subjectId, classId, examBoard, examYear, isFree, tags } = data;
+    const slug = title ? title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : null;
     const result = await query(
-      `UPDATE lesson_resources SET
+      `UPDATE library_resources SET
          title = COALESCE($2, title),
-         resource_type = COALESCE($3, resource_type),
-         file_url = COALESCE($4, file_url),
-         file_size_bytes = COALESCE($5, file_size_bytes),
-         mime_type = COALESCE($6, mime_type),
-         description = COALESCE($7, description),
-         is_downloadable = COALESCE($8, is_downloadable),
-         lesson_id = COALESCE($9, lesson_id),
-         subject_id = COALESCE($10, subject_id),
-         class_id = COALESCE($11, class_id),
-         exam_board = COALESCE($12, exam_board),
-         exam_year = COALESCE($13, exam_year),
-         is_free = COALESCE($14, is_free),
-         tags = COALESCE($15, tags)
+         slug = COALESCE($3, slug),
+         resource_type = COALESCE($4, resource_type),
+         file_url = COALESCE($5, file_url),
+         file_size_bytes = COALESCE($6, file_size_bytes),
+         mime_type = COALESCE($7, mime_type),
+         description = COALESCE($8, description),
+         subject_id = COALESCE($9, subject_id),
+         class_id = COALESCE($10, class_id),
+         exam_board = COALESCE($11, exam_board),
+         exam_year = COALESCE($12, exam_year),
+         is_free = COALESCE($13, is_free),
+         tags = COALESCE($14, tags),
+         updated_at = NOW()
        WHERE id = $1 RETURNING *`,
-      [id, title, resourceType, fileUrl, fileSizeBytes, mimeType, description, isDownloadable, lessonId, subjectId, classId, examBoard, examYear, isFree, tags ? JSON.stringify(tags) : null]
+      [id, title, slug, resourceType, fileUrl, fileSizeBytes, mimeType, description, subjectId, classId, examBoard, examYear, isFree, tags ? JSON.stringify(tags) : null]
     );
     return result.rows[0] || null;
   },
 
   async delete(id) {
-    const result = await query('DELETE FROM lesson_resources WHERE id = $1 RETURNING id', [id]);
+    const result = await query('DELETE FROM library_resources WHERE id = $1 RETURNING id', [id]);
     return result.rows[0] || null;
   },
 
@@ -141,7 +140,7 @@ export const libraryResourceModel = {
 
     const where = conditions.join(' AND ');
     const result = await query(
-      `SELECT * FROM lesson_resources WHERE ${where} ORDER BY created_at DESC LIMIT 50`,
+      `SELECT * FROM library_resources WHERE ${where} ORDER BY created_at DESC LIMIT 50`,
       values
     );
     return result.rows;

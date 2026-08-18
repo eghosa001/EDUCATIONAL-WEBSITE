@@ -4,7 +4,11 @@
     "supabase": {
       "type": "remote",
       "url": "https://mcp.supabase.com/mcp",
-      "enabled": true
+      "enabled": true,
+      "oauth": false,
+      "headers": {
+        "Authorization": "Bearer sbp_58933178ccb9953a1acaa99a66542986e61fb486"
+      }
     }
   },
   "provider": {
