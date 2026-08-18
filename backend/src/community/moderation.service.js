@@ -1,6 +1,6 @@
-import { query, getClient, transaction } from '../../common/database/index.js';
-import { AppError } from '../../common/errors/index.js';
-import { HTTP_STATUS } from '../../common/constants/index.js';
+import { query, getClient, transaction } from '../common/database/index.js';
+import { AppError } from '../common/errors/index.js';
+import { HTTP_STATUS } from '../common/constants/index.js';
 
 const MODERATION_STATUSES = ['pending', 'approved', 'rejected', 'flagged'];
 

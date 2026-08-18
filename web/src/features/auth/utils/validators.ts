@@ -29,6 +29,8 @@ export const validateRequired = (value: string, fieldName: string): string | nul
 };
 
 export interface ValidationRules {
+  required?: boolean;
+  minLength?: number;
   email?: { required?: boolean; minLength?: number };
   password?: { required?: boolean; minLength?: number };
   name?: { required?: boolean; minLength?: number };

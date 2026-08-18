@@ -1,6 +1,6 @@
-import { query, getClient } from '../../common/database/index.js';
-import { AppError } from '../../common/errors/index.js';
-import { HTTP_STATUS } from '../../common/constants/index.js';
+import { query, getClient } from '../common/database/index.js';
+import { AppError } from '../common/errors/index.js';
+import { HTTP_STATUS } from '../common/constants/index.js';
 import OpenAI from 'openai';
 
 const SYSTEM_PROMPT = `You are an educational AI tutor for Nigerian students. You help students from primary school through university level.

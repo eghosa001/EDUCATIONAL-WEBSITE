@@ -1,7 +1,7 @@
-import { liveClassModel } from '../models/liveClass.model.js';
-import { query } from '../../common/database/index.js';
-import { AppError, HTTP_STATUS, ERROR_CODES } from '../../common/errors/index.js';
-import { slugify } from '../../common/utils/index.js';
+import { liveClassModel } from './models/liveClass.model.js';
+import { query } from '../common/database/index.js';
+import { AppError, HTTP_STATUS, ERROR_CODES } from '../common/errors/index.js';
+import { slugify } from '../common/utils/index.js';
 
 const notFound = (resource) => {
   throw new AppError(`${resource} not found`, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);

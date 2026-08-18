@@ -49,6 +49,7 @@ class AiTutorService {
     required String message,
     String? subjectId,
     String? topicId,
+    String? studentLevel,
   }) async {
     final uri = Uri.parse('$baseUrl/ai/tutor');
 
@@ -63,6 +64,7 @@ class AiTutorService {
       'messages': messages,
       if (subjectId != null) 'subjectId': subjectId,
       if (topicId != null) 'topicId': topicId,
+      if (studentLevel != null) 'studentLevel': studentLevel,
       if (_sessionId != null && _sessionId!.isNotEmpty) 'sessionId': _sessionId,
     });
 
@@ -97,6 +99,7 @@ class AiTutorService {
     required String message,
     String? subjectId,
     String? topicId,
+    String? studentLevel,
     void Function(String chunk)? onChunk,
     Future<void> Function()? onComplete,
   }) async {
@@ -108,6 +111,7 @@ class AiTutorService {
       'messages': messages,
       if (subjectId != null) 'subjectId': subjectId,
       if (topicId != null) 'topicId': topicId,
+      if (studentLevel != null) 'studentLevel': studentLevel,
       if (_sessionId != null && _sessionId!.isNotEmpty) 'sessionId': _sessionId,
       'stream': true,
     });

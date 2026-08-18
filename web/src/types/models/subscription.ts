@@ -69,3 +69,13 @@ export interface Coupon {
   isActive: boolean;
   createdAt: string;
 }
+
+export interface PaymentHistory {
+  id: string;
+  amount: number;
+  currency: string;
+  status: 'pending' | 'completed' | 'failed' | 'refunded';
+  method: string;
+  date: string;
+  description?: string;
+}

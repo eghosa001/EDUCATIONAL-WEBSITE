@@ -67,21 +67,21 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
   getWeakTopics: () => {
     const performance = get().subjectPerformance;
     return performance
-      .filter((s) => s.averageScore < 60)
+      .filter((s) => s.avgScore < 60)
       .map((s) => s.subject);
   },
 
   getStrongTopics: () => {
     const performance = get().subjectPerformance;
     return performance
-      .filter((s) => s.averageScore >= 80)
+      .filter((s) => s.avgScore >= 80)
       .map((s) => s.subject);
   },
 
   getRecommendedTopics: () => {
     const performance = get().subjectPerformance;
     return performance
-      .filter((s) => s.averageScore < 70 && s.averageScore >= 60)
+      .filter((s) => s.avgScore < 70 && s.avgScore >= 60)
       .map((s) => s.subject);
   },
 }));

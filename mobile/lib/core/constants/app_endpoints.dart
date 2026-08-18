@@ -60,6 +60,11 @@ class AppEndpoints {
   static const String pastQuestions = '/past-questions';
   static const String pastQuestionsBoard = '/past-questions/{board}';
   static const String pastQuestionsSubject = '/past-questions/{board}/{subject}';
+  static const String pastQuestionsDetail = '/past-questions/{id}';
+  static const String pastQuestionsBoards = '/past-questions/boards';
+  static const String pastQuestionsPractice = '/past-questions/boards/{board}/practice';
+  static const String pastQuestionsTimedTest = '/past-questions/boards/{board}/timed-test';
+  static const String pastQuestionsTopics = '/past-questions/boards/{board}/topics';
 
   // Assignments
   static const String assignments = '/assignments';

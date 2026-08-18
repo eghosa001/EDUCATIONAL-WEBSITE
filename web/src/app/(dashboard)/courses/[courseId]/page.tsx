@@ -96,7 +96,7 @@ export default function CourseDetailPage() {
                 {section.lessons && section.lessons.length > 0 && (
                   <div className="divide-y divide-gray-50">
                     {section.lessons.map((lesson: any) => (
-                      <Link key={lesson.id} href={`/dashboard/lessons/${lesson.slug}`} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
+                      <Link key={lesson.id} href={`/dashboard/lessons/${courseId}/${lesson.slug}`} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
                         <PlayIcon className="w-4 h-4 text-gray-400" />
                         <span className="text-sm text-gray-700 flex-1">{lesson.title}</span>
                         <span className="text-xs text-gray-400">{lesson.estimatedMinutes} min</span>
@@ -120,7 +120,7 @@ export default function CourseDetailPage() {
             {course.lessons.map((lesson: any) => (
               <Link
                 key={lesson.id}
-                href={`/dashboard/lessons/${lesson.slug}`}
+                href={`/dashboard/lessons/${courseId}/${lesson.slug}`}
                 className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
                   lesson.isPublished ? 'border-gray-200 hover:border-blue-300 hover:bg-blue-50' : 'border-gray-100 opacity-50'
                 }`}

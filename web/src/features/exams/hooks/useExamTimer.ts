@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useExamStore } from '@/features/exams/store/examStore';
 
 export function useExamTimer(durationMinutes: number, isActive: boolean, onTimeUp: () => void) {

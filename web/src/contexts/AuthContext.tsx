@@ -25,7 +25,7 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { user, token, isAuthenticated, isLoading, setUser, setToken, setLoading, logout: storeLogout } = useAuthStore();
+  const { user, token, isAuthenticated, isLoading, setUser, setToken, setRefreshToken, setLoading, logout: storeLogout } = useAuthStore();
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
@@ -79,10 +79,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await apiRegister(data);
       const { user: userData, tokens } = response.data;
 
-      setUser({ ...userData, role: data.role } as User);
+      setUser({ ...userData, role: data.role, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as User);
       setToken(tokens.accessToken);
       setRefreshToken(tokens.refreshToken);
-      localStorage.setItem('edu_user', JSON.stringify({ ...userData, role: data.role }));
+      localStorage.setItem('edu_user', JSON.stringify({ ...userData, role: data.role, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }));
       localStorage.setItem('edu_token', tokens.accessToken);
       localStorage.setItem('edu_refresh_token', tokens.refreshToken);
     } finally {

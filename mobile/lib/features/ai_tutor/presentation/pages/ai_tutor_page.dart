@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../shared/widgets/index.dart';
 import '../../shared/repositories/index.dart';
 import '../../shared/services/ai_tutor_service.dart';
+import '../../core/storage/storage_service.dart';
 
 class AiTutorPage extends ConsumerStatefulWidget {
   const AiTutorPage({super.key});
@@ -19,6 +21,68 @@ class _AiTutorPageState extends ConsumerState<AiTutorPage> {
   bool _isLoading = false;
   bool _hasError = false;
   String _errorMessage = '';
+  String _subjectId = '';
+  String _topicId = '';
+  String _studentLevel = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  @override
+  void dispose() {
+    _saveHistory();
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadHistory() async {
+    final storage = ref.read(storageServiceProvider);
+    final saved = storage.getSetting('ai_tutor_history');
+    if (saved != null) {
+      try {
+        final List<dynamic> decoded = jsonDecode(saved) as List<dynamic>;
+        setState(() {
+          for (final item in decoded) {
+            final map = item as Map<String, dynamic>;
+            _messages.add(_Message(
+              text: map['text'] as String,
+              isUser: map['isUser'] as bool,
+              timestamp: map.containsKey('timestamp')
+                  ? DateTime.parse(map['timestamp'] as String)
+                  : DateTime.now(),
+            ));
+          }
+        });
+        _scrollToBottom();
+      } catch (_) {}
+    }
+    // Restore context from previous session
+    final subject = storage.getSetting('ai_tutor_subject');
+    final topic = storage.getSetting('ai_tutor_topic');
+    final level = storage.getSetting('ai_tutor_level');
+    if (subject != null) setState(() => _subjectId = subject);
+    if (topic != null) setState(() => _topicId = topic);
+    if (level != null) setState(() => _studentLevel = level);
+  }
+
+  void _saveHistory() {
+    final storage = ref.read(storageServiceProvider);
+    storage.setSetting(
+      'ai_tutor_history',
+      jsonEncode(_messages.map((m) => {
+        'text': m.text,
+        'isUser': m.isUser,
+        'timestamp': m.timestamp.toIso8601String(),
+      }).toList()),
+    );
+    storage.setSetting('ai_tutor_subject', _subjectId);
+    storage.setSetting('ai_tutor_topic', _topicId);
+    storage.setSetting('ai_tutor_level', _studentLevel);
+  }
 
   void _sendMessage() {
     final text = _controller.text.trim();
@@ -33,7 +97,12 @@ class _AiTutorPageState extends ConsumerState<AiTutorPage> {
     _scrollToBottom();
 
     final repo = ref.read(aiTutorRepositoryProvider);
-    repo.sendMessage(message: text).then((response) {
+    repo.sendMessage(
+      message: text,
+      subjectId: _subjectId.isEmpty ? null : _subjectId,
+      topicId: _topicId.isEmpty ? null : _topicId,
+      studentLevel: _studentLevel.isEmpty ? null : _studentLevel,
+    ).then((response) {
       if (mounted) {
         setState(() {
           _messages.add(_Message(
@@ -43,6 +112,7 @@ class _AiTutorPageState extends ConsumerState<AiTutorPage> {
           _isLoading = false;
         });
         _scrollToBottom();
+        _saveHistory();
       }
     }).catchError((error) {
       if (mounted) {
@@ -86,13 +156,7 @@ class _AiTutorPageState extends ConsumerState<AiTutorPage> {
       _hasError = false;
     });
     ref.read(aiTutorRepositoryProvider).clearSession();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _scrollController.dispose();
-    super.dispose();
+    _saveHistory();
   }
 
   @override
@@ -111,6 +175,35 @@ class _AiTutorPageState extends ConsumerState<AiTutorPage> {
       ),
       body: Column(
         children: [
+          // Context bar
+          if (_subjectId.isNotEmpty || _topicId.isNotEmpty || _studentLevel.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: theme.colorScheme.primaryContainer,
+              child: Row(
+                children: [
+                  const Icon(Icons.psychology, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Context: ${[_studentLevel, _subjectId, _topicId].where((s) => s.isNotEmpty).join(' · ')}',
+                      style: theme.textTheme.labelSmall,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 16),
+                    onPressed: () {
+                      setState(() {
+                        _subjectId = '';
+                        _topicId = '';
+                        _studentLevel = '';
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: _messages.isEmpty && !_hasError
                 ? _EmptyState(onTap: _handleSuggestionTap)
@@ -170,6 +263,78 @@ class _AiTutorPageState extends ConsumerState<AiTutorPage> {
               ),
             ),
           _buildInputArea(theme),
+        ],
+      ),
+      bottomSheet: _buildContextSheet(theme),
+    );
+  }
+
+  Widget _buildContextSheet(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(top: BorderSide(color: theme.colorScheme.outline)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Learning Context',
+            style: theme.textTheme.titleSmall,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Subject (e.g. biology)',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  onChanged: (v) => setState(() => _subjectId = v),
+                  valueTransformer: (v) => v,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Topic (optional)',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  onChanged: (v) => setState(() => _topicId = v),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            value: _studentLevel.isEmpty ? null : _studentLevel,
+            decoration: InputDecoration(
+              labelText: 'Your Level',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            items: [
+              'Primary School',
+              'JSS',
+              'SSS',
+              'JAMB',
+              'WAEC',
+              'NECO',
+              'University',
+              'Professional',
+            ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            onChanged: (v) => setState(() => _studentLevel = v ?? ''),
+          ),
         ],
       ),
     );
@@ -300,7 +465,7 @@ class _MessageBubble extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              _formatTime(timestamp),
+              '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}',
               style: theme.textTheme.labelSmall?.copyWith(
                 color: isUser ? Colors.white70 : theme.colorScheme.onSurfaceVariant,
               ),
@@ -309,10 +474,6 @@ class _MessageBubble extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _formatTime(DateTime dt) {
-    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 }
 

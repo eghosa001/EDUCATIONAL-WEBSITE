@@ -31,10 +31,10 @@ export const getUnreadCount = asyncHandler(async (req, res) => {
 });
 
 const transporter = nodemailer.createTransport({
-  host: config.smtp.host,
-  port: parseInt(config.smtp.port || '587'),
-  secure: config.smtp.secure === 'true',
-  auth: { user: config.smtp.user, pass: config.smtp.pass },
+  host: config.email.smtp.host,
+  port: parseInt(config.email.smtp.port || '587'),
+  secure: config.email.smtp.secure === 'true',
+  auth: { user: config.email.smtp.user, pass: config.email.smtp.pass },
 });
 
 const twilioClient = config.sms?.sid
@@ -67,7 +67,7 @@ export const sendNotification = asyncHandler(async (req, res) => {
     for (const user of created) {
       try {
         const result = await transporter.sendMail({
-          from: config.smtp.from,
+          from: config.email.smtp.from,
           to: user.email || '',
           subject: title,
           text: body,
@@ -225,7 +225,7 @@ export const broadcastToAll = asyncHandler(async (req, res) => {
     for (const user of created) {
       try {
         await transporter.sendMail({
-          from: config.smtp.from,
+          from: config.email.smtp.from,
           to: user.email || '',
           subject: title,
           text: body,

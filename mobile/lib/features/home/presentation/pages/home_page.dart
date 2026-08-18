@@ -2,60 +2,93 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/widgets/index.dart';
+import '../../shared/repositories/index.dart';
+import '../../core/storage/storage_service.dart';
 
-class HomePage extends ConsumerWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends ConsumerState<HomePage> {
+  List<Map<String, dynamic>> _recentCourses = [];
+  bool _isLoading = true;
+  String? _error;
+  Map<String, dynamic>? _overview;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() { _isLoading = true; _error = null; });
+    try {
+      final storage = ref.read(storageServiceProvider);
+      final user = storage.user;
+      final name = user?['firstName'] ?? 'Student';
+
+      final progressRepo = ref.read(progressRepositoryProvider);
+      final overview = await progressRepo.getOverallProgress();
+      final courses = await progressRepo.getCourseProgress(limit: 5);
+
+      if (mounted) {
+        setState(() {
+          _overview = overview;
+          _recentCourses = courses;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final storage = ref.read(storageServiceProvider);
+    final user = storage.user;
+    final name = user?['firstName'] ?? 'Student';
+
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                _Header(),
-                const SizedBox(height: 24),
-
-                // Welcome message
-                Text(
-                  'Welcome back,',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+        child: RefreshIndicator(
+          onRefresh: _loadData,
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _Header(name: name),
+                      const SizedBox(height: 24),
+                      _WelcomeMessage(name: name),
+                      const SizedBox(height: 24),
+                      _ContinueLearningSection(
+                        courses: _recentCourses,
+                        isLoading: _isLoading,
+                        onTap: (id) => context.push('/courses/$id'),
+                      ),
+                      const SizedBox(height: 24),
+                      _StatsRow(overview: _overview),
+                      const SizedBox(height: 24),
+                      _QuickActions(theme: theme),
+                      const SizedBox(height: 24),
+                      _UpcomingExamsSection(),
+                    ],
                   ),
                 ),
-                Text(
-                  'Student Name!',
-                  style: theme.textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 24),
-
-                // Live Classes quick access
-                _LiveClassesQuickSection(),
-                const SizedBox(height: 24),
-
-                // Continue Learning
-                _ContinueLearningSection(),
-                const SizedBox(height: 24),
-
-                // Stats cards
-                _StatsRow(),
-                const SizedBox(height: 24),
-
-                // Recommended Courses
-                _RecommendedCoursesSection(),
-                const SizedBox(height: 24),
-
-                // Upcoming Exams
-                _UpcomingExamsSection(),
-              ],
-            ),
-          ),
         ),
       ),
     );
@@ -63,6 +96,9 @@ class HomePage extends ConsumerWidget {
 }
 
 class _Header extends StatelessWidget {
+  final String name;
+  const _Header({required this.name});
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -72,18 +108,20 @@ class _Header extends StatelessWidget {
         CircleAvatar(
           radius: 24,
           backgroundColor: theme.colorScheme.primaryContainer,
-          child: const Icon(Icons.person, color: Colors.white),
+          child: Text(
+            name[0].toUpperCase(),
+            style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onPrimaryContainer),
+          ),
         ),
         Row(
           children: [
             IconButton(
               icon: const Icon(Icons.notifications_outlined),
-              onPressed: () {},
-              badge: const Badge(child: Text('3')),
+              onPressed: () => context.push('/notifications'),
             ),
             IconButton(
               icon: const Icon(Icons.settings_outlined),
-              onPressed: () {},
+              onPressed: () => context.push('/profile'),
             ),
           ],
         ),
@@ -92,7 +130,30 @@ class _Header extends StatelessWidget {
   }
 }
 
+class _WelcomeMessage extends StatelessWidget {
+  final String name;
+  const _WelcomeMessage({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Welcome back,', style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+        Text(name, style: theme.textTheme.headlineSmall),
+      ],
+    );
+  }
+}
+
 class _ContinueLearningSection extends StatelessWidget {
+  final List<Map<String, dynamic>> courses;
+  final bool isLoading;
+  final Function(String) onTap;
+
+  const _ContinueLearningSection({required this.courses, required this.isLoading, required this.onTap});
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -103,86 +164,73 @@ class _ContinueLearningSection extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('Continue Learning', style: theme.textTheme.titleMedium),
-            TextButton(
-              onPressed: () {},
-              child: const Text('See All'),
-            ),
+            TextButton(onPressed: () => context.push('/courses'), child: const Text('See All')),
           ],
         ),
         const SizedBox(height: 8),
-        EduCard(
-          onTap: () {},
-          child: Row(
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
+        if (courses.isEmpty)
+          EduEmptyState(
+            icon: Icons.school,
+            title: 'No courses yet',
+            subtitle: 'Browse courses to start learning',
+            actionLabel: 'Browse Courses',
+            onAction: () => context.push('/courses'),
+          )
+        else
+          ...courses.take(3).map((course) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: EduCard(
+                  onTap: () => onTap(course['courseId'] as String? ?? course['id'] as String),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(color: theme.colorScheme.primaryContainer, borderRadius: BorderRadius.circular(8)),
+                        child: Icon(Icons.book, size: 30, color: theme.colorScheme.onPrimaryContainer),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(course['courseTitle'] as String? ?? 'Course', style: theme.textTheme.titleSmall),
+                            const SizedBox(height: 4),
+                            Text('${course['completedLessons'] ?? 0}/${course['totalLessons'] ?? 0} lessons', style: theme.textTheme.bodySmall),
+                            const SizedBox(height: 8),
+                            LinearProgressIndicator(value: (course['progressPercentage'] as num? ?? 0) / 100, minHeight: 6),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.play_circle_filled, color: Colors.blue),
+                    ],
+                  ),
                 ),
-                child: const Icon(Icons.biology, size: 30, color: Colors.white),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('SS2 Biology', style: theme.textTheme.titleSmall),
-                    const SizedBox(height: 4),
-                    Text('Cell Structure - Lesson 3', style: theme.textTheme.bodySmall),
-                    const SizedBox(height: 8),
-                    EduProgressBar(progress: 0.35),
-                    const SizedBox(height: 4),
-                    Text('35% complete', style: theme.textTheme.labelSmall),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.play_circle_filled),
-                onPressed: () {},
-              ),
-            ],
-          ),
-        ),
+              )),
       ],
     );
   }
 }
 
 class _StatsRow extends StatelessWidget {
+  final Map<String, dynamic>? overview;
+  const _StatsRow({required this.overview});
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final completedLessons = (overview?['completedLessons'] as num?)?.toInt() ?? 24;
+    final avgScore = (overview?['averageExamScore'] as num?)?.toInt() ?? 78;
+    final streak = (overview?['studyStreak'] as num?)?.toInt() ?? 5;
+
     return Row(
       children: [
-        Expanded(
-          child: _StatCard(
-            icon: Icons.play_circle,
-            label: 'Lessons',
-            value: '24',
-            color: theme.colorScheme.primary,
-          ),
-        ),
+        Expanded(child: _StatCard(icon: Icons.play_circle, label: 'Lessons', value: '$completedLessons', color: theme.colorScheme.primary)),
         const SizedBox(width: 12),
-        Expanded(
-          child: _StatCard(
-            icon: Icons.emoji_events,
-            label: 'Exams',
-            value: '8',
-            color: theme.colorScheme.success,
-          ),
-        ),
+        Expanded(child: _StatCard(icon: Icons.emoji_events, label: 'Avg Score', value: '$avgScore%', color: theme.colorScheme.success)),
         const SizedBox(width: 12),
-        Expanded(
-          child: _StatCard(
-            icon: Icons.local_fire_department,
-            label: 'Streak',
-            value: '5d',
-            color: theme.colorScheme.warning,
-          ),
-        ),
+        Expanded(child: _StatCard(icon: Icons.local_fire_department, label: 'Streak', value: '$streakd', color: theme.colorScheme.warning)),
       ],
     );
   }
@@ -193,118 +241,51 @@ class _StatCard extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
-
-  const _StatCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
+  const _StatCard({required this.icon, required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return EduCard(
       child: Column(
         children: [
           Icon(icon, color: color, size: 28),
           const SizedBox(height: 8),
-          Text(value, style: Theme.of(context).textTheme.titleLarge?.copyWith(color: color)),
-          Text(label, style: Theme.of(context).textTheme.labelSmall),
+          Text(value, style: theme.textTheme.titleLarge?.copyWith(color: color)),
+          Text(label, style: theme.textTheme.labelSmall),
         ],
       ),
     );
   }
 }
 
-class _RecommendedCoursesSection extends StatelessWidget {
+class _QuickActions extends StatelessWidget {
+  final ThemeData theme;
+  const _QuickActions({required this.theme});
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final actions = [
+      {'icon': Icons.book, 'label': 'Courses', 'route': '/courses'},
+      {'icon': Icons.quiz, 'label': 'Exams', 'route': '/exams'},
+      {'icon': Icons.lightbulb', 'label': 'AI Tutor', 'route': '/ai-tutor'},
+      {'icon': Icons.flash_on', 'label': 'Flashcards', 'route': '/flashcards'},
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Recommended for You', style: theme.textTheme.titleMedium),
-            TextButton(
-              onPressed: () {},
-              child: const Text('See All'),
-            ),
-          ],
-        ),
+        Text('Quick Actions', style: theme.textTheme.titleMedium),
         const SizedBox(height: 8),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: List.generate(
-              3,
-              (i) => Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: SizedBox(
-                  width: 160,
-                  child: _CourseCardHorizontal(
-                    title: i == 0 ? 'SS2 Mathematics' : i == 1 ? 'JSS3 English' : 'SS1 Physics',
-                    subject: i == 0 ? 'Mathematics' : i == 1 ? 'English' : 'Physics',
-                    progress: i == 0 ? 0.6 : i == 1 ? 0.3 : 0.0,
-                  ),
-                ),
-              ),
-            ),
-          ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: actions.map((action) => EduChip(
+            label: action['label'] as String,
+            icon: action['icon'] as IconData,
+            onTap: () => context.push(action['route'] as String),
+          )).toList(),
         ),
       ],
-    );
-  }
-}
-
-class _CourseCardHorizontal extends StatelessWidget {
-  final String title;
-  final String subject;
-  final double progress;
-
-  const _CourseCardHorizontal({
-    required this.title,
-    required this.subject,
-    required this.progress,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return EduCard(
-      onTap: () {},
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            height: 80,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.book, size: 40, color: Colors.white),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: theme.textTheme.titleSmall,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text(
-            subject,
-            style: theme.textTheme.labelSmall,
-          ),
-          const Spacer(),
-          EduProgressBar(progress: progress),
-          const SizedBox(height: 4),
-          Text(
-            '${(progress * 100).toInt()}% complete',
-            style: theme.textTheme.labelSmall,
-          ),
-        ],
-      ),
     );
   }
 }
@@ -322,12 +303,8 @@ class _UpcomingExamsSection extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.error.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                width: 50, height: 50,
+                decoration: BoxDecoration(color: theme.colorScheme.error.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
                 child: const Icon(Icons.assignment, color: Colors.red, size: 28),
               ),
               const SizedBox(width: 12),
@@ -341,74 +318,7 @@ class _UpcomingExamsSection extends StatelessWidget {
                   ],
                 ),
               ),
-              EduButton(
-                label: 'Start',
-                width: 70,
-                height: 36,
-                onPressed: () {},
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _LiveClassesQuickSection extends StatelessWidget {
-  const _LiveClassesQuickSection();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Live Classes', style: theme.textTheme.titleMedium),
-            TextButton(
-              onPressed: () => context.push('/live-classes'),
-              child: const Text('See All'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        EduCard(
-          onTap: () => context.push('/live-classes'),
-          child: Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.error.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.videocam, color: Colors.red, size: 28),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Join Live Session',
-                      style: theme.textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Interactive video classes with teachers',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Icon(Icons.arrow_forward_ios, size: 16, color: theme.colorScheme.onSurfaceVariant),
+              EduButton(label: 'Start', width: 70, height: 36, onPressed: () => context.push('/exams')),
             ],
           ),
         ),

@@ -1,9 +1,9 @@
-import { query, getClient } from '../../common/database/index.js';
-import { AppError } from '../../common/errors/index.js';
-import { HTTP_STATUS } from '../../common/constants/index.js';
+import { query, getClient } from '../common/database/index.js';
+import { AppError } from '../common/errors/index.js';
+import { HTTP_STATUS } from '../common/constants/index.js';
 import nodemailer from 'nodemailer';
-import { Twilio } from 'twilio';
-import { config } from '../../common/config/index.js';
+import Twilio from 'twilio';
+import { config } from '../common/config/index.js';
 
 const NOTIFICATION_TYPES = {
   COURSE: 'course',

@@ -1,3 +1,5 @@
+import { useState, useCallback } from 'react';
+
 export interface SchoolClass {
   id: string;
   name: string;

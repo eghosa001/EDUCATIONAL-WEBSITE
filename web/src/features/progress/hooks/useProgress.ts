@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useProgressStore } from '@/features/progress/store/progressStore';
 
 export function useProgress() {
@@ -16,7 +16,7 @@ export function useProgress() {
   const strongTopics = getStrongTopics();
   const recommendedTopics = getRecommendedTopics();
 
-  const totalStudyTime = studySessions.reduce((acc, session) => acc + session.duration, 0);
+  const totalStudyTime = studySessions.reduce((acc, session) => acc + session.durationSeconds, 0);
   const averageDailyStudyTime = totalStudyTime / 30;
 
   return {
@@ -39,7 +39,7 @@ export function useStreak() {
 
   useEffect(() => {
     // Calculate streak from study sessions
-    const dates = studySessions.map((s) => s.date.toISOString().split('T')[0]);
+    const dates = studySessions.map((s) => s.startTime.split('T')[0]);
     const uniqueDates = [...new Set(dates)];
     let currentStreak = 0;
     const today = new Date();

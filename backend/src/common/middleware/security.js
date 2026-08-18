@@ -1,7 +1,7 @@
 import { rateLimit } from 'express-rate-limit';
 import xss from 'xss';
 import DOMPurify from 'dompurify';
-import { config } from '../../config/index.js';
+import { config } from '../config/index.js';
 
 const NORMAL_LIMIT = {
   windowMs: 15 * 60 * 1000,

@@ -9,15 +9,16 @@ export default function VerifyEmailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const userId = searchParams.get('id');
+  const token = searchParams.get('token');
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
 
   useEffect(() => {
-    if (!userId) {
+    if (!userId || !token) {
       setStatus('error');
       return;
     }
 
-    verifyEmail(userId)
+    verifyEmail(userId, token)
       .then(() => setStatus('success'))
       .catch(() => setStatus('error'));
   }, [userId]);

@@ -1,5 +1,5 @@
 import { pastQuestionModel } from './models/pastQuestion.model.js';
-import { AppError, HTTP_STATUS, ERROR_CODES } from '../../common/errors/index.js';
+import { AppError, HTTP_STATUS, ERROR_CODES } from '../common/errors/index.js';
 import { pastQuestionService } from './services/pastQuestion.service.js';
 
 const notFound = (resource) => {
@@ -46,7 +46,7 @@ export const updateQuestion = async (req, res) => {
 };
 
 export const deleteQuestion = async (req, res) => {
-  const { query } = await import('../../common/database/index.js');
+  const { query } = await import('../common/database/index.js');
   const result = await query('DELETE FROM past_questions WHERE id = $1 RETURNING id', [req.params.id]);
   if (!result.rows[0]) notFound('Past question');
 

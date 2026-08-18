@@ -252,17 +252,17 @@ class _ClassSessionPageState extends ConsumerState<ClassSessionPage>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.videocam_rounded,
-                  size: 80,
-                  color: Colors.white.withOpacity(0.3),
-                ),
+                const Icon(Icons.videocam_rounded, size: 80, color: Colors.white38),
                 const SizedBox(height: 16),
                 Text(
-                  'Connecting to live stream...',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.white.withOpacity(0.5),
-                  ),
+                  'Join via: ${_classData!.meetingUrl}',
+                  style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white54),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => _openMeetingUrl(),
+                  child: const Text('Open in Browser'),
                 ),
               ],
             ),
@@ -296,6 +296,15 @@ class _ClassSessionPageState extends ConsumerState<ClassSessionPage>
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _openMeetingUrl() async {
+    if (_classData == null) return;
+    // Use url_launcher to open the meeting URL in browser
+    // await launchUrl(Uri.parse(_classData!.meetingUrl));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Opening: ${_classData!.meetingUrl}')),
     );
   }
 
@@ -369,7 +378,7 @@ class _ClassSessionPageState extends ConsumerState<ClassSessionPage>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Start the conversation!',
+                        'Chat is available during live sessions',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),

@@ -16,6 +16,7 @@ class AiTutorRepository {
     required String message,
     String? subjectId,
     String? topicId,
+    String? studentLevel,
   }) async {
     final token = _storage.token;
     if (token != null && token.isNotEmpty) {
@@ -26,6 +27,7 @@ class AiTutorRepository {
       message: message,
       subjectId: subjectId,
       topicId: topicId,
+      studentLevel: studentLevel,
     );
 
     if (response.sessionId.isNotEmpty) {

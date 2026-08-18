@@ -6,3 +6,5 @@ export 'gamification_repository.dart';
 export 'library_repository.dart';
 export 'live_class_repository.dart';
 export 'ai_tutor_repository.dart';
+export 'notification_repository.dart';
+export 'question_repository.dart';

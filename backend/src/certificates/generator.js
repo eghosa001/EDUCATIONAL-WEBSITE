@@ -1,9 +1,9 @@
-import { query, getClient } from '../../common/database/index.js';
-import { AppError } from '../../common/errors/index.js';
-import { HTTP_STATUS } from '../../common/constants/index.js';
+import { query, getClient } from '../common/database/index.js';
+import { AppError } from '../common/errors/index.js';
+import { HTTP_STATUS } from '../common/constants/index.js';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { config } from '../../config/index.js';
+import { config } from '../common/config/index.js';
 
 export const certificateService = {
   async generateCertificate(userId, courseId, completionDate = new Date()) {

@@ -29,3 +29,14 @@ export interface CourseSection {
   description?: string;
   orderIndex: number;
 }
+
+export interface CourseFilter {
+  search?: string | null;
+  category?: string | null;
+  level?: string | null;
+  difficulty?: string | null;
+  isFree?: boolean | null;
+  sortBy?: 'newest' | 'popular' | 'rating' | 'price';
+  page?: number;
+  limit?: number;
+}

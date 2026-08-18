@@ -30,7 +30,7 @@ export function useFlashcards() {
       const matchesSearch = !searchTerm ||
         card.front.toLowerCase().includes(searchTerm.toLowerCase()) ||
         card.back.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesSubject = !selectedSubject || card.subject === selectedSubject;
+      const matchesSubject = !selectedSubject || card.subjectId === selectedSubject;
       return matchesSearch && matchesSubject;
     });
   }, [flashcards, searchTerm, selectedSubject]);

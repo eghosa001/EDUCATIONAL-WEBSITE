@@ -1,9 +1,168 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../shared/widgets/index.dart';
+import '../../shared/repositories/index.dart';
 
-class NotificationsPage extends StatelessWidget {
+class NotificationsPage extends ConsumerStatefulWidget {
   const NotificationsPage({super.key});
+
+  @override
+  ConsumerState<NotificationsPage> createState() => _NotificationsPageState();
+}
+
+class _NotificationsPageState extends ConsumerState<NotificationsPage> {
+  List<Map<String, dynamic>> _notifications = [];
+  bool _isLoading = false;
+  bool _isLoadingMore = false;
+  int _page = 1;
+  bool _hasMore = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications([bool refresh = false]) async {
+    if (_isLoading && !refresh) return;
+    setState(() {
+      _isLoading = refresh;
+      _isLoadingMore = !refresh;
+      if (refresh) _page = 1;
+    });
+    try {
+      final repo = ref.read(notificationRepositoryProvider);
+      final result = await repo.getNotifications(
+        page: _page,
+        limit: 20,
+        unreadOnly: false,
+      );
+      final data = result['notifications'] as List? ?? [];
+      if (mounted) {
+        setState(() {
+          if (refresh) {
+            _notifications = data.cast<Map<String, dynamic>>();
+          } else {
+            _notifications.addAll(data.cast<Map<String, dynamic>>());
+          }
+          _hasMore = data.length >= 20;
+          _error = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = e.toString());
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load notifications: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isLoadingMore = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _markAsRead(String id) async {
+    try {
+      final repo = ref.read(notificationRepositoryProvider);
+      await repo.markAsRead(id);
+      setState(() {
+        final idx = _notifications.indexWhere((n) => n['id'] == id);
+        if (idx != -1) {
+          _notifications[idx] = {..._notifications[idx], 'isRead': true};
+        }
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to mark as read: $e')),
+      );
+    }
+  }
+
+  Future<void> _markAllAsRead() async {
+    try {
+      final repo = ref.read(notificationRepositoryProvider);
+      await repo.markAllAsRead();
+      setState(() => _notifications = _notifications.map((n) => {...n, 'isRead': true}).toList());
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('All notifications marked as read')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to mark all as read: $e')),
+      );
+    }
+  }
+
+  Future<void> _deleteNotification(String id) async {
+    try {
+      final repo = ref.read(notificationRepositoryProvider);
+      await repo.deleteNotification(id);
+      setState(() => _notifications.removeWhere((n) => n['id'] == id));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete: $e')),
+      );
+    }
+  }
+
+  IconData _getIcon(String type) {
+    switch (type) {
+      case 'quiz':
+      case 'exam':
+        return Icons.quiz;
+      case 'assignment':
+        return Icons.assignment;
+      case 'achievement':
+      case 'badge':
+        return Icons.emoji_events;
+      case 'payment':
+      case 'subscription':
+        return Icons.payment;
+      case 'event':
+        return Icons.event;
+      case 'message':
+      case 'community':
+        return Icons.message;
+      case 'certificate':
+        return Icons.verified;
+      case 'system':
+        return Icons.info;
+      default:
+        return Icons.notifications;
+    }
+  }
+
+  Color _getColor(String type) {
+    switch (type) {
+      case 'quiz':
+      case 'exam':
+        return Colors.blue;
+      case 'assignment':
+        return Colors.orange;
+      case 'achievement':
+      case 'badge':
+        return Colors.amber;
+      case 'payment':
+      case 'subscription':
+        return Colors.green;
+      case 'event':
+        return Colors.purple;
+      case 'message':
+      case 'community':
+        return Colors.teal;
+      case 'certificate':
+        return Colors.indigo;
+      default:
+        return Colors.grey;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,56 +172,99 @@ class NotificationsPage extends StatelessWidget {
         title: const Text('Notifications'),
         actions: [
           TextButton(
-            onPressed: () {},
+            onPressed: _isLoading ? null : _markAllAsRead,
             child: const Text('Mark all read'),
           ),
         ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: 8,
-        itemBuilder: (context, index) {
-          return _NotificationItem(
-            icon: _getNotificationIcon(index),
-            title: _getNotificationTitle(index),
-            message: _getNotificationMessage(index),
-            time: _getNotificationTime(index),
-            isRead: index > 3,
-            onTap: () {},
-          );
-        },
-      ),
+      body: _error == null && _notifications.isEmpty && !_isLoading
+          ? EduEmptyState(
+              icon: Icons.notifications_off,
+              title: 'No Notifications',
+              subtitle: 'You are all caught up!',
+            )
+          : RefreshIndicator(
+              onRefresh: () => _loadNotifications(true),
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  if (notification is ScrollEndNotification &&
+                      notification.metrics.extentAfter < 200 &&
+                      _hasMore &&
+                      !_isLoadingMore) {
+                    setState(() => _page++);
+                    _loadNotifications();
+                  }
+                  return false;
+                },
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _notifications.length + (_isLoadingMore ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index >= _notifications.length) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      );
+                    }
+                    final notification = _notifications[index];
+                    final type = notification['type'] as String? ?? 'system';
+                    return Dismissible(
+                      key: Key(notification['id'] as String),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 16),
+                        color: theme.colorScheme.error,
+                        child: const Icon(Icons.delete, color: Colors.white),
+                      ),
+                      onDismissed: (_) => _deleteNotification(notification['id'] as String),
+                      child: _NotificationItem(
+                        icon: _getIcon(type),
+                        iconColor: _getColor(type),
+                        title: notification['title'] as String? ?? 'Notification',
+                        message: notification['message'] as String? ?? '',
+                        time: notification['relativeTime'] as String? ??
+                            notification['createdAt'] != null
+                                ? _formatRelativeTime(DateTime.parse(notification['createdAt'] as String))
+                                : '',
+                        isRead: notification['isRead'] == true,
+                        onTap: () {
+                          if (!notification['isRead'] as bool? ?? false) {
+                            _markAsRead(notification['id'] as String);
+                          }
+                          final action = notification['action'];
+                          if (action != null) {
+                            context.push(action);
+                          }
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
     );
   }
 
-  IconData _getNotificationIcon(int index) {
-    return [Icons.quiz, Icons.assignment, Icons.star, Icons.payment, Icons.event, Icons.message, Icons.emoji_events, Icons.info][index];
-  }
-
-  String _getNotificationTitle(int index) {
-    return ['Quiz Reminder', 'Assignment Due', 'Achievement Unlocked', 'Payment Successful', 'Exam Scheduled', 'New Message', 'Certificate Ready', 'System Update'][index];
-  }
-
-  String _getNotificationMessage(int index) {
-    return [
-      'Biology quiz starts in 30 minutes',
-      'Mathematics assignment due tomorrow',
-      'You earned the "Top Student" badge!',
-      'Your subscription payment was successful',
-      'Physics exam scheduled for Dec 15',
-      'Adebayo sent you a message',
-      'Your Biology certificate is ready',
-      'New features have been added',
-    ][index];
-  }
-
-  String _getNotificationTime(int index) {
-    return ['5 min ago', '1 hour ago', '2 hours ago', '1 day ago', '2 days ago', '3 days ago', '1 week ago', '2 weeks ago'][index];
+  String _formatRelativeTime(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${(diff.inDays / 7).floor()}w ago';
   }
 }
 
 class _NotificationItem extends StatelessWidget {
   final IconData icon;
+  final Color iconColor;
   final String title;
   final String message;
   final String time;
@@ -71,6 +273,7 @@ class _NotificationItem extends StatelessWidget {
 
   const _NotificationItem({
     required this.icon,
+    required this.iconColor,
     required this.title,
     required this.message,
     required this.time,
@@ -90,10 +293,10 @@ class _NotificationItem extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: isRead ? Colors.grey.shade100 : theme.colorScheme.primaryContainer,
+                color: iconColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, color: isRead ? Colors.grey : theme.colorScheme.primary, size: 20),
+              child: Icon(icon, color: iconColor, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -116,7 +319,9 @@ class _NotificationItem extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     message,
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -125,8 +330,8 @@ class _NotificationItem extends StatelessWidget {
               Container(
                 width: 8,
                 height: 8,
-                decoration: const BoxDecoration(
-                  color: Colors.blue,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
                   shape: BoxShape.circle,
                 ),
               ),

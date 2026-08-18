@@ -1,52 +1,103 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/widgets/index.dart';
+import '../../shared/repositories/index.dart';
 
-class LessonsPage extends StatelessWidget {
+class LessonsPage extends ConsumerStatefulWidget {
   final String courseId;
 
   const LessonsPage({super.key, required this.courseId});
+
+  @override
+  ConsumerState<LessonsPage> createState() => _LessonsPageState();
+}
+
+class _LessonsPageState extends ConsumerState<LessonsPage> {
+  List<Map<String, dynamic>> _lessons = [];
+  bool _isLoading = true;
+  String? _error;
+  String? _courseTitle;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLessons();
+  }
+
+  Future<void> _loadLessons() async {
+    setState(() { _isLoading = true; _error = null; });
+    try {
+      final repo = ref.read(lessonRepositoryProvider);
+      final result = await repo.getLessons(courseId: widget.courseId);
+      if (mounted) {
+        setState(() {
+          _lessons = result;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lessons'),
+        title: Text(_courseTitle ?? 'Lessons'),
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadLessons),
+        ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: 12,
-        itemBuilder: (context, index) {
-          return _LessonItem(
-            index: index + 1,
-            title: 'Lesson ${index + 1}: ${_getLessonTitle(index)}',
-            duration: '${(index + 1) * 15} min',
-            isCompleted: index < 3,
-            isLocked: index > 5,
-            onPress: index <= 5 ? () => context.push('/lessons/$courseId/${index + 1}') : null,
-          );
-        },
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+                      const SizedBox(height: 16),
+                      Text(_error!, style: theme.textTheme.bodyMedium),
+                      const SizedBox(height: 16),
+                      ElevatedButton(onPressed: _loadLessons, child: const Text('Retry')),
+                    ],
+                  ),
+                )
+              : _lessons.isEmpty
+                  ? EduEmptyState(
+                      icon: Icons.lesson,
+                      title: 'No lessons yet',
+                      subtitle: 'Lessons for this course will appear here',
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _loadLessons,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _lessons.length,
+                        itemBuilder: (context, index) {
+                          final lesson = _lessons[index];
+                          return _LessonItem(
+                            index: index + 1,
+                            title: lesson['title'] as String? ?? 'Untitled Lesson',
+                            duration: '${(lesson['estimatedMinutes'] as num? ?? 15).toInt()} min',
+                            isCompleted: lesson['isCompleted'] == true,
+                            isPublished: lesson['isPublished'] != false,
+                            onPress: lesson['isPublished'] == true
+                                ? () => context.push('/lessons/${widget.courseId}/${lesson['id']}')
+                                : null,
+                          );
+                        },
+                      ),
+                    ),
     );
-  }
-
-  String _getLessonTitle(int index) {
-    final titles = [
-      'Introduction to Cells',
-      'Cell Membrane',
-      'Cytoplasm & Organelles',
-      'Nucleus & Genetics',
-      'Cell Division',
-      'Cell Energy',
-      'Cell Communication',
-      'Cell Specialization',
-      'Tissues & Organs',
-      'System Organization',
-      'Cell Disorders',
-      'Review & Summary',
-    ];
-    return index < titles.length ? titles[index] : 'Lesson ${index + 1}';
   }
 }
 
@@ -55,7 +106,7 @@ class _LessonItem extends StatelessWidget {
   final String title;
   final String duration;
   final bool isCompleted;
-  final bool isLocked;
+  final bool isPublished;
   final VoidCallback? onPress;
 
   const _LessonItem({
@@ -63,7 +114,7 @@ class _LessonItem extends StatelessWidget {
     required this.title,
     required this.duration,
     required this.isCompleted,
-    required this.isLocked,
+    required this.isPublished,
     this.onPress,
   });
 
@@ -76,20 +127,16 @@ class _LessonItem extends StatelessWidget {
         onTap: onPress,
         child: Row(
           children: [
-            // Status indicator
             Container(
-              width: 40,
-              height: 40,
+              width: 40, height: 40,
               decoration: BoxDecoration(
                 color: isCompleted
                     ? theme.colorScheme.success
-                    : isLocked
-                        ? Colors.grey
-                        : theme.colorScheme.primary,
+                    : isPublished ? theme.colorScheme.primary : Colors.grey,
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                isCompleted ? Icons.check : isLocked ? Icons.lock : Icons.play_arrow,
+                isCompleted ? Icons.check : isPublished ? Icons.play_arrow : Icons.lock,
                 color: Colors.white,
                 size: 20,
               ),
@@ -102,7 +149,7 @@ class _LessonItem extends StatelessWidget {
                   Text(
                     title,
                     style: theme.textTheme.titleSmall?.copyWith(
-                      color: isLocked ? theme.colorScheme.onSurfaceVariant : null,
+                      color: isPublished ? null : theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -110,20 +157,13 @@ class _LessonItem extends StatelessWidget {
                     children: [
                       Icon(Icons.schedule, size: 14, color: theme.colorScheme.onSurfaceVariant),
                       const SizedBox(width: 4),
-                      Text(
-                        duration,
-                        style: theme.textTheme.labelSmall,
-                      ),
+                      Text(duration, style: theme.textTheme.labelSmall),
                     ],
                   ),
                 ],
               ),
             ),
-            if (!isLocked)
-              Icon(
-                Icons.chevron_right,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+            if (isPublished) Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
           ],
         ),
       ),

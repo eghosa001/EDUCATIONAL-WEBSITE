@@ -1,5 +1,5 @@
-import { query, transaction } from '../../../common/database/index.js';
-import { AppError, HTTP_STATUS, ERROR_CODES } from '../../../common/errors/index.js';
+import { query, transaction } from '../../common/database/index.js';
+import { AppError, HTTP_STATUS, ERROR_CODES } from '../../common/errors/index.js';
 import { generateReference } from '../../payments/models/payment.model.js';
 
 const notFound = (msg) => {

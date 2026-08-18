@@ -1,6 +1,6 @@
-import { query, getClient, transaction } from '../../common/database/index.js';
-import { AppError } from '../../common/errors/index.js';
-import { HTTP_STATUS } from '../../common/constants/index.js';
+import { query, getClient, transaction } from '../common/database/index.js';
+import { AppError } from '../common/errors/index.js';
+import { HTTP_STATUS } from '../common/constants/index.js';
 
 const DIFFICULTY_WEIGHTS = { easy: 0.5, medium: 1.0, hard: 1.5 };
 const QUESTION_TYPES = ['mcq', 'true_false', 'fill_blank', 'short_answer', 'essay', 'numerical'];

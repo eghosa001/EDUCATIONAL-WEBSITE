@@ -28,7 +28,7 @@ export function usePasswordChange() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState<string | boolean>(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const { changePassword } = useProfileStore();

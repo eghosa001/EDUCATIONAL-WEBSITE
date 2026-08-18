@@ -70,7 +70,7 @@ export const useExamStore = create<ExamState>((set, get) => ({
     try {
       // In production, call the API to submit answers
       const correctAnswers = currentExam.questions?.filter(
-        (q) => answers[q.id] === q.correctAnswerId
+        (q) => answers[q.id] === q.correctAnswer
       ).length || 0;
 
       const score = Math.round((correctAnswers / (currentExam.questions?.length || 1)) * 100);

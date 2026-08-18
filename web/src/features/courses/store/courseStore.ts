@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import type { Course, CourseFilter } from '@/types/models/course';
-import { courseService } from '@/services/api';
+import { fetchCourses, fetchCourseByIdOrSlug, enrollInCourse, unenrollFromCourse } from '@/services/api/courseService';
 
 interface CourseState {
   courses: Course[];
@@ -12,6 +12,7 @@ interface CourseState {
   currentPage: number;
   totalPages: number;
   totalCourses: number;
+  filters: CourseFilter;
 
   // Actions
   fetchCourses: (filters?: CourseFilter) => Promise<void>;
@@ -30,17 +31,27 @@ export const useCourseStore = create<CourseState>((set, get) => ({
   currentPage: 1,
   totalPages: 1,
   totalCourses: 0,
+  filters: { category: null, level: null, search: null, sortBy: 'newest' },
 
   fetchCourses: async (filters) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await courseService.getCourses(filters || get());
+      const token = localStorage.getItem('edu_token') || '';
+      const mergedFilters = { ...get().filters, ...filters };
+      // Strip null values and map CourseFilter keys to CourseFilters API keys
+      const apiFilters: Record<string, unknown> = {};
+      Object.entries(mergedFilters).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          apiFilters[key] = value;
+        }
+      });
+      const response = await fetchCourses(apiFilters as any, token);
       set({
         courses: response.data,
         filteredCourses: response.data,
-        currentPage: response.pagination?.page || 1,
-        totalPages: response.pagination?.totalPages || 1,
-        totalCourses: response.pagination?.total || 0,
+        currentPage: response.page || 1,
+        totalPages: response.totalPages || 1,
+        totalCourses: response.total || 0,
         isLoading: false,
       });
     } catch (err) {
@@ -54,9 +65,10 @@ export const useCourseStore = create<CourseState>((set, get) => ({
   fetchCourse: async (id) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await courseService.getCourse(id);
+      const token = localStorage.getItem('edu_token') || '';
+      const response = await fetchCourseByIdOrSlug(id, token);
       set({ isLoading: false });
-      return response.data;
+      return response.course;
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : 'Failed to fetch course',
@@ -68,7 +80,8 @@ export const useCourseStore = create<CourseState>((set, get) => ({
 
   enrollCourse: async (courseId) => {
     try {
-      await courseService.enrollCourse(courseId);
+      const token = localStorage.getItem('edu_token') || '';
+      await enrollInCourse(courseId, token);
       return true;
     } catch (err) {
       set({ error: err instanceof Error ? err.message : 'Failed to enroll' });
@@ -78,7 +91,8 @@ export const useCourseStore = create<CourseState>((set, get) => ({
 
   unsaveCourse: async (courseId) => {
     try {
-      await courseService.unsaveCourse(courseId);
+      const token = localStorage.getItem('edu_token') || '';
+      await unenrollFromCourse(courseId, token);
     } catch (err) {
       set({ error: err instanceof Error ? err.message : 'Failed to unsave course' });
     }

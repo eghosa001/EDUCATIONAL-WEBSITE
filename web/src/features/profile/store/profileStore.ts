@@ -1,17 +1,17 @@
 'use client';
 
 import { create } from 'zustand';
-import type { UserProfile } from '@/types/models/user';
+import type { User } from '@/types/models/user';
 
 interface ProfileState {
-  profile: UserProfile | null;
+  profile: User | null;
   isEditing: boolean;
   isLoading: boolean;
   error: string | null;
 
   // Actions
   fetchProfile: () => Promise<void>;
-  updateProfile: (data: Partial<UserProfile>) => Promise<void>;
+  updateProfile: (data: Partial<User>) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   uploadAvatar: (file: File) => Promise<string | null>;
   setIsEditing: (isEditing: boolean) => void;
@@ -84,7 +84,8 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         body: formData,
       });
       const data = await response.json();
-      set({ profile: { ...get().profile, avatar: data.data.url }, isLoading: false });
+      const currentProfile = get().profile;
+      set({ profile: currentProfile ? { ...currentProfile, avatar: data.data.url } : null, isLoading: false });
       return data.data.url;
     } catch (err) {
       set({ error: err instanceof Error ? err.message : 'Failed to upload avatar', isLoading: false });

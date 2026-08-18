@@ -9,8 +9,8 @@ import {
   Home, BookOpen, GraduationCap as AcademicCapIcon, ClipboardCheck as ClipboardDocumentCheckIcon,
   MessageSquare as ChatBubbleLeftRightIcon, Bookmark as LibraryBookmarkIcon, Lightbulb as LightBulbIcon,
   Users as UserGroupIcon, Trophy, Bell, ChevronDown, FileText as DocumentTextIcon,
-  LogOut as ArrowRightOnRectangleIcon, Menu as Bars3Icon, X as XMarkIcon,
-  Settings as Cog6ToothIcon, LogOut as ArrowLeftStartOnRectangleIcon,
+  LogOut as ArrowLeftStartOnRectangleIcon, Menu as Bars3Icon, X as XMarkIcon,
+  Settings as Cog6ToothIcon,
 } from 'lucide-react';
 
 const studentNavItems = [

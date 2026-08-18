@@ -1,5 +1,5 @@
 import flashcardModel from './models/flashcard.model.js';
-import { AppError, HTTP_STATUS } from '../../common/errors/index.js';
+import { AppError, HTTP_STATUS } from '../common/errors/index.js';
 
 const notFound = (resource) => {
   throw new AppError(`${resource} not found`, HTTP_STATUS.NOT_FOUND, 'NOT_FOUND');

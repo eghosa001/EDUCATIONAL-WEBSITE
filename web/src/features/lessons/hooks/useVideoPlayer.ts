@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLessonStore } from '@/features/lessons/store/lessonStore';
+import type { Lesson } from '@/types/models/lesson';
 
 export function useVideoPlayer(videoRef: React.RefObject<HTMLVideoElement>) {
   const [isPlaying, setIsPlaying] = useState(false);

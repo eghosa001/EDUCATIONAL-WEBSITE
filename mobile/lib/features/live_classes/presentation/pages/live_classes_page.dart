@@ -370,14 +370,14 @@ class _LiveClassCard extends StatelessWidget {
           Expanded(
             child: EduButton(
               label: 'Join Class',
-              onPressed: () {},
+              onPressed: () => context.push('/live-classes/${classItem.id}'),
               color: theme.colorScheme.primary,
             ),
           ),
           const SizedBox(width: 8),
           EduButton(
             label: 'Watch',
-            onPressed: () {},
+            onPressed: () => context.push('/live-classes/${classItem.id}'),
             isOutlined: true,
             textColor: theme.colorScheme.primary,
           ),
@@ -390,7 +390,11 @@ class _LiveClassCard extends StatelessWidget {
           Expanded(
             child: EduButton(
               label: 'Remind Me',
-              onPressed: () {},
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Reminder set!')),
+                );
+              },
               isOutlined: true,
               textColor: theme.colorScheme.primary,
             ),
@@ -398,7 +402,7 @@ class _LiveClassCard extends StatelessWidget {
           const SizedBox(width: 8),
           EduButton(
             label: 'Details',
-            onPressed: () {},
+            onPressed: () => context.push('/live-classes/${classItem.id}'),
           ),
         ],
       );
@@ -406,7 +410,7 @@ class _LiveClassCard extends StatelessWidget {
     if (isEnded) {
       return EduButton(
         label: 'View Recording',
-        onPressed: () {},
+        onPressed: () => context.push('/live-classes/${classItem.id}'),
         isOutlined: true,
         textColor: theme.colorScheme.primary,
       );

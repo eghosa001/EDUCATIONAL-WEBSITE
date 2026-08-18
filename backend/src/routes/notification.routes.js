@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { asyncHandler } from '../common/middleware/index.js';
-import * as notificationController from '../controllers/notification.controller.js';
+import * as notificationController from '../notifications/controllers/notification.controller.js';
 import { authMiddleware, requireRole } from '../common/middleware/index.js';
 
 export const notificationRoutes = Router();
