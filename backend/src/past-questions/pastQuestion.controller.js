@@ -1,6 +1,6 @@
-import { pastQuestionModel } from '../models/pastQuestion.model.js';
+import { pastQuestionModel } from './models/pastQuestion.model.js';
 import { AppError, HTTP_STATUS, ERROR_CODES } from '../../common/errors/index.js';
-import { pastQuestionService } from '../services/pastQuestion.service.js';
+import { pastQuestionService } from './services/pastQuestion.service.js';
 
 const notFound = (resource) => {
   throw new AppError(`${resource} not found`, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);

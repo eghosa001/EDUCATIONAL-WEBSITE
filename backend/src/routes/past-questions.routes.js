@@ -2,9 +2,46 @@ import { Router } from 'express';
 import { validateRequest, asyncHandler, authMiddleware, requireRole } from '../common/middleware/index.js';
 import { schemas } from '../common/validators/joi.js';
 import * as pastQuestionController from '../past-questions/pastQuestion.controller.js';
+import * as pastQuestionFileController from '../past-questions/controllers/pastQuestionFile.controller.js';
 
 export const pastQuestionRoutes = Router();
 
+// File browsing routes (new)
+pastQuestionRoutes.get('/files',
+  asyncHandler(pastQuestionFileController.listFiles)
+);
+
+pastQuestionRoutes.get('/files/stats',
+  asyncHandler(pastQuestionFileController.getStats)
+);
+
+pastQuestionRoutes.get('/files/boards',
+  asyncHandler(pastQuestionFileController.getBoards)
+);
+
+pastQuestionRoutes.get('/files/boards/:board',
+  asyncHandler(pastQuestionFileController.listFilesByBoard)
+);
+
+pastQuestionRoutes.get('/files/boards/:board/subjects',
+  asyncHandler(pastQuestionFileController.getSubjectsByBoard)
+);
+
+pastQuestionRoutes.get('/files/boards/:board/years',
+  asyncHandler(pastQuestionFileController.getYearsByBoard)
+);
+
+pastQuestionRoutes.get('/files/:id',
+  asyncHandler(pastQuestionFileController.getFile)
+);
+
+pastQuestionRoutes.patch('/files/:id/process',
+  authMiddleware,
+  requireRole('super_admin', 'content_admin'),
+  asyncHandler(pastQuestionFileController.markProcessed)
+);
+
+// Question routes (existing)
 pastQuestionRoutes.get('/boards',
   asyncHandler(pastQuestionController.getBoards)
 );
