@@ -126,8 +126,8 @@ export default function LoginPage() {
 
         <div className="mt-6 bg-blue-50 border border-blue-100 rounded-xl p-4">
           <p className="text-sm text-blue-800 font-medium mb-2">Demo Credentials:</p>
-          <p className="text-xs text-blue-600">Email: demo@eduplatform.ng</p>
-          <p className="text-xs text-blue-600">Password: demo123</p>
+          <p className="text-xs text-blue-600">Email: admin@learnforge.ng</p>
+          <p className="text-xs text-blue-600">Password: Admin@12345</p>
         </div>
       </div>
     </div>
