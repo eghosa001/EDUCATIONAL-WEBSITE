@@ -3,6 +3,7 @@ import { AppError } from '../common/errors/index.js';
 import { HTTP_STATUS } from '../common/constants/index.js';
 import nodemailer from 'nodemailer';
 import Twilio from 'twilio';
+import admin from 'firebase-admin';
 import { config } from '../common/config/index.js';
 
 const NOTIFICATION_TYPES = {
@@ -84,7 +85,9 @@ export const notificationDispatcher = {
     if (!fcmToken) return;
 
     try {
-      const admin = new AdminSDK(config.firebase);
+      if (!admin.apps.length) {
+        admin.initializeApp({ credential: admin.credential.cert(config.firebase?.credentials || {}) });
+      }
       await admin.messaging().send({
         token: fcmToken,
         notification: { title, body: message },

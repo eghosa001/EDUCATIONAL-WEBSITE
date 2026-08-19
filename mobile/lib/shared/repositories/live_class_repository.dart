@@ -209,7 +209,3 @@ class LiveClassRepository {
   }
 }
 
-final liveClassRepositoryProvider = Provider<LiveClassRepository>((ref) {
-  final apiClient = ref.watch(apiClientProvider);
-  return LiveClassRepository(apiClient);
-});

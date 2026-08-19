@@ -16,3 +16,17 @@ export const generateCertificate = async (req, res) => {
   const certificate = await certificateService.generate(courseId, req.user.id);
   res.status(HTTP_STATUS.CREATED).json({ success: true, data: certificate, message: 'Certificate generated' });
 };
+
+export const downloadCertificate = async (req, res) => {
+  const certificate = await certificateService.getCertificate(req.params.certificateId);
+  // Return metadata — actual PDF would be streamed via storage service in production
+  res.json({ success: true, data: { ...certificate, downloadUrl: `/certificates/${certificate.certificate_id}.pdf` } });
+};
+
+export const verifyCertificate = async (req, res) => {
+  const certificate = await certificateService.verifyCertificate(req.params.certificateId);
+  if (!certificate) {
+    return res.status(HTTP_STATUS.NOT_FOUND).json({ success: false, message: 'Certificate not found' });
+  }
+  res.json({ success: true, data: { verified: true, ...certificate } });
+};

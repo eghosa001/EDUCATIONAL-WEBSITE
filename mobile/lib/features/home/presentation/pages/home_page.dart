@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../shared/widgets/index.dart';
-import '../../shared/repositories/index.dart';
-import '../../core/storage/storage_service.dart';
+import '../../../../di/index.dart';
+import '../../../shared/widgets/index.dart';
+import '../../../shared/repositories/index.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -230,7 +230,7 @@ class _StatsRow extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(child: _StatCard(icon: Icons.emoji_events, label: 'Avg Score', value: '$avgScore%', color: theme.colorScheme.success)),
         const SizedBox(width: 12),
-        Expanded(child: _StatCard(icon: Icons.local_fire_department, label: 'Streak', value: '$streakd', color: theme.colorScheme.warning)),
+        Expanded(child: _StatCard(icon: Icons.local_fire_department, label: 'Streak', value: '$streak', color: theme.colorScheme.warning)),
       ],
     );
   }

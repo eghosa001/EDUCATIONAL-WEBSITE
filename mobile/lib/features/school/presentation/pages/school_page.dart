@@ -1,46 +1,123 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../shared/widgets/index.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../di/index.dart';
+import '../../../shared/widgets/index.dart';
+import '../../../shared/repositories/index.dart';
 
-class SchoolPage extends StatelessWidget {
+class SchoolPage extends ConsumerStatefulWidget {
   const SchoolPage({super.key});
+
+  @override
+  ConsumerState<SchoolPage> createState() => _SchoolPageState();
+}
+
+class _SchoolPageState extends ConsumerState<SchoolPage> {
+  Map<String, dynamic>? _school;
+  Map<String, dynamic>? _stats;
+  List<Map<String, dynamic>> _announcements = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() { _isLoading = true; _error = null; });
+    try {
+      final repo = ref.read(schoolRepositoryProvider);
+      final schools = await repo.getSchools();
+
+      if (schools.isNotEmpty && mounted) {
+        final firstSchool = schools[0];
+        final stats = await repo.getSchoolStats(firstSchool['id'] as String).catchError((_) => <String, dynamic>{});
+        if (mounted) {
+          setState(() {
+            _school = firstSchool;
+            _stats = stats;
+            _isLoading = false;
+          });
+        }
+      } else if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('School Portal')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // School info
-            _SchoolHeader(),
-            const SizedBox(height: 24),
-
-            // Stats
-            _SchoolStats(),
-            const SizedBox(height: 24),
-
-            // Quick menus
-            Text('Management', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            _ManagementGrid(),
-            const SizedBox(height: 24),
-
-            // Recent announcements
-            Text('Announcements', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            _AnnouncementList(),
-          ],
-        ),
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+                      const SizedBox(height: 16),
+                      Text(_error!, style: theme.textTheme.bodyMedium),
+                      const SizedBox(height: 16),
+                      ElevatedButton(onPressed: _loadData, child: const Text('Retry')),
+                    ],
+                  ),
+                )
+              : _school == null
+                  ? EduEmptyState(
+                      icon: Icons.school,
+                      title: 'No School Assigned',
+                      subtitle: 'Join a school to access the school portal.',
+                      actionLabel: 'Join School',
+                      onAction: () {},
+                    )
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _SchoolHeader(school: _school!),
+                          const SizedBox(height: 24),
+                          _SchoolStats(stats: _stats ?? _extractStats(_school!)),
+                          const SizedBox(height: 24),
+                          Text('Management', style: theme.textTheme.titleMedium),
+                          const SizedBox(height: 8),
+                          _ManagementGrid(schoolId: _school!['id'] as String?),
+                          const SizedBox(height: 24),
+                          Text('Announcements', style: theme.textTheme.titleMedium),
+                          const SizedBox(height: 8),
+                          _AnnouncementList(),
+                        ],
+                      ),
+                    ),
     );
+  }
+
+  Map<String, dynamic> _extractStats(Map<String, dynamic> school) {
+    return {
+      'studentCount': (school['studentCount'] as num?)?.toInt() ?? 0,
+      'teacherCount': (school['teacherCount'] as num?)?.toInt() ?? 0,
+      'classCount': (school['classCount'] as num?)?.toInt() ?? 0,
+      'subjectCount': (school['subjectCount'] as num?)?.toInt() ?? 0,
+    };
   }
 }
 
 class _SchoolHeader extends StatelessWidget {
+  final Map<String, dynamic> school;
+  const _SchoolHeader({required this.school});
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -48,12 +125,8 @@ class _SchoolHeader extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary,
-              borderRadius: BorderRadius.circular(12),
-            ),
+            width: 60, height: 60,
+            decoration: BoxDecoration(color: theme.colorScheme.primary, borderRadius: BorderRadius.circular(12)),
             child: const Icon(Icons.school, color: Colors.white, size: 32),
           ),
           const SizedBox(width: 16),
@@ -61,8 +134,8 @@ class _SchoolHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Federal Government College', style: theme.textTheme.titleLarge),
-                Text('Lagos, Nigeria', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                Text(school['name'] as String? ?? 'School', style: theme.textTheme.titleLarge),
+                Text(school['location'] ?? school['address'] ?? '', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
               ],
             ),
           ),
@@ -77,6 +150,9 @@ class _SchoolHeader extends StatelessWidget {
 }
 
 class _SchoolStats extends StatelessWidget {
+  final Map<String, dynamic> stats;
+  const _SchoolStats({required this.stats});
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -84,10 +160,10 @@ class _SchoolStats extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _StatItem(icon: Icons.people, value: '1,250', label: 'Students'),
-          _StatItem(icon: Icons.person, value: '45', label: 'Teachers'),
-          _StatItem(icon: Icons.class_, value: '32', label: 'Classes'),
-          _StatItem(icon: Icons.subject, value: '18', label: 'Subjects'),
+          _StatItem(icon: Icons.people, value: '${stats['studentCount'] ?? 0}', label: 'Students'),
+          _StatItem(icon: Icons.person, value: '${stats['teacherCount'] ?? 0}', label: 'Teachers'),
+          _StatItem(icon: Icons.class_, value: '${stats['classCount'] ?? 0}', label: 'Classes'),
+          _StatItem(icon: Icons.subject, value: '${stats['subjectCount'] ?? 0}', label: 'Subjects'),
         ],
       ),
     );
@@ -98,7 +174,6 @@ class _StatItem extends StatelessWidget {
   final IconData icon;
   final String value;
   final String label;
-
   const _StatItem({required this.icon, required this.value, required this.label});
 
   @override
@@ -115,18 +190,21 @@ class _StatItem extends StatelessWidget {
 }
 
 class _ManagementGrid extends StatelessWidget {
+  final String? schoolId;
+  const _ManagementGrid({required this.schoolId});
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final items = [
-      {'icon': Icons.people, 'label': 'Students', 'color': theme.colorScheme.primary},
-      {'icon': Icons.person, 'label': 'Teachers', 'color': theme.colorScheme.success},
-      {'icon': Icons.class_, 'label': 'Classes', 'color': theme.colorScheme.warning},
-      {'icon': Icons.schedule, 'label': 'Timetable', 'color': theme.colorScheme.secondary},
-      {'icon': Icons.assignment, 'label': 'Assignments', 'color': Colors.purple},
-      {'icon': Icons.quiz, 'label': 'Exams', 'color': Colors.teal},
-      {'icon': Icons.assessment, 'label': 'Results', 'color': Colors.orange},
-      {'icon': Icons.attendance, 'label': 'Attendance', 'color': Colors.indigo},
+      {'icon': Icons.people, 'label': 'Students', 'route': schoolId != null ? '/school/$schoolId/students' : null},
+      {'icon': Icons.person, 'label': 'Teachers', 'route': schoolId != null ? '/school/$schoolId/teachers' : null},
+      {'icon': Icons.class_, 'label': 'Classes', 'route': schoolId != null ? '/school/$schoolId/classes' : null},
+      {'icon': Icons.schedule, 'label': 'Timetable', 'route': schoolId != null ? '/school/$schoolId/timetable' : null},
+      {'icon': Icons.assignment, 'label': 'Assignments', 'route': null},
+      {'icon': Icons.quiz, 'label': 'Exams', 'route': null},
+      {'icon': Icons.assessment, 'label': 'Results', 'route': schoolId != null ? '/school/$schoolId/results' : null},
+      {'icon': Icons.attendance, 'label': 'Attendance', 'route': schoolId != null ? '/school/$schoolId/attendance' : null},
     ];
 
     return GridView.count(
@@ -137,12 +215,13 @@ class _ManagementGrid extends StatelessWidget {
       mainAxisSpacing: 12,
       childAspectRatio: 0.9,
       children: items.map((item) {
+        final route = item['route'] as String?;
         return EduCard(
-          onTap: () {},
+          onTap: route != null ? () => context.push(route) : null,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(item['icon'] as IconData, color: item['color'] as Color, size: 32),
+              Icon(item['icon'] as IconData, color: theme.colorScheme.primary, size: 32),
               const SizedBox(height: 8),
               Text(item['label'] as String, style: theme.textTheme.labelMedium),
             ],
@@ -154,6 +233,8 @@ class _ManagementGrid extends StatelessWidget {
 }
 
 class _AnnouncementList extends StatelessWidget {
+  const _AnnouncementList();
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);

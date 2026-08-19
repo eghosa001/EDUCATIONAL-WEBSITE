@@ -13,6 +13,7 @@ class QuestionsPage extends ConsumerStatefulWidget {
 
 class _QuestionsPageState extends ConsumerState<QuestionsPage> {
   String? _selectedBoard;
+  List<dynamic> _boards = [];
   List<dynamic> _subjects = [];
   bool _isLoading = false;
   String? _error;
@@ -33,9 +34,9 @@ class _QuestionsPageState extends ConsumerState<QuestionsPage> {
       final boards = await repo.getBoards();
       if (mounted) {
         setState(() {
+          _boards = boards;
           _subjects = [];
           _isLoading = false;
-          // Default to first board if available
           if (boards.isNotEmpty) {
             _selectedBoard = boards[0]['name'] ?? boards[0]['id'];
             _loadSubjects(_selectedBoard!);
@@ -44,13 +45,14 @@ class _QuestionsPageState extends ConsumerState<QuestionsPage> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = e.toString());
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to load boards: $e')),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -89,19 +91,22 @@ class _QuestionsPageState extends ConsumerState<QuestionsPage> {
                   padding: const EdgeInsets.all(16),
                   child: _isLoading && _selectedBoard == null
                       ? const Center(child: CircularProgressIndicator())
-                      : Wrap(
-                          spacing: 8,
-                          children: ['JAMB', 'WAEC', 'NECO', 'NABTEB'].map((board) {
-                            return EduChip(
-                              label: board,
-                              isSelected: board == _selectedBoard,
-                              onTap: () {
-                                setState(() => _selectedBoard = board);
-                                _loadSubjects(board);
-                              },
-                            );
-                          }).toList(),
-                        ),
+                      : _boards.isEmpty && !_isLoading
+                          ? const SizedBox.shrink()
+                          : Wrap(
+                              spacing: 8,
+                              children: _boards.map((board) {
+                                final name = board['name'] ?? board['id'] ?? '';
+                                return EduChip(
+                                  label: name,
+                                  isSelected: name == _selectedBoard,
+                                  onTap: () {
+                                    setState(() => _selectedBoard = name);
+                                    _loadSubjects(name);
+                                  },
+                                );
+                              }).toList(),
+                            ),
                 ),
                 // Subject list
                 Expanded(

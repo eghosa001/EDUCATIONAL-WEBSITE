@@ -89,7 +89,3 @@ class LibraryRepository {
   }
 }
 
-final libraryRepositoryProvider = Provider<LibraryRepository>((ref) {
-  final apiClient = ref.watch(apiClientProvider);
-  return LibraryRepository(apiClient);
-});

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { TrophyIcon, FlameIcon, MedalIcon, BadgeCheckIcon } from 'lucide-react';
 import { useAuthStore } from '@/state/auth/authStore';
+import { fetchMyPoints, fetchMyBadges } from '@/services/api/gamificationService';
 
 const ACHIEVEMENTS = [
   { id: '1', title: 'First Course', desc: 'Complete your first course', icon: BadgeCheckIcon, xp: 100 },
@@ -25,17 +26,13 @@ export default function GamificationPage() {
     if (!authToken) { setLoading(false); return; }
 
     Promise.all([
-      fetch('http://localhost:3000/api/v1/gamification/points/me', {
-        headers: { 'Authorization': `Bearer ${authToken}` },
-      }).then(r => r.json()).catch(() => ({})),
-      fetch('http://localhost:3000/api/v1/gamification/badges/me?limit=50', {
-        headers: { 'Authorization': `Bearer ${authToken}` },
-      }).then(r => r.json()).catch(() => ({})),
+      fetchMyPoints(authToken).catch(() => ({ points: { totalPoints: 0 } })),
+      fetchMyBadges(1, 50, authToken).catch(() => ({ data: [] })),
     ]).then(([pointsRes, badgesRes]) => {
-      setPoints(pointsRes.data?.points ?? 0);
-      const earned = new Set<string>((badgesRes.data || []).map((b: any) => b.id));
+      setPoints(pointsRes.points?.totalPoints ?? 0);
+      const earned = new Set<string>((badgesRes.data || []).map((b: any) => b.badgeId ?? b.id));
       setEarnedIds(earned);
-      setLevel(Math.floor((pointsRes.data?.points ?? 0) / 500) + 1);
+      setLevel(Math.floor((pointsRes.points?.totalPoints ?? 0) / 500) + 1);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [authToken]);

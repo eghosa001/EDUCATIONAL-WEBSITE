@@ -20,7 +20,12 @@ class NotificationRepository {
         if (unreadOnly != null) 'unreadOnly': unreadOnly,
       },
     );
-    return response.data['data'] as Map<String, dynamic>;
+    final data = response.data['data'] as Map<String, dynamic>? ?? {};
+    return {
+      'notifications': data['notifications'] ?? [],
+      'unreadCount': data['unreadCount'] as int? ?? 0,
+      'pagination': data['pagination'] as Map<String, dynamic>? ?? {},
+    };
   }
 
   Future<int> getUnreadCount() async {
@@ -47,9 +52,49 @@ class NotificationRepository {
       '${AppEndpoints.notifications}/${notificationId}',
     );
   }
+
+  Future<void> registerDevice({
+    required String platform,
+    required String fcmToken,
+    String? deviceToken,
+    String? appVersion,
+  }) async {
+    await _apiClient.dio.post(
+      AppEndpoints.notificationsRegisterDevice,
+      data: {
+        'platform': platform,
+        'fcmToken': fcmToken,
+        'deviceToken': deviceToken,
+        'appVersion': appVersion,
+      },
+    );
+  }
+
+  Future<void> unregisterDevice(String fcmToken) async {
+    await _apiClient.dio.delete(
+      AppEndpoints.notificationsRegisterDevice.replace('register', 'unregister'),
+      data: {'fcmToken': fcmToken},
+    );
+  }
+
+  Future<Map<String, dynamic>> getPreferences() async {
+    final response = await _apiClient.dio.get(AppEndpoints.notificationsPreferences);
+    return response.data['data'] as Map<String, dynamic>? ?? {};
+  }
+
+  Future<void> updatePreference({
+    required String channel,
+    required String notificationType,
+    required bool isEnabled,
+  }) async {
+    await _apiClient.dio.patch(
+      AppEndpoints.notificationsPreferences,
+      data: {
+        'channel': channel,
+        'notificationType': notificationType,
+        'isEnabled': isEnabled,
+      },
+    );
+  }
 }
 
-final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
-  final apiClient = ref.watch(apiClientProvider);
-  return NotificationRepository(apiClient);
-});

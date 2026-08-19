@@ -64,7 +64,3 @@ class CourseRepository {
   }
 }
 
-final courseRepositoryProvider = Provider<CourseRepository>((ref) {
-  final apiClient = ref.watch(apiClientProvider);
-  return CourseRepository(apiClient);
-});

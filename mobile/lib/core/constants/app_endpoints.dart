@@ -104,6 +104,8 @@ class AppEndpoints {
   static const String notifications = '/notifications';
   static const String notificationsMarkRead = '/notifications/{id}/read';
   static const String notificationsMarkAllRead = '/notifications/read-all';
+  static const String notificationsPreferences = '/notifications/preferences';
+  static const String notificationsRegisterDevice = '/notifications/devices/register';
 
   // Subscriptions
   static const String subscriptions = '/subscriptions';
@@ -154,7 +156,6 @@ class AppEndpoints {
   // Parents
   static const String parents = '/parents';
   static const String parentsChildren = '/parents/children';
-  static const String parentsMonitor = '/parents/monitor';
 
   // Schools
   static const String schools = '/schools';

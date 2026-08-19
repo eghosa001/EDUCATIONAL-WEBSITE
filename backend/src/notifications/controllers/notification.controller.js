@@ -30,6 +30,60 @@ export const getUnreadCount = asyncHandler(async (req, res) => {
   res.json({ success: true, data: { count } });
 });
 
+// Device / FCM token management
+export const registerDevice = asyncHandler(async (req, res) => {
+  const { platform, deviceToken, fcmToken, appVersion } = req.body;
+  if (!platform || !fcmToken) {
+    throw new AppError('platform and fcmToken are required', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+  }
+  await query(
+    `INSERT INTO user_devices (user_id, platform, device_token, fcm_token, app_version, is_active)
+     VALUES ($1, $2, $3, $4, $5, true)
+     ON CONFLICT DO NOTHING`,
+    [req.user.id, platform, deviceToken || null, fcmToken, appVersion || null]
+  );
+  // Deactivate old tokens on same platform
+  await query(
+    `UPDATE user_devices SET is_active = false WHERE user_id = $1 AND platform = $2 AND id != (
+      SELECT id FROM user_devices WHERE user_id = $1 AND platform = $2 AND is_active = true LIMIT 1
+    )`,
+    [req.user.id, platform]
+  );
+  res.status(HTTP_STATUS.CREATED).json({ success: true, message: 'Device registered' });
+});
+
+export const unregisterDevice = asyncHandler(async (req, res) => {
+  await query(
+    'DELETE FROM user_devices WHERE user_id = $1 AND fcm_token = $2',
+    [req.user.id, req.body.fcmToken]
+  );
+  res.json({ success: true, message: 'Device unregistered' });
+});
+
+// Notification preferences
+export const getNotificationPreferences = asyncHandler(async (req, res) => {
+  const result = await query(
+    'SELECT channel, notification_type, is_enabled FROM user_notification_preferences WHERE user_id = $1',
+    [req.user.id]
+  );
+  res.json({ success: true, data: { preferences: result.rows } });
+});
+
+export const updateNotificationPreference = asyncHandler(async (req, res) => {
+  const { channel, notificationType, isEnabled } = req.body;
+  if (!channel || !notificationType) {
+    throw new AppError('channel and notificationType are required', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+  }
+  await query(
+    `INSERT INTO user_notification_preferences (user_id, channel, notification_type, is_enabled)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (user_id, channel, notification_type)
+     DO UPDATE SET is_enabled = excluded.is_enabled`,
+    [req.user.id, channel, notificationType, isEnabled !== false]
+  );
+  res.json({ success: true, message: 'Preference updated' });
+});
+
 const transporter = nodemailer.createTransport({
   host: config.email.smtp.host,
   port: parseInt(config.email.smtp.port || '587'),

@@ -19,3 +19,7 @@ notificationRoutes.get('/', authMiddleware, asyncHandler(notificationController.
 notificationRoutes.post('/:id/read', authMiddleware, asyncHandler(notificationController.markAsRead));
 notificationRoutes.post('/read-all', authMiddleware, asyncHandler(notificationController.markAllAsRead));
 notificationRoutes.get('/unread-count', authMiddleware, asyncHandler(notificationController.getUnreadCount));
+notificationRoutes.post('/devices/register', authMiddleware, asyncHandler(notificationController.registerDevice));
+notificationRoutes.delete('/devices/unregister', authMiddleware, asyncHandler(notificationController.unregisterDevice));
+notificationRoutes.get('/preferences', authMiddleware, asyncHandler(notificationController.getNotificationPreferences));
+notificationRoutes.patch('/preferences', authMiddleware, asyncHandler(notificationController.updateNotificationPreference));

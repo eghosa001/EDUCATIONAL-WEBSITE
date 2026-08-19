@@ -56,7 +56,3 @@ class ExamRepository {
   }
 }
 
-final examRepositoryProvider = Provider<ExamRepository>((ref) {
-  final apiClient = ref.watch(apiClientProvider);
-  return ExamRepository(apiClient);
-});

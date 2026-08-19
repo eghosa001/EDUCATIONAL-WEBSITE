@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { GraduationCap, EyeIcon, EyeOff } from 'lucide-react';
 import { useAdminAuthStore, hydrateAdminAuth } from '@/state/auth';
+import { apiConfig } from '@/services/api/config';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,25 +28,47 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Demo credentials check
-      if (email === 'admin@eduplatform.ng' && password === 'admin123') {
-        login(
-          {
-            id: '1',
-            email,
-            firstName: 'Super',
-            lastName: 'Admin',
-            role: 'super_admin',
-            roles: ['super_admin'],
-          },
-          'demo-token'
-        );
-        router.push('/dashboard');
-      } else {
-        setError('Invalid credentials. Use admin@eduplatform.ng / admin123');
+      const response = await fetch(`${apiConfig.baseUrl}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setError(data.message || 'Invalid credentials');
+        return;
       }
+
+      const user = data.data.user;
+      const token = data.data.tokens.accessToken;
+
+      // Check if user has admin role
+      const roles = user.roles || [];
+      const isAdmin = roles.some((r: string) =>
+        ['super_admin', 'admin', 'content_admin'].includes(r)
+      );
+
+      if (!isAdmin) {
+        setError('Access denied. Admin account required.');
+        return;
+      }
+
+      login(
+        {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          roles: roles,
+        },
+        token
+      );
+      router.push('/dashboard');
     } catch {
-      setError('Login failed');
+      setError('Login failed. Please check your connection.');
     } finally {
       setLoading(false);
     }
@@ -104,12 +127,6 @@ export default function LoginPage() {
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
-
-          <div className="mt-6 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
-            <p className="text-xs text-indigo-700 font-medium mb-1">Demo Credentials:</p>
-            <p className="text-xs text-indigo-600">admin@eduplatform.ng</p>
-            <p className="text-xs text-indigo-600">admin123</p>
-          </div>
         </div>
       </div>
     </div>

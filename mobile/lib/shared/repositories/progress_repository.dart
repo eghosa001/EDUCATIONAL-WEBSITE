@@ -42,7 +42,3 @@ class ProgressRepository {
   }
 }
 
-final progressRepositoryProvider = Provider<ProgressRepository>((ref) {
-  final apiClient = ref.watch(apiClientProvider);
-  return ProgressRepository(apiClient);
-});

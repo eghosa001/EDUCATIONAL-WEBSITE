@@ -78,7 +78,3 @@ class QuestionRepository {
   }
 }
 
-final questionRepositoryProvider = Provider<QuestionRepository>((ref) {
-  final apiClient = ref.watch(apiClientProvider);
-  return QuestionRepository(apiClient);
-});

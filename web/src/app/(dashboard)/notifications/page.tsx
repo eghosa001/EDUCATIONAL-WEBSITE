@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { BellIcon, CheckIcon, TrashIcon } from 'lucide-react';
 import { useAuthStore } from '@/state/auth/authStore';
+import { fetchNotifications, markNotificationAsRead } from '@/services/api/notificationService';
 
 const typeColors: Record<string, string> = {
   exam: 'bg-red-100 text-red-600',
@@ -21,10 +22,7 @@ export default function NotificationsPage() {
   useEffect(() => {
     if (!authToken) { setLoading(false); return; }
 
-    fetch('http://localhost:3000/api/v1/notifications?limit=50', {
-      headers: { 'Authorization': `Bearer ${authToken}` },
-    })
-      .then(res => res.json())
+    fetchNotifications({ limit: 50 }, authToken)
       .then(data => setNotifications(data.data || []))
       .catch(() => setNotifications([]))
       .finally(() => setLoading(false));
@@ -32,10 +30,7 @@ export default function NotificationsPage() {
 
   const markAsRead = async (id: string) => {
     if (!authToken) return;
-    await fetch(`http://localhost:3000/api/v1/notifications/${id}/read`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${authToken}` },
-    });
+    await markNotificationAsRead(id, authToken);
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   };
 

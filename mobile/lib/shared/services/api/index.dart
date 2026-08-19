@@ -1,7 +1,7 @@
 // API Services
 // Re-export all API services for easy access
 
-export 'api_client.dart';
+export '../../core/network/api_client.dart';
 export 'api_config.dart';
 export 'auth_service.dart';
 export 'user_service.dart';

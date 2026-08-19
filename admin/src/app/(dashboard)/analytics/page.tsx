@@ -5,62 +5,38 @@ import { Users, TrendingUp, GraduationCap, BookOpen, Award, Clock } from 'lucide
 import Card from '@/components/ui/Card';
 import Spinner from '@/components/ui/Spinner';
 import PageHeader from '@/components/ui/PageHeader';
-
-interface PlatformMetrics {
-  newUsers: number;
-  examsTaken: number;
-  enrollments: number;
-  transactions: number;
-  revenue: number;
-}
-
-interface RevenueBreakdown {
-  period: string;
-  transaction_count: number;
-  total_revenue: number;
-}
-
-interface CoursePerf {
-  id: string;
-  title: string;
-  enrollment_count: number;
-  avg_progress: number;
-}
+import { useAdminAuthStore } from '@/state/auth';
+import { fetchMetrics, fetchRevenueBreakdown, fetchCoursePerformance, type PlatformMetrics, type RevenueBreakdown, type CoursePerformance } from '@/services/api/analyticsService';
 
 export default function AnalyticsPage() {
+  const { token } = useAdminAuthStore();
   const [metrics, setMetrics] = useState<PlatformMetrics | null>(null);
   const [revenue, setRevenue] = useState<RevenueBreakdown[]>([]);
-  const [topCourses, setTopCourses] = useState<CoursePerf[]>([]);
+  const [topCourses, setTopCourses] = useState<CoursePerformance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState('30d');
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token');
-    if (!token) return;
+    if (!token) { setLoading(false); return; }
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/analytics/metrics?range=${dateRange}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(res => res.json())
-      .then(data => setMetrics(data.data?.metrics || null))
-      .catch(() => setError('Failed to load metrics'))
-      .finally(() => setLoading(false));
+    setLoading(true);
+    setError(null);
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/analytics/revenue?period=monthly`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(res => res.json())
-      .then(data => setRevenue(data.data?.breakdown || []))
-      .catch(() => {});
-
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/analytics/courses`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(res => res.json())
-      .then(data => setTopCourses(data.data?.courses || []))
-      .catch(() => {});
-  }, [dateRange]);
+    Promise.all([
+      fetchMetrics(dateRange, token).catch(() => ({ metrics: null })),
+      fetchRevenueBreakdown('monthly', token).catch(() => ({ breakdown: [] })),
+      fetchCoursePerformance(token).catch(() => ({ courses: [] })),
+    ]).then(([metricsRes, revenueRes, coursesRes]) => {
+      setMetrics(metricsRes.metrics ?? null);
+      setRevenue(revenueRes.breakdown || []);
+      setTopCourses(coursesRes.courses || []);
+      setLoading(false);
+    }).catch(() => {
+      setError('Failed to load analytics');
+      setLoading(false);
+    });
+  }, [dateRange, token]);
 
   if (loading) return <Spinner label="Loading analytics..." />;
   if (error) return <div className="text-red-600 p-4">{error}</div>;

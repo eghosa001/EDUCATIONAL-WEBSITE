@@ -38,7 +38,3 @@ class LessonRepository {
   }
 }
 
-final lessonRepositoryProvider = Provider<LessonRepository>((ref) {
-  final apiClient = ref.watch(apiClientProvider);
-  return LessonRepository(apiClient);
-});

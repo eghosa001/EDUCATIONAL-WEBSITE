@@ -4,7 +4,6 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
-import xss from 'xss';
 
 // Database
 import { pool, query, getClient, transaction } from './common/database/index.js';
@@ -42,7 +41,7 @@ import notificationDispatcher from './notifications/dispatch.service.js';
 import aiTutorService from './ai/tutor.service.js';
 import liveClassService from './live-classes/services/liveClass.service.js';
 import searchIndexer from './search/indexer.js';
-import certificateService from './certificates/generator.js';
+import certificateService from './certificates/services/certificate.service.js';
 import moderationService from './community/moderation.service.js';
 import securityMiddleware from './common/middleware/security.js';
 

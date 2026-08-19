@@ -13,7 +13,15 @@ certificateRoutes.get('/:certificateId',
   asyncHandler(certificateController.getCertificate)
 );
 
+certificateRoutes.get('/:certificateId/download',
+  asyncHandler(certificateController.downloadCertificate)
+);
+
 certificateRoutes.post('/generate/:courseId',
   authMiddleware,
   asyncHandler(certificateController.generateCertificate)
+);
+
+certificateRoutes.get('/verify/:certificateId',
+  asyncHandler(certificateController.verifyCertificate)
 );

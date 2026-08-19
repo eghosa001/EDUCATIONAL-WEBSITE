@@ -5,9 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/config/app_config.dart';
 import 'core/theme/app_theme.dart';
 import 'routing/app_router.dart';
-import 'shared/services/api/api_client.dart';
+import 'core/network/api_client.dart';
 import 'shared/services/storage/storage_service.dart';
-import 'core/network/api_client.dart' as network;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,7 +16,7 @@ void main() async {
   await StorageService().init();
 
   // Initialize network client
-  final apiClient = network.ApiClient();
+  final apiClient = ApiClient();
   await apiClient.initialize();
 
   // Configure system UI

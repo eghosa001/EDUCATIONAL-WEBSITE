@@ -27,7 +27,7 @@ export default function LiveClassesPage() {
   useEffect(() => {
     if (!token) return;
     // Use schoolService as fallback since there's no dedicated live classes service yet
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/live-classes${user?.role === 'teacher' ? '/my' : ''}?page=1&limit=20`, {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}/live-classes${user?.role === 'teacher' ? '/my' : ''}?page=1&limit=20`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(res => res.json())

@@ -8,3 +8,7 @@ export 'live_class_repository.dart';
 export 'ai_tutor_repository.dart';
 export 'notification_repository.dart';
 export 'question_repository.dart';
+export 'community_repository.dart';
+export 'parent_repository.dart';
+export 'teacher_repository.dart';
+export 'school_repository.dart';

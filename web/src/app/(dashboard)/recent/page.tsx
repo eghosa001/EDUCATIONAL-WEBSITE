@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ClockIcon, BookOpenIcon, PlayIcon, FileTextIcon } from 'lucide-react';
 import { useAuthStore } from '@/state/auth/authStore';
+import { apiConfig, getAuthHeaders } from '@/services/api/config';
 
 export default function RecentPage() {
   const { token } = useAuthStore();
@@ -13,9 +14,8 @@ export default function RecentPage() {
   useEffect(() => {
     if (!authToken) { setLoading(false); return; }
     
-    // Fetch recent lesson progress
-    fetch('http://localhost:3000/api/v1/progress/lessons?limit=10', {
-      headers: { 'Authorization': `Bearer ${authToken}` },
+    fetch(`${apiConfig.baseUrl}/progress/lessons?limit=10`, {
+      headers: getAuthHeaders(authToken),
     })
       .then(res => res.json())
       .then(data => {

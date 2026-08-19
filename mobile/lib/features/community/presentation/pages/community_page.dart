@@ -13,7 +13,9 @@ class CommunityPage extends ConsumerStatefulWidget {
 
 class _CommunityPageState extends ConsumerState<CommunityPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  List<Map<String, dynamic>> _posts = [];
+  List<Map<String, dynamic>> _forumPosts = [];
+  List<Map<String, dynamic>> _studyGroups = [];
+  List<Map<String, dynamic>> _qaPosts = [];
   bool _isLoading = true;
   String? _error;
 
@@ -21,7 +23,7 @@ class _CommunityPageState extends ConsumerState<CommunityPage> with SingleTicker
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadPosts();
+    _loadData();
   }
 
   @override
@@ -30,25 +32,25 @@ class _CommunityPageState extends ConsumerState<CommunityPage> with SingleTicker
     super.dispose();
   }
 
-  Future<void> _loadPosts() async {
+  Future<void> _loadData() async {
     setState(() { _isLoading = true; _error = null; });
     try {
-      // Use course repository as a proxy for community data
-      final repo = ref.read(courseRepositoryProvider);
-      // In a real app, there would be a community repository
-      // For now, load some sample data
-      await Future.delayed(const Duration(milliseconds: 500));
-      if (mounted) {
-        setState(() {
-          _posts = [
-            {'type': 'forum', 'title': 'Cell Biology Discussion', 'author': 'Adebayo', 'replies': 23, 'views': 156, 'time': '2h ago', 'tags': ['Biology', 'Cell']},
-            {'type': 'forum', 'title': 'Math Problems Help', 'author': 'Fatima', 'replies': 15, 'views': 89, 'time': '5h ago', 'tags': ['Math', 'Algebra']},
-            {'type': 'qa', 'question': 'How do you balance chemical equations?', 'author': 'Chidi', 'answers': 5, 'votes': 12, 'time': '1h ago'},
-            {'type': 'qa', 'question': 'What is the difference between mitosis and meiosis?', 'author': 'Bola', 'answers': 3, 'votes': 8, 'time': '3h ago'},
-          ];
-          _isLoading = false;
-        });
-      }
+      final repo = ref.read(communityRepositoryProvider);
+      await Future.wait([
+        repo.getPosts().then((posts) {
+          if (mounted) {
+            setState(() {
+              _forumPosts = posts.where((p) => (p['type'] as String?) != 'qa').toList();
+              _qaPosts = posts.where((p) => (p['type'] as String?) == 'qa' || (p['question'] != null)).toList();
+            });
+          }
+        }),
+        repo.getStudyGroups().then((groups) {
+          if (mounted) {
+            setState(() => _studyGroups = groups);
+          }
+        }),
+      ]);
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -56,6 +58,8 @@ class _CommunityPageState extends ConsumerState<CommunityPage> with SingleTicker
           _isLoading = false;
         });
       }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -79,13 +83,28 @@ class _CommunityPageState extends ConsumerState<CommunityPage> with SingleTicker
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error), const SizedBox(height: 16), Text(_error!), const SizedBox(height: 16), ElevatedButton(onPressed: _loadPosts, child: const Text('Retry'))]))
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+                      const SizedBox(height: 16),
+                      Text(_error!, style: theme.textTheme.bodyMedium),
+                      const SizedBox(height: 16),
+                      ElevatedButton(onPressed: _loadData, child: const Text('Retry')),
+                    ],
+                  ),
+                )
               : TabBarView(
                   controller: _tabController,
-                  children: [_ForumsTab(posts: _posts), _StudyGroupsTab(), _QnATab(posts: _posts)],
+                  children: [
+                    _ForumsTab(posts: _forumPosts),
+                    _StudyGroupsTab(groups: _studyGroups),
+                    _QnATab(posts: _qaPosts),
+                  ],
                 ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Create post feature coming soon'))),
+        onPressed: () => context.push('/community/new-post'),
         backgroundColor: theme.colorScheme.primary,
         icon: const Icon(Icons.add),
         label: const Text('Post'),
@@ -101,49 +120,70 @@ class _ForumsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final forums = posts.where((p) => p['type'] == 'forum').toList();
+    if (posts.isEmpty) {
+      return const EduEmptyState(
+        icon: Icons.forum,
+        title: 'No Forum Posts',
+        subtitle: 'Be the first to start a discussion!',
+      );
+    }
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: forums.length,
+      itemCount: posts.length,
       itemBuilder: (context, index) {
-        final post = forums[index];
+        final post = posts[index];
+        final title = post['title'] as String? ?? 'Untitled Post';
+        final author = post['authorName'] ?? post['author'] ?? 'Anonymous';
+        final replyCount = (post['replyCount'] as num?)?.toInt() ?? (post['replies'] as num?)?.toInt() ?? 0;
+        final viewCount = (post['viewCount'] as num?)?.toInt() ?? 0;
+        final timeAgo = post['relativeTime'] ?? _formatRelativeTime(post['createdAt'] as String? ?? post['created_at'] as String?);
+        final tags = (post['tags'] as List?)?.map((t) => t as String).toList() ?? [];
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: EduCard(
-            onTap: () {},
+            onTap: () => context.push('/community/posts/${post['id']}'),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    CircleAvatar(backgroundColor: theme.colorScheme.primary, child: Text(post['author'][0], style: theme.textTheme.labelLarge?.copyWith(color: Colors.white))),
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: theme.colorScheme.primary,
+                      child: Text(
+                        author.isNotEmpty ? author[0].toUpperCase() : '?',
+                        style: theme.textTheme.labelLarge?.copyWith(color: Colors.white),
+                      ),
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(post['title'] as String?, style: theme.textTheme.titleSmall),
-                          Text('${post['author']} · ${post['time']}', style: theme.textTheme.labelSmall),
+                          Text(title, style: theme.textTheme.titleSmall),
+                          Text('$author · $timeAgo', style: theme.textTheme.labelSmall),
                         ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 4,
-                  children: (post['tags'] as List?)?.map((tag) => EduBadge(label: tag as String, backgroundColor: theme.colorScheme.primaryContainer)).toList() ?? [],
-                ),
+                if (tags.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 4,
+                    children: tags.map((tag) => EduBadge(label: tag, backgroundColor: theme.colorScheme.primaryContainer)).toList(),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     Icon(Icons.reply, size: 16, color: theme.colorScheme.onSurfaceVariant),
                     const SizedBox(width: 4),
-                    Text('${post['replies']} replies', style: theme.textTheme.labelSmall),
+                    Text('$replyCount replies', style: theme.textTheme.labelSmall),
                     const SizedBox(width: 16),
                     Icon(Icons.visibility, size: 16, color: theme.colorScheme.onSurfaceVariant),
                     const SizedBox(width: 4),
-                    Text('${post['views']} views', style: theme.textTheme.labelSmall),
+                    Text('$viewCount views', style: theme.textTheme.labelSmall),
                   ],
                 ),
               ],
@@ -153,19 +193,83 @@ class _ForumsTab extends StatelessWidget {
       },
     );
   }
+
+  String _formatRelativeTime(String? isoStr) {
+    if (isoStr == null) return 'Just now';
+    try {
+      final dt = DateTime.tryParse(isoStr);
+      if (dt == null) return 'Just now';
+      final diff = DateTime.now().difference(dt);
+      if (diff.inMinutes < 1) return 'Just now';
+      if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+      if (diff.inHours < 24) return '${diff.inHours}h ago';
+      if (diff.inDays < 7) return '${diff.inDays}d ago';
+      return '${(diff.inDays / 7).floor()}w ago';
+    } catch (_) {
+      return 'Just now';
+    }
+  }
 }
 
 class _StudyGroupsTab extends StatelessWidget {
+  final List<Map<String, dynamic>> groups;
+  const _StudyGroupsTab({required this.groups});
+
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: EduEmptyState(
+    final theme = Theme.of(context);
+    if (groups.isEmpty) {
+      return const EduEmptyState(
         icon: Icons.groups,
         title: 'No Study Groups',
         subtitle: 'Join or create a study group to learn with others',
         actionLabel: 'Create Group',
-        onAction: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Create group feature coming soon'))),
-      ),
+        onAction: () {},
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: groups.length,
+      itemBuilder: (context, index) {
+        final group = groups[index];
+        final name = group['name'] as String? ?? 'Study Group';
+        final members = (group['memberCount'] as num?)?.toInt() ?? (group['members'] as num?)?.toInt() ?? 0;
+        final description = group['description'] as String? ?? '';
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: EduCard(
+            onTap: () => context.push('/community/groups/${group['id']}'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 48, height: 48,
+                      decoration: BoxDecoration(color: theme.colorScheme.primaryContainer, borderRadius: BorderRadius.circular(8)),
+                      child: const Icon(Icons.groups, color: Colors.blue),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(name, style: theme.textTheme.titleSmall),
+                          Text('$members members', style: theme.textTheme.labelSmall),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (description.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(description, style: theme.textTheme.bodySmall),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -177,21 +281,32 @@ class _QnATab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final qas = posts.where((p) => p['type'] == 'qa').toList();
+    if (posts.isEmpty) {
+      return const EduEmptyState(
+        icon: Icons.help_outline,
+        title: 'No Questions Yet',
+        subtitle: 'Ask a question to the community!',
+      );
+    }
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: qas.length,
+      itemCount: posts.length,
       itemBuilder: (context, index) {
-        final qa = qas[index];
+        final qa = posts[index];
+        final question = qa['question'] as String? ?? qa['title'] as String? ?? 'Untitled Question';
+        final votes = (qa['voteCount'] as num?)?.toInt() ?? (qa['votes'] as num?)?.toInt() ?? 0;
+        final answers = (qa['answerCount'] as num?)?.toInt() ?? (qa['answers'] as num?)?.toInt() ?? 0;
+        final author = qa['authorName'] ?? qa['author'] ?? 'Anonymous';
+        final timeAgo = qa['relativeTime'] ?? _formatRelativeTime(qa['createdAt'] as String? ?? qa['created_at'] as String?);
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: EduCard(
-            onTap: () {},
+            onTap: () => context.push('/community/qa/${qa['id']}'),
             child: Row(
               children: [
                 Column(
                   children: [
-                    Text('${qa['votes']}', style: theme.textTheme.titleMedium),
+                    Text('$votes', style: theme.textTheme.titleMedium),
                     Text('votes', style: theme.textTheme.labelSmall),
                   ],
                 ),
@@ -200,9 +315,9 @@ class _QnATab extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(qa['question'] as String?, style: theme.textTheme.titleSmall),
+                      Text(question, style: theme.textTheme.titleSmall),
                       const SizedBox(height: 4),
-                      Text('${qa['answers']} answers · ${qa['author']} · ${qa['time']}', style: theme.textTheme.labelSmall),
+                      Text('$answers answers · ${qa['author'] ?? author} · $timeAgo', style: theme.textTheme.labelSmall),
                     ],
                   ),
                 ),
@@ -212,5 +327,21 @@ class _QnATab extends StatelessWidget {
         );
       },
     );
+  }
+
+  String _formatRelativeTime(String? isoStr) {
+    if (isoStr == null) return 'Just now';
+    try {
+      final dt = DateTime.tryParse(isoStr);
+      if (dt == null) return 'Just now';
+      final diff = DateTime.now().difference(dt);
+      if (diff.inMinutes < 1) return 'Just now';
+      if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+      if (diff.inHours < 24) return '${diff.inHours}h ago';
+      if (diff.inDays < 7) return '${diff.inDays}d ago';
+      return '${(diff.inDays / 7).floor()}w ago';
+    } catch (_) {
+      return 'Just now';
+    }
   }
 }

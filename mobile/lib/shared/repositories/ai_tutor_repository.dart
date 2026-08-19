@@ -45,13 +45,3 @@ class AiTutorRepository {
     _service.clearSession();
   }
 }
-
-final aiTutorServiceProvider = Provider<AiTutorService>((ref) {
-  return AiTutorService();
-});
-
-final aiTutorRepositoryProvider = Provider<AiTutorRepository>((ref) {
-  final service = ref.watch(aiTutorServiceProvider);
-  final storage = ref.watch(storageServiceProvider);
-  return AiTutorRepository(service: service, storage: storage);
-});

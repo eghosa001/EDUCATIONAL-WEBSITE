@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { SearchIcon, BookOpenIcon, ClockIcon, CheckCircleIcon, DownloadIcon, FileTextIcon, FilterIcon, ChevronDownIcon, ExternalLinkIcon } from 'lucide-react';
 import { useAuthStore } from '@/state/auth/authStore';
 import { pastQuestionFilesAPI, formatFileSize, type BoardInfo, type SubjectInfo, type PastQuestionFile } from '@/api/past-questions/files';
+import { apiConfig, getAuthHeaders } from '@/services/api/config';
 
 const BOARDS = [
   { code: 'waec', name: 'West African Examinations Council', color: 'blue' },
@@ -89,8 +90,8 @@ export default function PastQuestionsPage() {
   useEffect(() => {
     if (activeTab !== 'questions' || !selectedBoard) return;
     setLoading(true);
-    fetch(`http://localhost:3000/api/v1/past-questions/boards/${selectedBoard}/questions?limit=50`, {
-      headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {},
+    fetch(`${apiConfig.baseUrl}/past-questions/boards/${selectedBoard}/questions?limit=50`, {
+      headers: getAuthHeaders(authToken),
     })
       .then(res => res.json())
       .then(data => setQuestions(data.data?.questions || []))

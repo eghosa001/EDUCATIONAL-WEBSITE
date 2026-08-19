@@ -1,19 +1,19 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import { query, pool } from './common/database/index.js';
-import { create: createUser } from './users/services/user.service.js';
-import { create: createCourse } from './courses/services/course.service.js';
-import { getOverview } from './progress/services/progress.service.js';
-import { create: createExam } from './exams/services/exam.service.js';
-import { create: createQuestion } from './questions/services/question.service.js';
+import userService from './users/services/user.service.js';
+import courseService from './courses/services/course.service.js';
+import progressService from './progress/services/progress.service.js';
+import examService from './exams/services/exam.service.js';
+import questionService from './questions/services/question.service.js';
 import { validateSubscriptionAccess } from './subscriptions/services/subscription.service.js';
 import { initializePayment } from './payments/services/payment.service.js';
-import { createConversation, addMessage } from './ai/services/ai.service.js';
-import { create: createNotification } from './notifications/services/notification.service.js';
-import { getProfile: getTeacherProfile } from './teachers/services/teacher.service.js';
-import { getProfile: getParentProfile } from './parents/services/parent.service.js';
-import { awardPoints } from './gamification/services/gamification.service.js';
-import { createForum, createPost } from './community/services/community.service.js';
+import aiService from './ai/services/ai.service.js';
+import notificationService from './notifications/services/notification.service.js';
+import teacherService from './teachers/services/teacher.service.js';
+import parentService from './parents/services/parent.service.js';
+import gamificationService from './gamification/services/gamification.service.js';
+import communityService from './community/services/community.service.js';
 
 const cleanup = async () => {
   await query('DELETE FROM student_courses');
@@ -162,7 +162,7 @@ describe('Core Services Smoke Tests', () => {
       lastName: 'Test',
     });
 
-    const { hasAccess, message } = await subscriptionService.validateSubscriptionAccess(user.id);
+    const { hasAccess, message } = await validateSubscriptionAccess(user.id);
     assert.ok(typeof hasAccess === 'boolean');
     assert.ok(message);
   });

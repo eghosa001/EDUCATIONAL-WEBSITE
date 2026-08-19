@@ -105,7 +105,3 @@ class GamificationRepository {
   }
 }
 
-final gamificationRepositoryProvider = Provider<GamificationRepository>((ref) {
-  final apiClient = ref.watch(apiClientProvider);
-  return GamificationRepository(apiClient);
-});

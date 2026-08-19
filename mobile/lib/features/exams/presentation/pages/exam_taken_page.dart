@@ -1,89 +1,225 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../shared/widgets/index.dart';
+import '../../../shared/widgets/index.dart';
+import '../../../shared/repositories/index.dart';
 
-class ExamTakenPage extends StatefulWidget {
+class ExamTakenPage extends ConsumerStatefulWidget {
   final String examId;
-
   const ExamTakenPage({super.key, required this.examId});
 
   @override
-  State<ExamTakenPage> createState() => _ExamTakenPageState();
+  ConsumerState<ExamTakenPage> createState() => _ExamTakenPageState();
 }
 
-class _ExamTakenPageState extends State<ExamTakenPage> {
+class _ExamTakenPageState extends ConsumerState<ExamTakenPage> {
+  List<Map<String, dynamic>> _questions = [];
   int _currentQuestion = 0;
-  int _timeRemaining = 2700; // 45 minutes in seconds
+  int _timeRemaining = 2700;
   final Map<int, String> _answers = {};
+  bool _isLoading = true;
+  bool _isSubmitting = false;
   bool _isSubmitted = false;
-
-  final List<String> _questions = [
-    'What is the basic unit of life?',
-    'Which organelle is responsible for protein synthesis?',
-    'What is the function of the cell membrane?',
-    'Which part of the cell contains DNA?',
-    'What process do plants use to make food?',
-    'Which organelle is known as the powerhouse of the cell?',
-    'What is the difference between mitosis and meiosis?',
-    'Which type of transport requires energy?',
-    'What is osmosis?',
-    'Which cell type lacks a nucleus?',
-  ];
-
-  final List<List<String>> _options = [
-    ['Cell', 'Tissue', 'Organ', 'System'],
-    ['Ribosome', 'Mitochondria', 'Golgi body', 'Lysosome'],
-    ['Protection', 'Energy production', 'Protein synthesis', 'Cell division'],
-    ['Cytoplasm', 'Nucleus', 'Membrane', 'Wall'],
-    ['Respiration', 'Photosynthesis', 'Digestion', 'Excretion'],
-    ['Ribosome', 'Nucleus', 'Mitochondria', 'Vacuole'],
-    ['Number of divisions', 'Type of cells', 'Purpose', 'All of the above'],
-    ['Diffusion', 'Osmosis', 'Active transport', 'Facilitated diffusion'],
-    ['Movement of water', 'Movement of solutes', 'Cell division', 'Protein synthesis'],
-    ['Plant cell', 'Animal cell', 'Bacterial cell', 'Fungal cell'],
-  ];
+  String? _error;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _startTimer();
+    _loadExam();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadExam() async {
+    setState(() { _isLoading = true; _error = null; });
+    try {
+      final repo = ref.read(examRepositoryProvider);
+      final examData = await repo.startExam(widget.examId);
+      final questions = (examData['questions'] as List?)
+              ?.map((q) => Map<String, dynamic>.from(q))
+              .toList() ??
+          [];
+      final durationMinutes = (examData['durationMinutes'] as num?)?.toInt() ?? 45;
+
+      if (mounted) {
+        setState(() {
+          _questions = questions;
+          _timeRemaining = durationMinutes * 60;
+          _isLoading = false;
+        });
+        _startTimer();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() { _error = e.toString(); _isLoading = false; });
+      }
+    }
   }
 
   void _startTimer() {
-    Future.delayed(const Duration(seconds: 1), () {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted && _timeRemaining > 0 && !_isSubmitted) {
         setState(() => _timeRemaining--);
-        _startTimer();
+      } else {
+        timer.cancel();
+        if (_timeRemaining <= 0 && !_isSubmitted) _submitExam();
       }
     });
   }
 
   String _formatTime(int seconds) {
-    final minutes = seconds ~/ 60;
-    final secs = seconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}';
+    final m = seconds ~/ 60;
+    final s = seconds % 60;
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
-  void _submitExam() {
-    setState(() => _isSubmitted = true);
+  Future<void> _submitExam() async {
+    _timer?.cancel();
+    setState(() => _isSubmitting = true);
+    try {
+      final repo = ref.read(examRepositoryProvider);
+      final answersPayload = _answers.map((k, v) => MapEntry('q$k', v));
+      final result = await repo.submitExam(widget.examId, answersPayload);
+      if (mounted) {
+        setState(() {
+          _isSubmitted = true;
+          _isSubmitting = false;
+        });
+        _showResults(result);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Submit failed: $e')),
+        );
+      }
+    }
+  }
+
+  void _showResults(Map<String, dynamic> result) {
+    final score = (result['score'] as num?)?.toDouble() ?? 0.0;
+    final totalQuestions = (result['totalQuestions'] as num?)?.toInt() ?? _questions.length;
+    final correctAnswers = (result['correctAnswers'] as num?)?.toInt() ?? 0;
+    final passed = result['passed'] as bool? ?? score >= 50;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: passed
+                    ? Theme.of(context).colorScheme.primaryContainer
+                    : Theme.of(context).colorScheme.errorContainer,
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('${score.toInt()}%',
+                        style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                            color: passed
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.error)),
+                    Text('$correctAnswers/$totalQuestions',
+                        style: Theme.of(context).textTheme.titleMedium),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              passed ? 'Congratulations!' : 'Keep Practicing!',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              passed ? 'You passed the exam!' : 'You need to study more.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.pop();
+            },
+            child: const Text('Back to Exams'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    if (_isSubmitted) {
-      return _ResultPage(
-        examId: widget.examId,
-        answers: _answers,
-        totalQuestions: _questions.length,
+
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Exam')),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
+
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Exam')),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(_error!, textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              EduButton(label: 'Retry', onPressed: _loadExam),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_questions.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Exam')),
+        body: const EduEmptyState(
+          icon: Icons.quiz,
+          title: 'No questions available',
+          subtitle: 'This exam has no questions yet',
+        ),
+      );
+    }
+
+    final question = _questions[_currentQuestion];
+    final questionText = question['questionText'] as String? ?? question['text'] as String? ?? '';
+    final options = (question['options'] as List?)
+            ?.map((o) => o is String ? o : (o['optionText'] as String? ?? o['text'] as String? ?? ''))
+            .toList() ??
+        [];
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Exam'),
         actions: [
           Container(
+            margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: _timeRemaining < 300 ? theme.colorScheme.error : theme.colorScheme.primary,
@@ -94,12 +230,10 @@ class _ExamTakenPageState extends State<ExamTakenPage> {
               style: theme.textTheme.labelLarge?.copyWith(color: Colors.white),
             ),
           ),
-          const SizedBox(width: 16),
         ],
       ),
       body: Column(
         children: [
-          // Progress
           LinearProgressIndicator(
             value: (_currentQuestion + 1) / _questions.length,
             backgroundColor: theme.colorScheme.surfaceContainerHighest,
@@ -109,53 +243,37 @@ class _ExamTakenPageState extends State<ExamTakenPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Question ${_currentQuestion + 1} of ${_questions.length}',
-                  style: theme.textTheme.bodyMedium,
-                ),
+                Text('Question ${_currentQuestion + 1} of ${_questions.length}'),
                 EduBadge(
                   label: '${_answers.length} answered',
-                  backgroundColor: theme.colorScheme.success,
+                  backgroundColor: theme.colorScheme.tertiary,
                   textColor: Colors.white,
                 ),
               ],
             ),
           ),
-
           const SizedBox(height: 16),
-
-          // Question
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              _questions[_currentQuestion],
-              style: theme.textTheme.titleLarge,
-            ),
+            child: Text(questionText, style: theme.textTheme.titleLarge),
           ),
           const SizedBox(height: 24),
-
-          // Options
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _options[_currentQuestion].length,
+              itemCount: options.length,
               itemBuilder: (context, index) {
-                final option = _options[_currentQuestion][index];
+                final option = options[index];
                 final selectedAnswer = _answers[_currentQuestion];
                 final isSelected = selectedAnswer == option;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: EduCard(
-                    onTap: () {
-                      setState(() {
-                        _answers[_currentQuestion] = option;
-                      });
-                    },
+                    onTap: () => setState(() => _answers[_currentQuestion] = option),
                     child: Row(
                       children: [
                         Container(
-                          width: 32,
-                          height: 32,
+                          width: 32, height: 32,
                           decoration: BoxDecoration(
                             color: isSelected ? theme.colorScheme.primary : theme.colorScheme.surfaceContainerHighest,
                             shape: BoxShape.circle,
@@ -170,14 +288,8 @@ class _ExamTakenPageState extends State<ExamTakenPage> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            option,
-                            style: theme.textTheme.bodyLarge,
-                          ),
-                        ),
-                        if (isSelected)
-                          Icon(Icons.check_circle, color: theme.colorScheme.primary),
+                        Expanded(child: Text(option, style: theme.textTheme.bodyLarge)),
+                        if (isSelected) Icon(Icons.check_circle, color: theme.colorScheme.primary),
                       ],
                     ),
                   ),
@@ -185,8 +297,6 @@ class _ExamTakenPageState extends State<ExamTakenPage> {
               },
             ),
           ),
-
-          // Navigation buttons
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -197,9 +307,7 @@ class _ExamTakenPageState extends State<ExamTakenPage> {
                       label: 'Previous',
                       isOutlined: true,
                       textColor: theme.colorScheme.primary,
-                      onPressed: () {
-                        setState(() => _currentQuestion--);
-                      },
+                      onPressed: () => setState(() => _currentQuestion--),
                     ),
                   ),
                 if (_currentQuestion > 0) const SizedBox(width: 12),
@@ -207,109 +315,22 @@ class _ExamTakenPageState extends State<ExamTakenPage> {
                   Expanded(
                     child: EduButton(
                       label: 'Next',
-                      onPressed: () {
-                        setState(() => _currentQuestion++);
-                      },
+                      onPressed: () => setState(() => _currentQuestion++),
                     ),
                   ),
                 if (_currentQuestion == _questions.length - 1)
                   Expanded(
                     child: EduButton(
-                      label: 'Submit Exam',
-                      color: theme.colorScheme.success,
-                      onPressed: _submitExam,
+                      label: _isSubmitting ? 'Submitting...' : 'Submit Exam',
+                      isLoading: _isSubmitting,
+                      color: theme.colorScheme.tertiary,
+                      onPressed: _isSubmitting ? null : _submitExam,
                     ),
                   ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ResultPage extends StatelessWidget {
-  final String examId;
-  final Map<int, String> answers;
-  final int totalQuestions;
-
-  const _ResultPage({
-    required this.examId,
-    required this.answers,
-    required this.totalQuestions,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Exam Results'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
-        ),
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Score circle
-              Container(
-                width: 150,
-                height: 150,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: theme.colorScheme.primaryContainer,
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${((answers.length / totalQuestions) * 100).toInt()}%',
-                        style: theme.textTheme.displaySmall?.copyWith(
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                      Text(
-                        '${answers.length}/$totalQuestions',
-                        style: theme.textTheme.titleMedium,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                answers.length >= totalQuestions * 0.5 ? 'Congratulations!' : 'Keep Practicing!',
-                style: theme.textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                answers.length >= totalQuestions * 0.5
-                    ? 'You passed the exam!'
-                    : 'You need to study more. Try again!',
-                style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: 32),
-              EduButton(
-                label: 'View Details',
-                onPressed: () => context.push('/exams/$examId/results'),
-              ),
-              const SizedBox(height: 12),
-              EduButton(
-                label: 'Back to Exams',
-                isOutlined: true,
-                textColor: theme.colorScheme.primary,
-                onPressed: () => context.pop(),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

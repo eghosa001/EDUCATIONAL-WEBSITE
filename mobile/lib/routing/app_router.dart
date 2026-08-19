@@ -29,6 +29,8 @@ import '../features/school/presentation/pages/school_page.dart';
 import '../features/live_classes/presentation/pages/live_classes_page.dart';
 import '../features/live_classes/presentation/pages/class_session_page.dart';
 import '../features/home/presentation/pages/forgot_password_page.dart';
+import '../features/home/presentation/pages/reset_password_page.dart';
+import '../features/authentication/presentation/pages/verify_email_page.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -292,7 +294,7 @@ class MainBottomNav extends ConsumerWidget {
       selectedIndex: selectedIndex >= 0 ? selectedIndex : 0,
       height: 64,
       backgroundColor: Theme.of(context).colorScheme.surface,
-      selectedIndexColor: Theme.of(context).colorScheme.primary,
+      indicatorColor: Theme.of(context).colorScheme.primaryContainer,
       destinations: items.map((item) => NavigationDestination(
         icon: Icon(item.icon),
         selectedIcon: Icon(item.activeIcon),
@@ -312,13 +314,4 @@ class NavItem {
   final String path;
 
   const NavItem({required this.label, required this.icon, required this.activeIcon, required this.path});
-}
-
-class VerifyEmailPage extends StatelessWidget {
-  const VerifyEmailPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: Text('Verify Email')));
-  }
 }
