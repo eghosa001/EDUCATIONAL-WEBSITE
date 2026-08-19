@@ -61,6 +61,14 @@ if (config.env !== 'test') {
 app.use(requestLogger);
 app.use(rateLimiter);
 
+// Block direct /api/ access without version — force /api/v1/
+app.use('/api', (req, res) => {
+  res.status(404).json({
+    success: false,
+    error: { code: 'NOT_FOUND', message: 'Use /api/v1/ instead of /api/' },
+  });
+});
+
 app.get('/health', (req, res) => {
   res.json({ success: true, message: 'Educational Platform API is running', timestamp: new Date().toISOString(), version: '1.0.0', environment: config.env });
 });

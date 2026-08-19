@@ -43,7 +43,19 @@ export const config = {
   },
 
   cors: {
-    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000', 'http://localhost:3001'],
+    // Accept the Origin header from any request — the backend itself enforces auth via JWT.
+    // This allows the frontend to run on any Vercel deployment (preview / production).
+    origin: (requestOrigin, callback) => {
+      // Allow requests with no origin (server-to-server, curl, etc.)
+      if (!requestOrigin) return callback(null, true);
+      // Allow any HTTP(S) origin — JWT auth is the real gate, not CORS
+      try {
+        new URL(requestOrigin);
+        callback(null, true);
+      } catch {
+        callback(new Error('Invalid origin'), false);
+      }
+    },
     credentials: true,
   },
 

@@ -360,6 +360,19 @@ GET    /api/v1/users/:id/progress
 GET    /api/v1/users/:id/achievements
 ```
 
+## Demo Accounts
+
+After running `npm run db:seed` and `npm run db:seed-ecosystem`, use these credentials to test the platform:
+
+| Role | Email | Password |
+|------|-------|----------|
+| Super Admin | admin@learnforge.ng | Admin@12345 |
+| Teacher | teacher@learnforge.ng | Teacher@12345 |
+| Student | student@learnforge.ng | Student@12345 |
+| Parent | mr.johnson@example.com | Parent@1234! |
+| Parent | mrs.okafor@example.com | Parent@1234! |
+| Parent | dr.abubakar@example.com | Parent@1234! |
+
 ## Database Schema
 
 Key tables:

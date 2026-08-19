@@ -2,6 +2,9 @@
  * Seed ecosystem data: parents, schools, community, gamification.
  */
 import { query, closePool } from '../src/common/database/index.js';
+import bcrypt from 'bcryptjs';
+
+const DEMO_PASSWORD = await bcrypt.hash('Parent@1234!', 10);
 
 async function main() {
   console.log('=== Ecosystem Seeder ===\n');
@@ -26,15 +29,21 @@ async function main() {
 
   for (const [title, lastName, email, relationship] of parentData) {
     // Check if user exists
-    const existing = await query('SELECT id FROM users WHERE email = $1', [email]);
+    const existing = await query('SELECT id, password_hash FROM users WHERE email = $1', [email]);
     if (existing.rows[0]) {
       const userId = existing.rows[0].id;
+      // Fix dummy password if present
+      if (existing.rows[0].password_hash === '$2a$10$dummy') {
+        await query('UPDATE users SET password_hash = $1 WHERE id = $2', [DEMO_PASSWORD, userId]);
+        console.log(`  ✓ Parent (fixed): ${title} ${lastName}`);
+      } else {
+        console.log(`  ✓ Parent (exists): ${title} ${lastName}`);
+      }
       const parentRes = await query('SELECT id FROM parents WHERE user_id = $1', [userId]);
       if (!parentRes.rows[0]) {
         const p = await query(`INSERT INTO parents (user_id, occupation, phone) VALUES ($1, 'Parent', '080-000-0000') RETURNING id`, [userId]);
         parentIds.push(p.rows[0].id);
       }
-      console.log(`  ✓ Parent (existing): ${title} ${lastName}`);
       continue;
     }
 
@@ -42,7 +51,7 @@ async function main() {
       `INSERT INTO users (first_name, last_name, email, password_hash, is_active, is_verified)
        VALUES ($1, $2, $3, $4, TRUE, TRUE)
        RETURNING id, first_name, last_name`,
-      [title, lastName, email, '$2a$10$dummy']
+      [title, lastName, email, DEMO_PASSWORD]
     );
     
     await query(

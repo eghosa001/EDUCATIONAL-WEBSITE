@@ -6,10 +6,16 @@ import { USER_ROLES, USER_STATUS } from '../../common/constants/index.js';
 export const register = async (req, res) => {
   const { email, phone, password, firstName, lastName, middleName, dateOfBirth, gender } = req.body;
 
-  const existingUser = await pool.query(
-    'SELECT id FROM users WHERE email = $1 OR phone = $2',
-    [email, phone]
-  );
+  let existingUser;
+  try {
+    existingUser = await pool.query(
+      'SELECT id FROM users WHERE email = $1 OR phone = $2',
+      [email, phone]
+    );
+  } catch (dbErr) {
+    console.error('[register] Database query failed:', dbErr.message);
+    throw new AppError('Service unavailable. Please try again later.', HTTP_STATUS.SERVICE_UNAVAILABLE, 'SERVICE_UNAVAILABLE');
+  }
 
   if (existingUser.rows.length > 0) {
     throw new AppError('User with this email or phone already exists', HTTP_STATUS.CONFLICT, ERROR_CODES.CONFLICT);
@@ -67,18 +73,24 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   const { email, password, rememberMe } = req.body;
 
-  const result = await pool.query(
-    `SELECT u.*, array_agg(r.name) as roles, array_agg(r.permissions) as permissions
-     FROM users u
-     LEFT JOIN user_roles ur ON u.id = ur.user_id
-     LEFT JOIN roles r ON ur.role_id = r.id
-     WHERE u.email = $1
-     GROUP BY u.id`,
-    [email]
-  );
+  let result;
+  try {
+    result = await pool.query(
+      `SELECT u.*, array_agg(r.name) as roles, array_agg(r.permissions) as permissions
+       FROM users u
+       LEFT JOIN user_roles ur ON u.id = ur.user_id
+       LEFT JOIN roles r ON ur.role_id = r.id
+       WHERE u.email = $1
+       GROUP BY u.id`,
+      [email]
+    );
+  } catch (dbErr) {
+    console.error('[login] Database query failed:', dbErr.message);
+    throw new AppError('Service unavailable. Please try again later.', HTTP_STATUS.SERVICE_UNAVAILABLE, 'SERVICE_UNAVAILABLE');
+  }
 
   if (result.rows.length === 0) {
-    throw new AppError('Invalid credentials', HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.AUTHENTICATION_ERROR);
+    throw new AppError('Invalid email or password', HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.AUTHENTICATION_ERROR);
   }
 
   const user = result.rows[0];
@@ -87,9 +99,16 @@ export const login = async (req, res) => {
     throw new AppError('Account is deactivated', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR);
   }
 
-  const isValid = await comparePassword(password, user.password_hash);
+  let isValid;
+  try {
+    isValid = await comparePassword(password, user.password_hash);
+  } catch (hashErr) {
+    console.error('[login] Password comparison failed:', hashErr.message);
+    throw new AppError('Service unavailable. Please try again later.', HTTP_STATUS.SERVICE_UNAVAILABLE, 'SERVICE_UNAVAILABLE');
+  }
+
   if (!isValid) {
-    throw new AppError('Invalid credentials', HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.AUTHENTICATION_ERROR);
+    throw new AppError('Invalid email or password', HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.AUTHENTICATION_ERROR);
   }
 
   const primaryRole = user.roles?.[0] || USER_ROLES.STUDENT;
