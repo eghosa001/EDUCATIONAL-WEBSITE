@@ -11,7 +11,7 @@ import {
   deleteAdminLibraryResource,
   type LibraryResourcePayload,
 } from '@/services/api/libraryService';
-import { LIBRARY_RESOURCE_TYPES } from '@shared/constants/enums';
+import { LIBRARY_RESOURCE_TYPES } from '@/lib/shared/enums';
 import {
   BookOpenIcon,
   DownloadIcon,

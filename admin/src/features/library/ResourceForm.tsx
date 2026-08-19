@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { uploadLibraryFile } from '@/services/api/libraryService';
-import { LIBRARY_RESOURCE_TYPES } from '@shared/constants/enums';
+import { LIBRARY_RESOURCE_TYPES } from '@/lib/shared/enums';
 import { UploadIcon, FileTextIcon } from 'lucide-react';
 
 export interface LibraryResourceFormValues {

@@ -1,6 +1,6 @@
-import { HTTP_STATUS, ERROR_CODES, AppError } from '../../index.js';
+import { HTTP_STATUS, ERROR_CODES, AppError } from '../../common/errors/index.js';
 import { analyticsService } from '../services/analytics.service.js';
-import { query } from '../../index.js';
+import { query } from '../../common/database/index.js';
 
 export const getPlatformMetrics = async (req, res) => {
   const { range } = req.query;

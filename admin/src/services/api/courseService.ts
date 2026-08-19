@@ -1,5 +1,5 @@
 import { apiConfig, getAuthHeaders, handleApiError } from './config';
-import type { Course, CourseSection } from '@shared/types/models/course';
+import type { Course, CourseSection } from '@/lib/shared/course';
 import type { Pagination } from '@/types/api';
 
 const { baseUrl } = apiConfig;

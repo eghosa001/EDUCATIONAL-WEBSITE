@@ -30,7 +30,7 @@ export default function ExamResultsPage() {
       try {
         if (attemptId) {
           // Fetch attempt details with answers
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'}/exams/${examId}/attempts/${attemptId}`, {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/exams/${examId}/attempts/${attemptId}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           const data = await res.json();

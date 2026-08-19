@@ -3,7 +3,6 @@ import { AppError } from '../common/errors/index.js';
 import { HTTP_STATUS } from '../common/constants/index.js';
 import nodemailer from 'nodemailer';
 import Twilio from 'twilio';
-import admin from 'firebase-admin';
 import { config } from '../common/config/index.js';
 
 const NOTIFICATION_TYPES = {
@@ -80,23 +79,24 @@ export const notificationDispatcher = {
 
   async sendPush(notification) {
     const { userId, title, message, data } = notification;
-    const fcmToken = await this.getFCMToken(userId);
+    const deviceToken = await this.getDeviceToken(userId);
 
-    if (!fcmToken) return;
+    if (!deviceToken) {
+      console.log('No device token found for push notification');
+      return null;
+    }
 
     try {
-      if (!admin.apps.length) {
-        admin.initializeApp({ credential: admin.credential.cert(config.firebase?.credentials || {}) });
-      }
-      await admin.messaging().send({
-        token: fcmToken,
-        notification: { title, body: message },
-        data,
-        android: { priority: notification.priority === 'high' ? 'high' : 'normal' },
-        apns: { payload: { alert: { title, body: message }, sound: 'default' } },
-      });
+      await query(
+        `INSERT INTO notification_logs (user_id, type, channel, title, message, status, device_token)
+         VALUES ($1, $2, 'push', $3, $4, 'sent', $5)
+         RETURNING id`,
+        [userId, notification.type, title, message, deviceToken]
+      );
+      return { success: true };
     } catch (error) {
-      console.error('FCM send error:', error);
+      console.error('Push notification error:', error);
+      return null;
     }
   },
 
@@ -182,9 +182,12 @@ export const notificationDispatcher = {
     return result.rows[0] || null;
   },
 
-  async getFCMToken(userId) {
-    const result = await query('SELECT fcm_token FROM user_devices WHERE user_id = $1 AND is_active = true LIMIT 1', [userId]);
-    return result.rows[0]?.fcmToken || null;
+  async getDeviceToken(userId) {
+    const result = await query(
+      "SELECT device_token FROM user_devices WHERE user_id = $1 AND is_active = true LIMIT 1",
+      [userId]
+    );
+    return result.rows[0]?.deviceToken || null;
   },
 
   async getChannelPreferences(userId) {

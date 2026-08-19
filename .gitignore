@@ -79,4 +79,4 @@ backend/scripts/*.txt
 backend/scripts/parsed_curriculum.json
 *.pdf
 *.docx
-*.doc
+*.doc.env.production.*
