@@ -34,7 +34,7 @@ export const fetchLessons = async (
   });
 
   const response = await fetch(`${baseUrl}/lessons?${query.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -48,7 +48,7 @@ export const fetchLessonByIdOrSlug = async (
     ? `${baseUrl}/lessons/${idOrSlug}?courseId=${courseId}`
     : `${baseUrl}/lessons/${idOrSlug}`;
   const response = await fetch(url, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -57,7 +57,7 @@ export const createLesson = async (lessonData: Partial<Lesson>, token: string) =
   const response = await fetch(`${baseUrl}/lessons`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(lessonData),
+    body: JSON.stringify(lessonData), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -70,7 +70,7 @@ export const updateLesson = async (
   const response = await fetch(`${baseUrl}/lessons/${lessonId}`, {
     method: 'PATCH',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(lessonData),
+    body: JSON.stringify(lessonData), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -78,7 +78,7 @@ export const updateLesson = async (
 export const publishLesson = async (lessonId: string, token: string) => {
   const response = await fetch(`${baseUrl}/lessons/${lessonId}/publish`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -86,7 +86,7 @@ export const publishLesson = async (lessonId: string, token: string) => {
 export const deleteLesson = async (lessonId: string, token: string) => {
   const response = await fetch(`${baseUrl}/lessons/${lessonId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -94,7 +94,7 @@ export const deleteLesson = async (lessonId: string, token: string) => {
 export const markLessonComplete = async (lessonId: string, token: string) => {
   const response = await fetch(`${baseUrl}/lessons/${lessonId}/complete`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -114,7 +114,7 @@ export interface LessonResourceData {
 
 export const fetchLessonResources = async (lessonId: string, token: string) => {
   const response = await fetch(`${baseUrl}/lessons/${lessonId}/resources`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -127,7 +127,7 @@ export const createLessonResource = async (
   const response = await fetch(`${baseUrl}/lessons/${lessonId}/resources`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(resourceData),
+    body: JSON.stringify(resourceData), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -141,7 +141,7 @@ export const deleteLessonResource = async (
     `${baseUrl}/lessons/${lessonId}/resources/${resourceId}`,
     {
       method: 'DELETE',
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -160,7 +160,7 @@ export const updateLessonProgress = async (
     {
       method: 'PATCH',
       headers: getAuthHeaders(token),
-      body: JSON.stringify(progressData),
+      body: JSON.stringify(progressData), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -175,7 +175,7 @@ export const completeLessonProgress = async (
     `${baseUrl}/progress/courses/${courseId}/lessons/${lessonId}/complete`,
     {
       method: 'POST',
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);

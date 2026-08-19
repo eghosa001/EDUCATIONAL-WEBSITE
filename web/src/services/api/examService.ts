@@ -68,14 +68,14 @@ export const fetchExams = async (
   });
 
   const response = await fetch(`${baseUrl}/exams?${query.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
 
 export const fetchExamById = async (examId: string, token?: string): Promise<{ exam: ExamWithStats }> => {
   const response = await fetch(`${baseUrl}/exams/${examId}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -84,7 +84,7 @@ export const createExam = async (examData: Partial<Exam>, token: string) => {
   const response = await fetch(`${baseUrl}/exams`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(examData),
+    body: JSON.stringify(examData), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -93,7 +93,7 @@ export const updateExam = async (examId: string, examData: Partial<Exam>, token:
   const response = await fetch(`${baseUrl}/exams/${examId}`, {
     method: 'PATCH',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(examData),
+    body: JSON.stringify(examData), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -101,7 +101,7 @@ export const updateExam = async (examId: string, examData: Partial<Exam>, token:
 export const publishExam = async (examId: string, token: string) => {
   const response = await fetch(`${baseUrl}/exams/${examId}/publish`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -109,7 +109,7 @@ export const publishExam = async (examId: string, token: string) => {
 export const deleteExam = async (examId: string, token: string) => {
   const response = await fetch(`${baseUrl}/exams/${examId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -118,7 +118,7 @@ export const deleteExam = async (examId: string, token: string) => {
 
 export const fetchExamQuestions = async (examId: string, token: string): Promise<{ questions: ExamQuestion[] }> => {
   const response = await fetch(`${baseUrl}/exams/${examId}/questions`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -131,7 +131,7 @@ export const addQuestionToExam = async (
   const response = await fetch(`${baseUrl}/exams/${examId}/questions`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(questionData),
+    body: JSON.stringify(questionData), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -145,7 +145,7 @@ export const removeQuestionFromExam = async (
     `${baseUrl}/exams/${examId}/questions/${questionId}`,
     {
       method: 'DELETE',
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -156,7 +156,7 @@ export const removeQuestionFromExam = async (
 export const startExamAttempt = async (examId: string, token: string) => {
   const response = await fetch(`${baseUrl}/exams/${examId}/attempts`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -172,7 +172,7 @@ export const submitExamAttempt = async (
     {
       method: 'POST',
       headers: getAuthHeaders(token),
-      body: JSON.stringify(attemptData),
+      body: JSON.stringify(attemptData), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -186,7 +186,7 @@ export const fetchMyExamAttempts = async (
   const response = await fetch(
     `${baseUrl}/exams/my-attempts?page=${page}&limit=${limit}`,
     {
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -201,7 +201,7 @@ export const fetchExamAttempts = async (
   const response = await fetch(
     `${baseUrl}/exams/${examId}/attempts?page=${page}&limit=${limit}`,
     {
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -213,14 +213,14 @@ export const fetchExamAttempt = async (
   token: string
 ) => {
   const response = await fetch(`${baseUrl}/exams/${examId}/attempts/${attemptId}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
 
 export const fetchExamLeaderboard = async (examId: string, token?: string) => {
   const response = await fetch(`${baseUrl}/exams/${examId}/leaderboard`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };

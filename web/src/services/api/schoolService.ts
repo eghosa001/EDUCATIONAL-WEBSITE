@@ -23,7 +23,7 @@ export const fetchSchools = async (
     if (value !== undefined && value !== null) params.append(key, String(value));
   });
   const response = await fetch(`${baseUrl}/schools?${params.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -32,14 +32,14 @@ export const joinSchool = async (schoolCode: string, token: string) => {
   const response = await fetch(`${baseUrl}/schools/join`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify({ schoolCode }),
+    body: JSON.stringify({ schoolCode, credentials: 'include' }),
   });
   return handleApiError(response);
 };
 
 export const fetchSchoolById = async (schoolId: string, token?: string): Promise<{ school: School }> => {
   const response = await fetch(`${baseUrl}/schools/${schoolId}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -48,7 +48,7 @@ export const createSchool = async (data: CreateSchoolData, token: string) => {
   const response = await fetch(`${baseUrl}/schools`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -57,7 +57,7 @@ export const updateSchool = async (schoolId: string, data: Partial<CreateSchoolD
   const response = await fetch(`${baseUrl}/schools/${schoolId}`, {
     method: 'PATCH',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -65,7 +65,7 @@ export const updateSchool = async (schoolId: string, data: Partial<CreateSchoolD
 export const deleteSchool = async (schoolId: string, token: string) => {
   const response = await fetch(`${baseUrl}/schools/${schoolId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -84,7 +84,7 @@ export const fetchSchoolClasses = async (
   token?: string
 ): Promise<PaginatedResponse<SchoolClass>> => {
   const response = await fetch(`${baseUrl}/schools/${schoolId}/classes?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -95,7 +95,7 @@ export const fetchSchoolClassById = async (
   token?: string
 ): Promise<{ schoolClass: SchoolClass }> => {
   const response = await fetch(`${baseUrl}/schools/${schoolId}/classes/${classId}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -108,7 +108,7 @@ export const createSchoolClass = async (
   const response = await fetch(`${baseUrl}/schools/${schoolId}/classes`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -122,7 +122,7 @@ export const updateSchoolClass = async (
   const response = await fetch(`${baseUrl}/schools/${schoolId}/classes/${classId}`, {
     method: 'PATCH',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -130,7 +130,7 @@ export const updateSchoolClass = async (
 export const deleteSchoolClass = async (schoolId: string, classId: string, token: string) => {
   const response = await fetch(`${baseUrl}/schools/${schoolId}/classes/${classId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -156,7 +156,7 @@ export const fetchSchoolStudents = async (
   token?: string
 ): Promise<PaginatedResponse<SchoolStudent>> => {
   const response = await fetch(`${baseUrl}/schools/${schoolId}/students?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -169,7 +169,7 @@ export const addStudentToSchool = async (
   const response = await fetch(`${baseUrl}/schools/${schoolId}/students`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -181,7 +181,7 @@ export const removeStudentFromSchool = async (
 ) => {
   const response = await fetch(`${baseUrl}/schools/${schoolId}/students/${userId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -206,7 +206,7 @@ export const fetchSchoolTeachers = async (
   token?: string
 ): Promise<PaginatedResponse<SchoolTeacher>> => {
   const response = await fetch(`${baseUrl}/schools/${schoolId}/teachers?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -219,7 +219,7 @@ export const addTeacherToSchool = async (
   const response = await fetch(`${baseUrl}/schools/${schoolId}/teachers`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -231,7 +231,7 @@ export const removeTeacherFromSchool = async (
 ) => {
   const response = await fetch(`${baseUrl}/schools/${schoolId}/teachers/${userId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -243,7 +243,7 @@ export const fetchSchoolSubjects = async (
   token?: string
 ): Promise<{ subjects: Subject[] }> => {
   const response = await fetch(`${baseUrl}/schools/${schoolId}/subjects`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -256,7 +256,7 @@ export const addSubjectToSchool = async (
   const response = await fetch(`${baseUrl}/schools/${schoolId}/subjects`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify({ subjectId }),
+    body: JSON.stringify({ subjectId, credentials: 'include' }),
   });
   return handleApiError(response);
 };
@@ -268,7 +268,7 @@ export const removeSubjectFromSchool = async (
 ) => {
   const response = await fetch(`${baseUrl}/schools/${schoolId}/subjects/${subjectId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -286,7 +286,7 @@ export interface SchoolAnalytics {
 
 export const fetchSchoolAnalytics = async (schoolId: string, token: string): Promise<{ analytics: SchoolAnalytics }> => {
   const response = await fetch(`${baseUrl}/schools/${schoolId}/analytics`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -302,7 +302,7 @@ export interface SchoolSettings {
 
 export const fetchSchoolSettings = async (schoolId: string, token: string): Promise<{ settings: SchoolSettings }> => {
   const response = await fetch(`${baseUrl}/schools/${schoolId}/settings`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -315,7 +315,7 @@ export const updateSchoolSettings = async (
   const response = await fetch(`${baseUrl}/schools/${schoolId}/settings`, {
     method: 'PATCH',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(settings),
+    body: JSON.stringify(settings), credentials: 'include'
   });
   return handleApiError(response);
 };

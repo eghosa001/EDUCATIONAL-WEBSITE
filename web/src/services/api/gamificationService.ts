@@ -19,7 +19,7 @@ export interface UserPoints {
 
 export const fetchMyPoints = async (token: string): Promise<{ points: UserPoints }> => {
   const response = await fetch(`${baseUrl}/gamification/points/me`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -30,7 +30,7 @@ export const fetchLeaderboard = async (
   token?: string
 ): Promise<PaginatedResponse<{ userId: string; userName: string; points: number; rank: number; avatar?: string }>> => {
   const response = await fetch(`${baseUrl}/gamification/leaderboard?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -57,7 +57,7 @@ export interface UserBadge {
 
 export const fetchBadges = async (token?: string): Promise<{ badges: Badge[] }> => {
   const response = await fetch(`${baseUrl}/gamification/badges`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -68,7 +68,7 @@ export const fetchMyBadges = async (
   token: string
 ): Promise<PaginatedResponse<UserBadge>> => {
   const response = await fetch(`${baseUrl}/gamification/badges/me?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -97,7 +97,7 @@ export interface UserAchievement {
 
 export const fetchAchievements = async (token?: string): Promise<{ achievements: Achievement[] }> => {
   const response = await fetch(`${baseUrl}/gamification/achievements`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -108,7 +108,7 @@ export const fetchMyAchievements = async (
   token: string
 ): Promise<PaginatedResponse<UserAchievement>> => {
   const response = await fetch(`${baseUrl}/gamification/achievements/me?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -124,7 +124,7 @@ export interface StudyStreak {
 
 export const fetchMyStreak = async (token: string): Promise<{ streak: StudyStreak }> => {
   const response = await fetch(`${baseUrl}/gamification/streaks/me`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -152,7 +152,7 @@ export interface UserReward {
 
 export const fetchRewards = async (token?: string): Promise<{ rewards: Reward[] }> => {
   const response = await fetch(`${baseUrl}/gamification/rewards`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -163,7 +163,7 @@ export const fetchMyRewards = async (
   token: string
 ): Promise<PaginatedResponse<UserReward>> => {
   const response = await fetch(`${baseUrl}/gamification/rewards/me?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -171,7 +171,7 @@ export const fetchMyRewards = async (
 export const redeemReward = async (rewardId: string, token: string) => {
   const response = await fetch(`${baseUrl}/gamification/rewards/${rewardId}/redeem`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -194,7 +194,7 @@ export const fetchPointsHistory = async (
   token: string
 ): Promise<PaginatedResponse<PointsHistory>> => {
   const response = await fetch(`${baseUrl}/gamification/points/history?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };

@@ -54,6 +54,7 @@ export const login = async (credentials: LoginCredentials): Promise<LoginRespons
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(credentials),
+    credentials: 'include',
   });
   return handleApiError(response);
 };
@@ -63,6 +64,7 @@ export const register = async (data: RegisterData): Promise<RegisterResponse> =>
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
+    credentials: 'include',
   });
   return handleApiError(response);
 };
@@ -135,6 +137,7 @@ export const getCurrentUser = async (token: string) => {
   }
   const response = await fetch(`${baseUrl}/auth/me`, {
     headers,
+    credentials: 'include',
   });
   return handleApiError(response);
 };

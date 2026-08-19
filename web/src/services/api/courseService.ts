@@ -34,7 +34,7 @@ export const fetchCourses = async (
   });
 
   const response = await fetch(`${baseUrl}/courses?${query.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -46,7 +46,7 @@ export const fetchFeaturedCourses = async (
 ): Promise<PaginatedResponse<Course>> => {
   const response = await fetch(
     `${baseUrl}/courses/featured?page=${page}&limit=${limit}`,
-    { headers: getAuthHeaders(token) }
+    { headers: getAuthHeaders(token), credentials: 'include' }
   );
   return handleApiError(response);
 };
@@ -56,7 +56,7 @@ export const fetchCourseByIdOrSlug = async (
   token?: string
 ): Promise<{ course: Course & { sections: CourseSection[]; lessons: any[] } }> => {
   const response = await fetch(`${baseUrl}/courses/${idOrSlug}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -65,7 +65,7 @@ export const createCourse = async (courseData: Partial<Course>, token: string) =
   const response = await fetch(`${baseUrl}/courses`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(courseData),
+    body: JSON.stringify(courseData), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -78,7 +78,7 @@ export const updateCourse = async (
   const response = await fetch(`${baseUrl}/courses/${courseId}`, {
     method: 'PATCH',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(courseData),
+    body: JSON.stringify(courseData), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -86,7 +86,7 @@ export const updateCourse = async (
 export const publishCourse = async (courseId: string, token: string) => {
   const response = await fetch(`${baseUrl}/courses/${courseId}/publish`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -94,14 +94,14 @@ export const publishCourse = async (courseId: string, token: string) => {
 export const deleteCourse = async (courseId: string, token: string) => {
   const response = await fetch(`${baseUrl}/courses/${courseId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
 
 export const fetchCourseStats = async (courseId: string, token: string) => {
   const response = await fetch(`${baseUrl}/courses/${courseId}/stats`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -111,7 +111,7 @@ export const fetchCourseStats = async (courseId: string, token: string) => {
 export const enrollInCourse = async (courseId: string, token: string) => {
   const response = await fetch(`${baseUrl}/courses/${courseId}/enroll`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -119,21 +119,21 @@ export const enrollInCourse = async (courseId: string, token: string) => {
 export const unenrollFromCourse = async (courseId: string, token: string) => {
   const response = await fetch(`${baseUrl}/courses/${courseId}/enroll`, {
     method: 'DELETE',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
 
 export const fetchMyCourses = async (token: string): Promise<{ courses: any[] }> => {
   const response = await fetch(`${baseUrl}/courses/my`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
 
 export const fetchCourseStudents = async (courseId: string, token: string) => {
   const response = await fetch(`${baseUrl}/courses/${courseId}/students`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -154,7 +154,7 @@ export const createCourseSection = async (
   const response = await fetch(`${baseUrl}/courses/${courseId}/sections`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(sectionData),
+    body: JSON.stringify(sectionData), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -170,7 +170,7 @@ export const updateCourseSection = async (
     {
       method: 'PATCH',
       headers: getAuthHeaders(token),
-      body: JSON.stringify(sectionData),
+      body: JSON.stringify(sectionData), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -185,7 +185,7 @@ export const deleteCourseSection = async (
     `${baseUrl}/courses/${courseId}/sections/${sectionId}`,
     {
       method: 'DELETE',
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -193,7 +193,7 @@ export const deleteCourseSection = async (
 
 export const fetchCourseLessons = async (courseId: string, token?: string) => {
   const response = await fetch(`${baseUrl}/courses/${courseId}/lessons`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };

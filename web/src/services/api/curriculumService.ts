@@ -48,7 +48,7 @@ export interface Topic {
 
 export const fetchEducationLevels = async (token?: string) => {
   const response = await fetch(`${baseUrl}/curriculum/education-levels`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   const json = await handleApiError(response);
   return json.data.educationLevels as EducationLevel[];
@@ -73,7 +73,7 @@ export const fetchSubjects = async (filters: SubjectFilters = {}, token?: string
   });
 
   const response = await fetch(`${baseUrl}/curriculum/subjects?${query.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   const json = await handleApiError(response);
   return json.data.subjects as Subject[];
@@ -103,7 +103,7 @@ export const fetchTopics = async (filters: TopicFilters = {}, token?: string) =>
   });
 
   const response = await fetch(`${baseUrl}/curriculum/topics?${query.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   const json = await handleApiError(response);
   return json.data.topics as Topic[];

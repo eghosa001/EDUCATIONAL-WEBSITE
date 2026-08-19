@@ -36,7 +36,7 @@ export const globalSearch = async (
   });
 
   const response = await fetch(`${baseUrl}/search?${query.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -55,7 +55,7 @@ export const searchCourses = async (
   if (filters.limit) params.append('limit', String(filters.limit));
 
   const response = await fetch(`${baseUrl}/search/courses?${params.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -74,7 +74,7 @@ export const searchLessons = async (
   if (filters.limit) params.append('limit', String(filters.limit));
 
   const response = await fetch(`${baseUrl}/search/lessons?${params.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -94,7 +94,7 @@ export const searchQuestions = async (
   if (filters.limit) params.append('limit', String(filters.limit));
 
   const response = await fetch(`${baseUrl}/search/questions?${params.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -114,7 +114,7 @@ export const searchPastQuestions = async (
   if (filters.limit) params.append('limit', String(filters.limit));
 
   const response = await fetch(`${baseUrl}/search/past-questions?${params.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -123,7 +123,7 @@ export const searchPastQuestions = async (
 
 export const fetchSearchSuggestions = async (query: string, token?: string): Promise<{ suggestions: string[] }> => {
   const response = await fetch(`${baseUrl}/search/suggestions?query=${encodeURIComponent(query)}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -132,7 +132,7 @@ export const fetchSearchSuggestions = async (query: string, token?: string): Pro
 
 export const fetchPopularSearches = async (token?: string): Promise<{ searches: Array<{ query: string; count: number }> }> => {
   const response = await fetch(`${baseUrl}/search/popular`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };

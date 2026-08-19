@@ -49,14 +49,14 @@ export const fetchPayments = async (
   });
 
   const response = await fetch(`${baseUrl}/payments?${query.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
 
 export const fetchPaymentById = async (paymentId: string, token: string): Promise<{ payment: Payment }> => {
   const response = await fetch(`${baseUrl}/payments/${paymentId}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -65,7 +65,7 @@ export const createPayment = async (data: CreatePaymentData, token: string) => {
   const response = await fetch(`${baseUrl}/payments`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -74,7 +74,7 @@ export const verifyPayment = async (reference: string, token: string) => {
   const response = await fetch(`${baseUrl}/payments/verify`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify({ reference }),
+    body: JSON.stringify({ reference, credentials: 'include' }),
   });
   return handleApiError(response);
 };
@@ -91,7 +91,7 @@ export interface PaymentGateway {
 
 export const fetchPaymentGateways = async (token?: string): Promise<{ gateways: PaymentGateway[] }> => {
   const response = await fetch(`${baseUrl}/payments/gateways`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -120,7 +120,7 @@ export interface WalletTransaction {
 
 export const fetchMyWallet = async (token: string): Promise<{ wallet: Wallet }> => {
   const response = await fetch(`${baseUrl}/payments/wallet`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -133,7 +133,7 @@ export const fetchWalletTransactions = async (
   const response = await fetch(
     `${baseUrl}/payments/wallet/transactions?page=${page}&limit=${limit}`,
     {
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -143,7 +143,7 @@ export const fundWallet = async (amount: number, paymentMethodId: string, token:
   const response = await fetch(`${baseUrl}/payments/wallet/fund`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify({ amount, paymentMethodId }),
+    body: JSON.stringify({ amount, paymentMethodId, credentials: 'include' }),
   });
   return handleApiError(response);
 };

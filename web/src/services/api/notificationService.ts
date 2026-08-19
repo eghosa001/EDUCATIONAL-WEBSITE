@@ -35,14 +35,14 @@ export const fetchNotifications = async (
   });
 
   const response = await fetch(`${baseUrl}/notifications?${query.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
 
 export const fetchUnreadNotifications = async (token: string): Promise<{ notifications: Notification[]; count: number }> => {
   const response = await fetch(`${baseUrl}/notifications/unread`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -50,7 +50,7 @@ export const fetchUnreadNotifications = async (token: string): Promise<{ notific
 export const markNotificationAsRead = async (notificationId: string, token: string) => {
   const response = await fetch(`${baseUrl}/notifications/${notificationId}/read`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -58,7 +58,7 @@ export const markNotificationAsRead = async (notificationId: string, token: stri
 export const markAllNotificationsAsRead = async (token: string) => {
   const response = await fetch(`${baseUrl}/notifications/read-all`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -66,7 +66,7 @@ export const markAllNotificationsAsRead = async (token: string) => {
 export const deleteNotification = async (notificationId: string, token: string) => {
   const response = await fetch(`${baseUrl}/notifications/${notificationId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -74,7 +74,7 @@ export const deleteNotification = async (notificationId: string, token: string) 
 export const deleteAllNotifications = async (token: string) => {
   const response = await fetch(`${baseUrl}/notifications`, {
     method: 'DELETE',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -92,7 +92,7 @@ export interface NotificationPreferences {
 
 export const fetchNotificationPreferences = async (token: string): Promise<{ preferences: NotificationPreferences }> => {
   const response = await fetch(`${baseUrl}/notifications/preferences`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -104,7 +104,7 @@ export const updateNotificationPreferences = async (
   const response = await fetch(`${baseUrl}/notifications/preferences`, {
     method: 'PATCH',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(preferences),
+    body: JSON.stringify(preferences), credentials: 'include'
   });
   return handleApiError(response);
 };

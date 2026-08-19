@@ -45,7 +45,7 @@ export interface StudySessionData {
 
 export const fetchStudentOverview = async (token: string): Promise<{ overview: StudentOverview }> => {
   const response = await fetch(`${baseUrl}/progress/overview`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -55,7 +55,7 @@ export const fetchCourseProgress = async (
   token: string
 ): Promise<{ progress: CourseProgress }> => {
   const response = await fetch(`${baseUrl}/progress/courses/${courseId}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -69,7 +69,7 @@ export const startStudySession = async (
   const response = await fetch(`${baseUrl}/progress/sessions`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(sessionData),
+    body: JSON.stringify(sessionData), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -77,7 +77,7 @@ export const startStudySession = async (
 export const endStudySession = async (sessionId: string, token: string): Promise<{ session: StudySession }> => {
   const response = await fetch(`${baseUrl}/progress/sessions/${sessionId}/end`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -90,7 +90,7 @@ export const fetchStudySessions = async (
   const response = await fetch(
     `${baseUrl}/progress/sessions?page=${page}&limit=${limit}`,
     {
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);

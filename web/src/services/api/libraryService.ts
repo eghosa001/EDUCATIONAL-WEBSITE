@@ -49,14 +49,14 @@ export const fetchLibraryResources = async (
   });
 
   const response = await fetch(`${baseUrl}/library?${query.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
 
 export const fetchLibraryStats = async (token?: string): Promise<{ stats: LibraryStats }> => {
   const response = await fetch(`${baseUrl}/library/stats`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -66,7 +66,7 @@ export const fetchLibraryResourceById = async (
   token?: string
 ): Promise<{ resource: LibraryResource }> => {
   const response = await fetch(`${baseUrl}/library/${resourceId}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };

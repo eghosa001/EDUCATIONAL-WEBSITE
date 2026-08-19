@@ -27,7 +27,7 @@ export interface UpdateParentProfileData {
 
 export const fetchParentProfile = async (token: string): Promise<{ parent: ParentProfile }> => {
   const response = await fetch(`${baseUrl}/parents/me`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -39,7 +39,7 @@ export const updateParentProfile = async (
   const response = await fetch(`${baseUrl}/parents/me`, {
     method: 'PATCH',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -73,7 +73,7 @@ export interface ChildPerformance {
 
 export const fetchParentChildren = async (token: string): Promise<{ children: Child[] }> => {
   const response = await fetch(`${baseUrl}/parents/children`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -82,7 +82,7 @@ export const addChild = async (childUserId: string, token: string) => {
   const response = await fetch(`${baseUrl}/parents/children`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify({ userId: childUserId }),
+    body: JSON.stringify({ userId: childUserId, credentials: 'include' }),
   });
   return handleApiError(response);
 };
@@ -90,7 +90,7 @@ export const addChild = async (childUserId: string, token: string) => {
 export const removeChild = async (childUserId: string, token: string) => {
   const response = await fetch(`${baseUrl}/parents/children/${childUserId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -102,7 +102,7 @@ export const fetchChildPerformance = async (
   token: string
 ): Promise<{ performance: ChildPerformance }> => {
   const response = await fetch(`${baseUrl}/parents/children/${childUserId}/performance`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -116,7 +116,7 @@ export const fetchChildCourses = async (
   const response = await fetch(
     `${baseUrl}/parents/children/${childUserId}/courses?page=${page}&limit=${limit}`,
     {
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -131,7 +131,7 @@ export const fetchChildExams = async (
   const response = await fetch(
     `${baseUrl}/parents/children/${childUserId}/exams?page=${page}&limit=${limit}`,
     {
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -142,7 +142,7 @@ export const fetchChildProgress = async (
   token: string
 ): Promise<{ progress: any }> => {
   const response = await fetch(`${baseUrl}/parents/children/${childUserId}/progress`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -168,7 +168,7 @@ export const fetchChildStudyTime = async (
   const response = await fetch(
     `${baseUrl}/parents/children/${childUserId}/study-time?${query.toString()}`,
     {
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -196,7 +196,7 @@ export const fetchParentNotifications = async (
   const response = await fetch(
     `${baseUrl}/parents/notifications?page=${page}&limit=${limit}`,
     {
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -210,7 +210,7 @@ export const markParentNotificationAsRead = async (
     `${baseUrl}/parents/notifications/${notificationId}/read`,
     {
       method: 'POST',
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -235,7 +235,7 @@ export const fetchParentReports = async (
   const response = await fetch(
     `${baseUrl}/parents/reports?page=${page}&limit=${limit}`,
     {
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -249,14 +249,14 @@ export const generateParentReport = async (
   const response = await fetch(`${baseUrl}/parents/reports`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify({ childId: childUserId, reportType }),
+    body: JSON.stringify({ childId: childUserId, reportType, credentials: 'include' }),
   });
   return handleApiError(response);
 };
 
 export const downloadParentReport = async (reportId: string, token: string) => {
   const response = await fetch(`${baseUrl}/parents/reports/${reportId}/download`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };

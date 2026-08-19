@@ -45,7 +45,7 @@ export const fetchAssignments = async (
     if (value !== undefined && value !== null) params.append(key, String(value));
   });
   const response = await fetch(`${baseUrl}/assignments?${params.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -57,7 +57,7 @@ export const fetchMyAssignments = async (
   const params = new URLSearchParams();
   if (courseId) params.append('courseId', courseId);
   const response = await fetch(`${baseUrl}/assignments?${params.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -69,7 +69,7 @@ export const fetchMySubmissions = async (
 ): Promise<{ submissions: AssignmentSubmission[]; pagination: any }> => {
   const response = await fetch(
     `${baseUrl}/assignments/my-submissions?page=${page}&limit=${limit}`,
-    { headers: getAuthHeaders(token) }
+    { headers: getAuthHeaders(token), credentials: 'include' }
   );
   return handleApiError(response);
 };
@@ -79,7 +79,7 @@ export const fetchAssignmentById = async (
   token: string
 ): Promise<{ assignment: Assignment }> => {
   const response = await fetch(`${baseUrl}/assignments/${assignmentId}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -92,7 +92,7 @@ export const submitAssignment = async (
   const response = await fetch(`${baseUrl}/assignments/${assignmentId}/submit`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -108,7 +108,7 @@ export const gradeSubmission = async (
     {
       method: 'POST',
       headers: getAuthHeaders(token),
-      body: JSON.stringify(data),
+      body: JSON.stringify(data), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -119,7 +119,7 @@ export const fetchAssignmentSubmissions = async (
   token: string
 ): Promise<{ submissions: AssignmentSubmission[] }> => {
   const response = await fetch(`${baseUrl}/assignments/${assignmentId}/submissions`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };

@@ -36,7 +36,7 @@ export interface UpdateTeacherProfileData {
 
 export const fetchTeacherProfile = async (token: string): Promise<{ teacher: TeacherProfile }> => {
   const response = await fetch(`${baseUrl}/teachers/me`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -48,7 +48,7 @@ export const updateTeacherProfile = async (
   const response = await fetch(`${baseUrl}/teachers/me`, {
     method: 'PATCH',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -61,14 +61,14 @@ export const fetchTeacherCourses = async (
   token: string
 ): Promise<PaginatedResponse<any>> => {
   const response = await fetch(`${baseUrl}/teachers/courses?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
 
 export const fetchTeacherCourseStats = async (courseId: string, token: string) => {
   const response = await fetch(`${baseUrl}/teachers/courses/${courseId}/stats`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -93,7 +93,7 @@ export const fetchTeacherStudents = async (
   token: string
 ): Promise<PaginatedResponse<TeacherStudent>> => {
   const response = await fetch(`${baseUrl}/teachers/students?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -103,7 +103,7 @@ export const fetchTeacherStudentProgress = async (
   token: string
 ) => {
   const response = await fetch(`${baseUrl}/teachers/students/${studentUserId}/progress`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -116,14 +116,14 @@ export const fetchTeacherExams = async (
   token: string
 ): Promise<PaginatedResponse<any>> => {
   const response = await fetch(`${baseUrl}/teachers/exams?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
 
 export const fetchTeacherExamStats = async (examId: string, token: string) => {
   const response = await fetch(`${baseUrl}/teachers/exams/${examId}/stats`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -147,7 +147,7 @@ export const fetchTeacherAssignments = async (
   token: string
 ): Promise<PaginatedResponse<TeacherAssignment>> => {
   const response = await fetch(`${baseUrl}/teachers/assignments?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -161,7 +161,7 @@ export const fetchTeacherAssignmentSubmissions = async (
   const response = await fetch(
     `${baseUrl}/teachers/assignments/${assignmentId}/submissions?page=${page}&limit=${limit}`,
     {
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -188,7 +188,7 @@ export const fetchTeacherLiveClasses = async (
   token: string
 ): Promise<PaginatedResponse<TeacherLiveClass>> => {
   const response = await fetch(`${baseUrl}/teachers/live-classes?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -206,7 +206,7 @@ export const createTeacherLiveClass = async (
   const response = await fetch(`${baseUrl}/teachers/live-classes`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -214,7 +214,7 @@ export const createTeacherLiveClass = async (
 export const startLiveClass = async (liveClassId: string, token: string) => {
   const response = await fetch(`${baseUrl}/teachers/live-classes/${liveClassId}/start`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -222,7 +222,7 @@ export const startLiveClass = async (liveClassId: string, token: string) => {
 export const endLiveClass = async (liveClassId: string, token: string) => {
   const response = await fetch(`${baseUrl}/teachers/live-classes/${liveClassId}/end`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -246,14 +246,14 @@ export const fetchTeacherEarnings = async (
   token: string
 ): Promise<PaginatedResponse<TeacherEarning>> => {
   const response = await fetch(`${baseUrl}/teachers/earnings?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
 
 export const fetchTeacherEarningsSummary = async (token: string) => {
   const response = await fetch(`${baseUrl}/teachers/earnings/summary`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -273,7 +273,7 @@ export interface TeacherAnalytics {
 
 export const fetchTeacherAnalytics = async (token: string): Promise<{ analytics: TeacherAnalytics }> => {
   const response = await fetch(`${baseUrl}/teachers/analytics`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -298,7 +298,7 @@ export const fetchTeacherNotifications = async (
   const response = await fetch(
     `${baseUrl}/teachers/notifications?page=${page}&limit=${limit}`,
     {
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -312,7 +312,7 @@ export const markTeacherNotificationAsRead = async (
     `${baseUrl}/teachers/notifications/${notificationId}/read`,
     {
       method: 'POST',
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);

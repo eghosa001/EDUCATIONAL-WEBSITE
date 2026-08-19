@@ -8,7 +8,7 @@ const { baseUrl } = apiConfig;
 
 export const fetchSubscriptionPlans = async (token?: string): Promise<{ plans: SubscriptionPlan[] }> => {
   const response = await fetch(`${baseUrl}/subscriptions/plans`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -18,7 +18,7 @@ export const fetchSubscriptionPlanById = async (
   token?: string
 ): Promise<{ plan: SubscriptionPlan }> => {
   const response = await fetch(`${baseUrl}/subscriptions/plans/${planId}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -33,7 +33,7 @@ export interface CreateSubscriptionData {
 
 export const fetchMySubscription = async (token: string): Promise<{ subscription: Subscription }> => {
   const response = await fetch(`${baseUrl}/subscriptions/my`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -45,7 +45,7 @@ export const createSubscription = async (
   const response = await fetch(`${baseUrl}/subscriptions`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -58,7 +58,7 @@ export const updateSubscription = async (
   const response = await fetch(`${baseUrl}/subscriptions/${subscriptionId}`, {
     method: 'PATCH',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -66,7 +66,7 @@ export const updateSubscription = async (
 export const cancelSubscription = async (subscriptionId: string, token: string) => {
   const response = await fetch(`${baseUrl}/subscriptions/${subscriptionId}/cancel`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -74,7 +74,7 @@ export const cancelSubscription = async (subscriptionId: string, token: string) 
 export const resumeSubscription = async (subscriptionId: string, token: string) => {
   const response = await fetch(`${baseUrl}/subscriptions/${subscriptionId}/resume`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -89,7 +89,7 @@ export const fetchMyInvoices = async (
   const response = await fetch(
     `${baseUrl}/subscriptions/invoices?page=${page}&limit=${limit}`,
     {
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -97,14 +97,14 @@ export const fetchMyInvoices = async (
 
 export const fetchInvoiceById = async (invoiceId: string, token: string): Promise<{ invoice: Invoice }> => {
   const response = await fetch(`${baseUrl}/subscriptions/invoices/${invoiceId}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
 
 export const downloadInvoice = async (invoiceId: string, token: string) => {
   const response = await fetch(`${baseUrl}/subscriptions/invoices/${invoiceId}/download`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -120,7 +120,7 @@ export interface PaymentMethod {
 
 export const fetchMyPaymentMethods = async (token: string): Promise<{ paymentMethods: PaymentMethod[] }> => {
   const response = await fetch(`${baseUrl}/subscriptions/payment-methods`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -132,7 +132,7 @@ export const addPaymentMethod = async (
   const response = await fetch(`${baseUrl}/subscriptions/payment-methods`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -142,7 +142,7 @@ export const deletePaymentMethod = async (paymentMethodId: string, token: string
     `${baseUrl}/subscriptions/payment-methods/${paymentMethodId}`,
     {
       method: 'DELETE',
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -153,7 +153,7 @@ export const setDefaultPaymentMethod = async (paymentMethodId: string, token: st
     `${baseUrl}/subscriptions/payment-methods/${paymentMethodId}/default`,
     {
       method: 'POST',
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -181,7 +181,7 @@ export const createPlan = async (data: CreatePlanData, token: string) => {
   const response = await fetch(`${baseUrl}/subscriptions/plans`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -190,7 +190,7 @@ export const updatePlan = async (planId: string, data: Partial<CreatePlanData>, 
   const response = await fetch(`${baseUrl}/subscriptions/plans/${planId}`, {
     method: 'PATCH',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -198,7 +198,7 @@ export const updatePlan = async (planId: string, data: Partial<CreatePlanData>, 
 export const deletePlan = async (planId: string, token: string) => {
   const response = await fetch(`${baseUrl}/subscriptions/plans/${planId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -219,7 +219,7 @@ export const applyCouponHandler = async (
   const response = await fetch(`${baseUrl}/subscriptions/coupon/validate`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify({ couponCode, planId }),
+    body: JSON.stringify({ couponCode, planId, credentials: 'include' }),
   });
   return handleApiError(response);
 };

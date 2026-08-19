@@ -35,14 +35,14 @@ export const fetchQuestions = async (
   });
 
   const response = await fetch(`${baseUrl}/questions?${query.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
 
 export const fetchQuestionById = async (questionId: string, token?: string): Promise<{ question: Question }> => {
   const response = await fetch(`${baseUrl}/questions/${questionId}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -51,7 +51,7 @@ export const createQuestion = async (questionData: Partial<Question>, token: str
   const response = await fetch(`${baseUrl}/questions`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(questionData),
+    body: JSON.stringify(questionData), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -63,7 +63,7 @@ export const bulkImportQuestions = async (
   const response = await fetch(`${baseUrl}/questions/bulk`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(importData),
+    body: JSON.stringify(importData), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -76,7 +76,7 @@ export const updateQuestion = async (
   const response = await fetch(`${baseUrl}/questions/${questionId}`, {
     method: 'PATCH',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(questionData),
+    body: JSON.stringify(questionData), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -84,7 +84,7 @@ export const updateQuestion = async (
 export const reviewQuestion = async (questionId: string, token: string) => {
   const response = await fetch(`${baseUrl}/questions/${questionId}/review`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -92,7 +92,7 @@ export const reviewQuestion = async (questionId: string, token: string) => {
 export const deleteQuestion = async (questionId: string, token: string) => {
   const response = await fetch(`${baseUrl}/questions/${questionId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -120,14 +120,14 @@ export const fetchPastQuestions = async (
   });
 
   const response = await fetch(`${baseUrl}/library/past-questions?${query.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
 
 export const fetchPastQuestionExams = async (token?: string) => {
   const response = await fetch(`${baseUrl}/library/past-questions/exams`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };

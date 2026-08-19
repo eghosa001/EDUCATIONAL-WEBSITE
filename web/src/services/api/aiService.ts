@@ -30,7 +30,7 @@ export const sendAiTutorMessage = async (
   const response = await fetch(`${baseUrl}/ai/tutor`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -43,7 +43,7 @@ export const fetchAiTutorSessions = async (
   const response = await fetch(
     `${baseUrl}/ai/tutor/sessions?page=${page}&limit=${limit}`,
     {
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -54,7 +54,7 @@ export const fetchAiTutorSession = async (
   token: string
 ): Promise<{ session: AiTutorSession }> => {
   const response = await fetch(`${baseUrl}/ai/tutor/sessions/${sessionId}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -62,7 +62,7 @@ export const fetchAiTutorSession = async (
 export const deleteAiTutorSession = async (sessionId: string, token: string) => {
   const response = await fetch(`${baseUrl}/ai/tutor/sessions/${sessionId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -94,7 +94,7 @@ export const generateAiQuiz = async (data: AiQuizRequest, token: string): Promis
   const response = await fetch(`${baseUrl}/ai/quiz-generator`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -128,7 +128,7 @@ export const generateAiStudyPlan = async (
   const response = await fetch(`${baseUrl}/ai/study-plan`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -155,7 +155,7 @@ export const getAiExplanation = async (
   const response = await fetch(`${baseUrl}/ai/explain`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -183,7 +183,7 @@ export const generateAiFlashcards = async (
   const response = await fetch(`${baseUrl}/ai/flashcards`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -209,7 +209,7 @@ export const generateAiSummary = async (
   const response = await fetch(`${baseUrl}/ai/summarize`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(data),
+    body: JSON.stringify(data), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -225,7 +225,7 @@ export interface AiUsageStats {
 
 export const fetchAiUsageStats = async (token: string): Promise<{ stats: AiUsageStats }> => {
   const response = await fetch(`${baseUrl}/ai/usage`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };

@@ -19,7 +19,7 @@ export interface PlatformStats {
 
 export const fetchPlatformStats = async (token: string): Promise<{ stats: PlatformStats }> => {
   const response = await fetch(`${baseUrl}/analytics/platform`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -41,7 +41,7 @@ export interface UserAnalytics {
 
 export const fetchUserAnalytics = async (token: string): Promise<{ analytics: UserAnalytics }> => {
   const response = await fetch(`${baseUrl}/analytics/users/me`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -61,7 +61,7 @@ export interface CourseAnalytics {
 
 export const fetchCourseAnalytics = async (courseId: string, token: string): Promise<{ analytics: CourseAnalytics }> => {
   const response = await fetch(`${baseUrl}/analytics/courses/${courseId}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -78,7 +78,7 @@ export interface ExamAnalytics {
 
 export const fetchExamAnalytics = async (examId: string, token: string): Promise<{ analytics: ExamAnalytics }> => {
   const response = await fetch(`${baseUrl}/analytics/exams/${examId}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -95,7 +95,7 @@ export interface LearningAnalytics {
 
 export const fetchLearningAnalytics = async (token: string): Promise<{ analytics: LearningAnalytics }> => {
   const response = await fetch(`${baseUrl}/analytics/learning/me`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -113,7 +113,7 @@ export interface RevenueAnalytics {
 
 export const fetchRevenueAnalytics = async (token: string): Promise<{ analytics: RevenueAnalytics }> => {
   const response = await fetch(`${baseUrl}/analytics/revenue`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -129,7 +129,7 @@ export interface ContentAnalytics {
 
 export const fetchContentAnalytics = async (token: string): Promise<{ analytics: ContentAnalytics }> => {
   const response = await fetch(`${baseUrl}/analytics/content`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -157,7 +157,7 @@ export const fetchTimeSeriesAnalytics = async (
   const response = await fetch(
     `${baseUrl}/analytics/time-series?startDate=${startDate}&endDate=${endDate}`,
     {
-      headers: getAuthHeaders(token),
+      headers: getAuthHeaders(token), credentials: 'include'
     }
   );
   return handleApiError(response);
@@ -177,7 +177,7 @@ export const exportAnalyticsReport = async (
   if (endDate) query.append('endDate', endDate);
 
   const response = await fetch(`${baseUrl}/analytics/export?${query.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };

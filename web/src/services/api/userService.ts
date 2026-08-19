@@ -33,14 +33,14 @@ export const fetchUsers = async (
   });
 
   const response = await fetch(`${baseUrl}/users?${query.toString()}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
 
 export const fetchUserById = async (userId: string, token: string): Promise<{ user: User }> => {
   const response = await fetch(`${baseUrl}/users/${userId}`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -53,7 +53,7 @@ export const updateUser = async (
   const response = await fetch(`${baseUrl}/users/${userId}`, {
     method: 'PATCH',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(userData),
+    body: JSON.stringify(userData), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -61,7 +61,7 @@ export const updateUser = async (
 export const deleteUser = async (userId: string, token: string) => {
   const response = await fetch(`${baseUrl}/users/${userId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -70,7 +70,7 @@ export const deleteUser = async (userId: string, token: string) => {
 
 export const fetchMyProfile = async (token: string): Promise<{ user: User }> => {
   const response = await fetch(`${baseUrl}/users/me`, {
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(token), credentials: 'include'
   });
   return handleApiError(response);
 };
@@ -79,7 +79,7 @@ export const updateMyProfile = async (userData: UpdateUserData, token: string) =
   const response = await fetch(`${baseUrl}/users/me`, {
     method: 'PATCH',
     headers: getAuthHeaders(token),
-    body: JSON.stringify(userData),
+    body: JSON.stringify(userData), credentials: 'include'
   });
   return handleApiError(response);
 };
