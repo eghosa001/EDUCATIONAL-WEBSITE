@@ -1,0 +1,14 @@
+Demo Accounts - LearnForge Educational Platform
+================================================
+
+Main Demo Accounts (created by seed.js):
+-----------------------------------------
+Email: admin@learnforge.ng    Password: Admin@12345     Role: super_admin
+Email: teacher@learnforge.ng  Password: Teacher@12345   Role: teacher
+Email: student@learnforge.ng  Password: Student@12345   Role: student
+
+Parent Demo Accounts (created by seed-ecosystem.js):
+-----------------------------------------------------
+Email: mr.johnson@example.com    Password: Parent@1234!  Name: Mr. Johnson   Role: parent
+Email: mrs.okafor@example.com    Password: Parent@1234!  Name: Mrs. Okafor   Role: parent
+Email: dr.abubakar@example.com   Password: Parent@1234!  Name: Dr. Abubakar  Role: parent
