@@ -10,5 +10,8 @@
         { "key": "Access-Control-Allow-Headers", "value": "Content-Type,Authorization" }
       ]
     }
-  ]
+  ],
+  "env": {
+    "SUPABASE_DB_PASSWORD": "eIbkOJKV5NGIZDlz"
+  }
 }
