@@ -50,6 +50,10 @@ import { apiRoutes } from './routes/api.routes.js';
 
 const app = express();
 
+if (process.env.VERCEL) {
+  app.set('trust proxy', 1);
+}
+
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
@@ -77,13 +81,15 @@ app.get('/health', async (req, res) => {
     dbStatus.mode = useSupabase ? 'supabase-rest' : 'local-pg';
     if (useSupabase) {
       try {
-        const r = await query('SELECT 1');
-        dbStatus.supabase = r?.rowCount > 0 ? 'ok' : 'reachable-no-response';
+        const { supabaseQuery } = await import('./common/database/index.js');
+        const r = await supabaseQuery('users', { select: 'id', limit: 1 });
+        dbStatus.supabase = r?.rows?.length > 0 ? 'ok' : 'reachable-no-response';
       } catch (e) {
-        dbStatus.supabase = 'error';
+        dbStatus.supabase = 'error: ' + e.message;
       }
     } else {
       try {
+        const { pool } = await import('./common/database/index.js');
         const r = await pool.query('SELECT 1');
         dbStatus.local = r?.rowCount > 0 ? 'ok' : 'reachable-no-response';
       } catch (e) {

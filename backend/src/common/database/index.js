@@ -102,8 +102,10 @@ export const supabaseQuery = async (table, options = {}) => {
 
   for (const [key, value] of Object.entries(filters)) {
     if (value !== undefined && value !== null) {
-      if (typeof value === 'object' && value.op) {
-        params.push(`${key}.${value.op}=${encodeURIComponent(value.val)}`);
+      if (key === 'or') {
+        params.push(`or=${encodeURIComponent(String(value))}`);
+      } else if (typeof value === 'object' && value.op) {
+        params.push(`${key}=${value.op}.${encodeURIComponent(value.val)}`);
       } else {
         params.push(`${key}=eq.${encodeURIComponent(String(value))}`);
       }

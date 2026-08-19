@@ -1,4 +1,4 @@
-import { pool, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, poolReady } from '../../common/database/index.js';
+import { pool, supabaseQuery, supabaseInsert, supabaseUpdate, supabaseDelete, useSupabase } from '../../common/database/index.js';
 import { generateTokens, hashPassword, comparePassword, hashToken, generateSecureToken, decodeToken } from '../utils/jwt.js';
 import { AppError, HTTP_STATUS, ERROR_CODES } from '../../common/errors/index.js';
 import { USER_ROLES, USER_STATUS } from '../../common/constants/index.js';
@@ -56,7 +56,7 @@ export const register = async (req, res) => {
   // Check existing user
   let existingUser;
   try {
-    if (poolReady) {
+    if (!useSupabase) {
       existingUser = await pool.query(
         'SELECT id FROM users WHERE email = $1 OR phone = $2',
         [email, phone]
@@ -64,7 +64,7 @@ export const register = async (req, res) => {
     } else {
       const r = await supabaseQuery('users', {
         select: 'id',
-        filters: { _or: `(email.eq.${email}${phone ? `,phone.eq.${phone}` : ''})` },
+        filters: { or: `(email.eq.${email}${phone ? `,phone.eq.${phone}` : ''})` },
       });
       existingUser = { rows: r.rows.map(row => ({ id: row.id })) };
     }
@@ -96,7 +96,7 @@ export const register = async (req, res) => {
 
   let user;
   try {
-    const result = poolReady
+    const result = !useSupabase
       ? await pool.query(
           `INSERT INTO users (email, phone, password_hash, first_name, last_name, middle_name, date_of_birth, gender, is_verified, email_verified_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE, NOW())
@@ -116,12 +116,12 @@ export const register = async (req, res) => {
   const assignedRole = validRoles.includes(role) ? role : USER_ROLES.STUDENT;
 
   try {
-    const roleResult = poolReady
+    const roleResult = !useSupabase
       ? await pool.query('SELECT id FROM roles WHERE name = $1', [assignedRole])
       : await supabaseQuery('roles', { select: 'id', filters: { name: assignedRole }, limit: 1 });
 
     if (roleResult?.rows?.length > 0) {
-      await (poolReady
+      await (!useSupabase
         ? pool.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [user.id, roleResult.rows[0].id])
         : supabaseInsert('user_roles', { user_id: user.id, role_id: roleResult.rows[0].id })
       );
@@ -142,7 +142,7 @@ export const register = async (req, res) => {
       user_agent: req.get('user-agent') || '',
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     };
-    await (poolReady
+    await (!useSupabase
       ? pool.query(
           `INSERT INTO sessions (user_id, token_hash, refresh_token_hash, device_info, ip_address, user_agent, expires_at)
            VALUES ($1, $2, $3, $4, $5, $6, NOW() + INTERVAL '7 days')`,
@@ -180,7 +180,7 @@ export const login = async (req, res) => {
   let userRow;
   let rolesRows = [];
   try {
-    if (poolReady) {
+    if (!useSupabase) {
       const result = await pool.query(
         `SELECT u.*, array_agg(r.name) as roles, array_agg(r.permissions) as permissions
          FROM users u
@@ -241,7 +241,7 @@ export const login = async (req, res) => {
 
   // Update last login
   try {
-    if (poolReady) {
+    if (!useSupabase) {
       await pool.query('UPDATE users SET last_login_at = NOW() WHERE id = $1', [userRow.id]);
     } else {
       await supabaseUpdate('users', { last_login_at: new Date().toISOString() }, { id: userRow.id });
@@ -259,7 +259,7 @@ export const login = async (req, res) => {
 
   try {
     const expiresDays = rememberMe ? 30 : 7;
-    if (poolReady) {
+    if (!useSupabase) {
       await pool.query(
         `INSERT INTO sessions (user_id, token_hash, refresh_token_hash, device_info, ip_address, user_agent, expires_at)
          VALUES ($1, $2, $3, $4, $5, $6, NOW() + INTERVAL '${expiresDays} days')`,
@@ -318,7 +318,7 @@ export const refreshToken = async (req, res) => {
 
   let sessionRow;
   try {
-    if (poolReady) {
+    if (!useSupabase) {
       const result = await pool.query(
         `SELECT s.*, u.email, u.first_name, u.last_name, u.is_active,
                 array_agg(r.name) as roles, array_agg(r.permissions) as permissions
@@ -367,7 +367,7 @@ export const refreshToken = async (req, res) => {
 
   // Delete old session
   try {
-    if (poolReady) {
+    if (!useSupabase) {
       await pool.query('DELETE FROM sessions WHERE id = $1', [sessionRow.id]);
     } else {
       await supabaseDelete('sessions', { id: sessionRow.id });
@@ -388,7 +388,7 @@ export const refreshToken = async (req, res) => {
   });
 
   try {
-    if (poolReady) {
+    if (!useSupabase) {
       await pool.query(
         `INSERT INTO sessions (user_id, token_hash, refresh_token_hash, device_info, ip_address, user_agent, expires_at)
          VALUES ($1, $2, $3, $4, $5, $6, NOW() + INTERVAL '7 days')`,
@@ -424,7 +424,7 @@ export const logout = async (req, res) => {
   try {
     if (req.token) {
       const tokenHash = hashToken(req.token);
-      if (poolReady) {
+      if (!useSupabase) {
         await pool.query('DELETE FROM sessions WHERE token_hash = $1', [tokenHash]);
       } else {
         await supabaseDelete('sessions', { token_hash: tokenHash });
@@ -439,7 +439,7 @@ export const logout = async (req, res) => {
 
 export const logoutAll = async (req, res) => {
   try {
-    if (poolReady) {
+    if (!useSupabase) {
       await pool.query('DELETE FROM sessions WHERE user_id = $1', [req.user.id]);
     } else {
       await supabaseDelete('sessions', { user_id: req.user.id });
@@ -457,7 +457,7 @@ export const getCurrentUser = async (req, res) => {
   let userRow;
   let rolesRows = [];
   try {
-    if (poolReady) {
+    if (!useSupabase) {
       const result = await pool.query(
         `SELECT u.id, u.email, u.first_name, u.last_name, u.middle_name, u.date_of_birth, u.gender,
                 u.avatar_url, u.is_verified, u.is_active, u.last_login_at, u.created_at,
@@ -529,7 +529,7 @@ export const verifyEmail = async (req, res) => {
 
   let userRow;
   try {
-    if (poolReady) {
+    if (!useSupabase) {
       const result = await pool.query(
         'SELECT u.* FROM users u WHERE u.id = $1 AND u.is_verified = FALSE',
         [id]
@@ -553,7 +553,7 @@ export const verifyEmail = async (req, res) => {
   }
 
   try {
-    if (poolReady) {
+    if (!useSupabase) {
       await pool.query(
         'UPDATE users SET is_verified = TRUE, email_verified_at = NOW() WHERE id = $1',
         [id]
@@ -582,7 +582,7 @@ export const resendVerification = async (req, res) => {
   const verificationTokenHash = hashToken(verificationToken);
 
   try {
-    if (poolReady) {
+    if (!useSupabase) {
       await pool.query(
         'UPDATE users SET email_verification_token = $1 WHERE id = $2',
         [verificationTokenHash, user.id]
