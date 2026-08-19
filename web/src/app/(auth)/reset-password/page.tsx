@@ -34,7 +34,7 @@ export default function ResetPasswordPage() {
       await resetPassword({ token: token || '', password });
       setSuccess(true);
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to reset password');
+      setError(err?.data?.error?.message || 'Failed to reset password');
     } finally {
       setLoading(false);
     }

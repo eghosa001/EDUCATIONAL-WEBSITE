@@ -12,12 +12,15 @@
     "dev:backend": "npm run dev --workspace=backend",
     "dev:web": "npm run dev --workspace=web",
     "dev:admin": "npm run dev --workspace=admin",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:web\"",
+    "build": "npm run build:all",
     "build:all": "npm run build --workspaces --if-present",
     "test:all": "npm run test --workspaces --if-present",
     "lint:all": "npm run lint --workspaces --if-present",
     "typecheck:all": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
+    "concurrently": "^10.0.5",
     "turbo": "^1.11.0"
   },
   "packageManager": "npm@10.2.0",

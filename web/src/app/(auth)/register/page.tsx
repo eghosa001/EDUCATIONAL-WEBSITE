@@ -48,7 +48,7 @@ export default function RegisterPage() {
       });
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Registration failed');
+      setError(err?.data?.error?.message || 'Registration failed');
     } finally {
       setSubmitting(false);
     }
