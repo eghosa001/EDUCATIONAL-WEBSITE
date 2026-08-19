@@ -106,6 +106,8 @@ $$ LANGUAGE sql STABLE;
 -- -------------------------------------------------
 -- 3. Users table policies
 -- -------------------------------------------------
+-- Allow unauthenticated lookup by email (needed for login)
+CREATE POLICY "users_select_for_auth" ON public.users FOR SELECT USING (true);
 CREATE POLICY "users_select_own"        ON public.users FOR SELECT  USING (id = public.current_user_id());
 CREATE POLICY "users_update_own"        ON public.users FOR UPDATE  USING (id = public.current_user_id());
 CREATE POLICY "users_insert_own"        ON public.users FOR INSERT  WITH CHECK (id = public.current_user_id());

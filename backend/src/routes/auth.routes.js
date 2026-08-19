@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import Joi from 'joi';
-import { asyncHandler } from '../common/middleware/index.js';
+import { asyncHandler, authMiddleware } from '../common/middleware/index.js';
 import { authRateLimiter } from '../common/middleware/index.js';
 import { validateRequest } from '../common/middleware/index.js';
 import { schemas } from '../common/validators/joi.js';
@@ -34,6 +34,7 @@ authRoutes.post('/logout-all',
 );
 
 authRoutes.get('/me',
+  authMiddleware,
   asyncHandler(authController.getCurrentUser)
 );
 

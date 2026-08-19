@@ -6,7 +6,7 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 
 // Database
-import { pool, query, getClient, transaction } from './common/database/index.js';
+import { pool, query, getClient, transaction, poolReady, useSupabase } from './common/database/index.js';
 
 // Constants
 import { HTTP_STATUS, ERROR_CODES } from './common/constants/index.js';
@@ -61,36 +61,78 @@ if (config.env !== 'test') {
 app.use(requestLogger);
 app.use(rateLimiter);
 
-// Block direct /api/ access without version — force /api/v1/
-app.use('/api', (req, res) => {
+// Allow /api/v1/ — but block bare /api/ without version
+app.use('/api', (req, res, next) => {
+  if (req.path.startsWith('/v1')) return next();
   res.status(404).json({
     success: false,
     error: { code: 'NOT_FOUND', message: 'Use /api/v1/ instead of /api/' },
   });
 });
 
-app.get('/health', (req, res) => {
-  res.json({ success: true, message: 'Educational Platform API is running', timestamp: new Date().toISOString(), version: '1.0.0', environment: config.env });
+app.get('/health', async (req, res) => {
+  const dbStatus = { local: 'unknown', supabase: 'unknown', mode: 'unknown' };
+  try {
+    await poolReady;
+    dbStatus.mode = useSupabase ? 'supabase-rest' : 'local-pg';
+    if (useSupabase) {
+      try {
+        const r = await query('SELECT 1');
+        dbStatus.supabase = r?.rowCount > 0 ? 'ok' : 'reachable-no-response';
+      } catch (e) {
+        dbStatus.supabase = 'error';
+      }
+    } else {
+      try {
+        const r = await pool.query('SELECT 1');
+        dbStatus.local = r?.rowCount > 0 ? 'ok' : 'reachable-no-response';
+      } catch (e) {
+        dbStatus.local = 'error';
+      }
+    }
+  } catch (e) {
+    dbStatus.mode = 'connecting...';
+  }
+  const allOk = dbStatus.local === 'ok' || dbStatus.supabase === 'ok';
+  res.json({
+    success: allOk,
+    message: allOk ? 'Educational Platform API is running' : 'API running but database connectivity degraded',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    environment: config.env,
+    database: dbStatus,
+  });
 });
 
 app.use(config.apiPrefix, apiRoutes);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-const startServer = async () => {
-  try {
-    await app.listen(config.port, () => {
-      console.log(`Server running on port ${config.port} in ${config.env} mode`);
-    });
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-  }
-};
+// Serverless handler for Vercel
+export default async function handler(req, res) {
+  // Set req.ip for rate limiting
+  req.ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
+  req.headers['user-agent'] = req.headers['user-agent'] || '';
+  return app(req, res);
+}
 
-process.on('SIGTERM', () => { pool.end(); process.exit(0); });
-process.on('SIGINT', () => { pool.end(); process.exit(0); });
-process.on('unhandledRejection', (reason) => { console.error('Unhandled Rejection:', reason); });
-process.on('uncaughtException', (error) => { console.error('Uncaught Exception:', error); process.exit(1); });
+// Only start standalone server for local development
+if (!process.env.VERCEL) {
+  const startServer = async () => {
+    try {
+      await app.listen(config.port, () => {
+        console.log(`Server running on port ${config.port} in ${config.env} mode`);
+      });
+    } catch (error) {
+      console.error('Failed to start server:', error);
+      process.exit(1);
+    }
+  };
 
-startServer();
+  process.on('SIGTERM', () => { pool.end(); process.exit(0); });
+  process.on('SIGINT', () => { pool.end(); process.exit(0); });
+  process.on('unhandledRejection', (reason) => { console.error('Unhandled Rejection:', reason); });
+  process.on('uncaughtException', (error) => { console.error('Uncaught Exception:', error); process.exit(1); });
+
+  startServer();
+}

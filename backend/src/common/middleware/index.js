@@ -6,7 +6,18 @@ import { rateLimit } from 'express-rate-limit';
 export { asyncHandler, AppError };
 import subscriptionMiddleware from './subscription.js';
 export const requireSubscription = subscriptionMiddleware.requireSubscription;
-export const requireFeatureAccess = subscriptionMiddleware.requireFeatureAccess; 
+export const requireFeatureAccess = subscriptionMiddleware.requireFeatureAccess;
+
+/** Parse cookies from the Cookie request header (no cookie-parser dependency). */
+const parseCookies = (cookieHeader) => {
+  const cookies = {};
+  if (!cookieHeader) return cookies;
+  cookieHeader.split(';').forEach((c) => {
+    const [name, ...rest] = c.trim().split('=');
+    cookies[name] = rest.join('=');
+  });
+  return cookies;
+};
 
 export const errorHandler = (err, req, res, next) => {
   handleError(err, res);
@@ -23,13 +34,23 @@ export const notFoundHandler = (req, res) => {
 };
 
 export const authMiddleware = asyncHandler(async (req, res, next) => {
-  const authHeader = req.headers.authorization;
+  let token = null;
 
-  if (!authHeader?.startsWith('Bearer ')) {
-    throw new AppError('No token provided', HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.AUTHENTICATION_ERROR);
+  // Try Authorization header first (existing clients)
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
   }
 
-  const token = authHeader.split(' ')[1];
+  // Fall back to HttpOnly cookie (new secure path)
+  if (!token) {
+    const cookies = parseCookies(req.headers.cookie);
+    token = cookies['access_token'];
+  }
+
+  if (!token) {
+    throw new AppError('No token provided', HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.AUTHENTICATION_ERROR);
+  }
 
   try {
     const { verifyToken } = await import('../../auth/utils/jwt.js');
@@ -38,7 +59,7 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
     const userService = await import('../../users/services/user.service.js');
     const user = await userService.default.getUserById(decoded.sub);
 
-    if (!user || !user.isActive) {
+    if (!user || !user.is_active) {
       throw new AppError('User not found or inactive', HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.AUTHENTICATION_ERROR);
     }
 
@@ -52,26 +73,33 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
 });
 
 export const optionalAuthMiddleware = asyncHandler(async (req, res, next) => {
-  const authHeader = req.headers.authorization;
+  let token = null;
 
-  if (!authHeader?.startsWith('Bearer ')) {
-    return next();
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
   }
 
-  const token = authHeader.split(' ')[1];
+  if (!token) {
+    const cookies = parseCookies(req.headers.cookie);
+    token = cookies['access_token'];
+  }
 
-  try {
-    const { verifyToken } = await import('../../auth/utils/jwt.js');
-    const decoded = verifyToken(token);
+  if (token) {
+    try {
+      const { verifyToken } = await import('../../auth/utils/jwt.js');
+      const decoded = verifyToken(token);
 
-    const userService = await import('../../users/services/user.service.js');
-    const user = await userService.default.getUserById(decoded.sub);
+      const userService = await import('../../users/services/user.service.js');
+      const user = await userService.default.getUserById(decoded.sub);
 
-    if (user && user.isActive) {
-      req.user = user;
-      req.token = token;
+      if (user && user.is_active) {
+        req.user = user;
+        req.token = token;
+      }
+    } catch {
+      // Invalid or expired token — proceed unauthenticated
     }
-  } catch {
   }
 
   next();

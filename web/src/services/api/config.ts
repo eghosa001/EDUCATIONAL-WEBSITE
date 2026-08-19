@@ -8,6 +8,7 @@ export const apiConfig = {
   baseUrl: API_BASE_URL,
   headers: DEFAULT_HEADERS,
   timeout: 10000,
+  credentials: 'include' as const,
 };
 
 export const getAuthHeaders = (token?: string) => {

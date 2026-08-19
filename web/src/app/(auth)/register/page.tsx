@@ -32,8 +32,12 @@ export default function RegisterPage() {
       setError('Passwords do not match');
       return;
     }
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+      setError('Password must contain at least one lowercase letter, one uppercase letter, and one digit');
       return;
     }
 
@@ -106,7 +110,8 @@ export default function RegisterPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
               <div className="relative">
-                <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} required minLength={6}
+                <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} required minLength={8}
+                  pattern={".*(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).*"}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none pr-10"
                   placeholder="••••••••" />
                 <button type="button" onClick={() => setShowPassword(!showPassword)}

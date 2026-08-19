@@ -129,8 +129,12 @@ export const resendVerification = async (token: string) => {
 };
 
 export const getCurrentUser = async (token: string) => {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
   const response = await fetch(`${baseUrl}/auth/me`, {
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    headers,
   });
   return handleApiError(response);
 };

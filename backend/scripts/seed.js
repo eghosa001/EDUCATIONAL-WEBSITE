@@ -1,4 +1,4 @@
-import { query, closePool } from '../src/common/database/index.js';
+import { query, closePool, poolReady } from '../src/common/database/index.js';
 import { USER_ROLES } from '../src/common/constants/index.js';
 import bcrypt from 'bcryptjs';
 
@@ -386,6 +386,8 @@ const seedDemoUsers = async (config) => {
 };
 
 const run = async () => {
+  // Wait for database pool to be ready
+  try { await poolReady; } catch (e) { console.error('Pool never ready:', e.message); process.exit(1); }
   await seedRoles();
   await seedEducation();
   await seedSubjects();
