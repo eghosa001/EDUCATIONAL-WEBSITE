@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request, { params }: { params: Promise<{ slugOrId: string }> }) {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
