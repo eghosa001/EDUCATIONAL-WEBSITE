@@ -7,7 +7,7 @@ import { fetchSettings, updateSettings, type Setting } from '@/services/api/admi
 export type SettingsMap = Record<string, string>;
 
 const DEFAULTS: SettingsMap = {
-  platform_name: 'EduPlatform',
+  platform_name: 'THE GUIDE',
   currency: 'NGN',
   timezone: 'Africa/Lagos',
   maintenance_mode: 'false',

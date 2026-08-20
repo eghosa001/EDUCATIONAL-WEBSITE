@@ -300,7 +300,7 @@ async function main() {
     {title:'Chemical bonding made easy',content:'Ionic: metal+non-metal, electron transfer. Covalent: non-metal+non-metal, electron sharing. Metallic: sea of electrons.',author:'Mr. Okonkwo',tags:['chemistry','bonding','teaching'],type:'teaching'},
     {title:'Essay writing tips for English exam',content:'Plan before writing. Use varied sentence structures. Check spelling and grammar. Practice with past question essay topics.',author:'Mrs. Bello',tags:['english','essay','teaching'],type:'teaching'},
     {title:'Geography map work preparation',content:'Practice topographic maps weekly. Learn contour intervals, grid references, and symbols. Practice makes perfect!',author:'Dr. Abubakar',tags:['geography','map-work','teaching'],type:'teaching'},
-    {title:'Top 5 apps for Nigerian students',content:'1. LearnForge 2. Khan Academy 3. Quizlet 4. Photomath 5. YouTube CrashCourse',author:'Tunde K.',tags:['tools','apps'],type:'discussion'},
+    {title:'Top 5 apps for Nigerian students',content:'1. THE GUIDE 2. Khan Academy 3. Quizlet 4. Photomath 5. YouTube CrashCourse',author:'Tunde K.',tags:['tools','apps'],type:'discussion'},
     {title:'Physics electricity simplified',content:'Current = flow of charge (A). Voltage = push (V). Resistance = opposition (Ω). Remember: V = IR!',author:'Engr. Sunday',tags:['physics','electricity','teaching'],type:'teaching'},
   ];
   let postCount = 0;

@@ -30,11 +30,11 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  runApp(const ProviderScope(child: EduPlatformApp()));
+  runApp(const ProviderScope(child: TheGuideApp()));
 }
 
-class EduPlatformApp extends ConsumerWidget {
-  const EduPlatformApp({super.key});
+class TheGuideApp extends ConsumerWidget {
+  const TheGuideApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

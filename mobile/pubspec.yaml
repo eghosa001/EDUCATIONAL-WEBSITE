@@ -1,5 +1,5 @@
 name: educational_platform_mobile
-description: "Nigerian Educational Platform Mobile App"
+description: "THE GUIDE Mobile App"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -99,6 +99,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/images/logos/
     - assets/icons/
     - assets/animations/
     - assets/fonts/

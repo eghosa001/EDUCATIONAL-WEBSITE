@@ -29,7 +29,7 @@ class AppLocalization {
     return Localizations.of<AppLocalization>(context, AppLocalization)!;
   }
 
-  String get appName => strings['app_name'] ?? 'EduPlatform';
+  String get appName => strings['app_name'] ?? 'THE GUIDE';
   String get login => strings['login'] ?? 'Login';
   String get register => strings['register'] ?? 'Register';
   String get email => strings['email'] ?? 'Email';
@@ -483,7 +483,7 @@ abstract class AppLocalizationDelegate extends LocalizationsDelegate<AppLocaliza
 
 class EnLocalizations {
   Map<String, String> get strings => const {
-    'app_name': 'EduPlatform',
+    'app_name': 'THE GUIDE',
     'login': 'Login',
     'register': 'Register',
     'email': 'Email',
@@ -919,7 +919,7 @@ class EnLocalizations {
 
 class HaLocalizations {
   Map<String, String> get strings => const {
-    'app_name': 'EduPlatform',
+    'app_name': 'THE GUIDE',
     'login': 'Shiga',
     'register': 'Rubuta',
     'email': 'Imel',
@@ -1355,7 +1355,7 @@ class HaLocalizations {
 
 class YoLocalizations {
   Map<String, String> get strings => const {
-    'app_name': 'EduPlatform',
+    'app_name': 'THE GUIDE',
     'login': 'Wọle',
     'register': 'Báṣẹ̀',
     'email': 'Imẹlì',

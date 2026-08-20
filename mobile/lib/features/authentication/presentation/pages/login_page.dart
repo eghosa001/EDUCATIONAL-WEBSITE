@@ -26,22 +26,22 @@ class LoginPage extends ConsumerWidget {
               Center(
                 child: Column(
                   children: [
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary,
-                        shape: BoxShape.circle,
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.asset(
+                        'assets/images/logos/primary-logo.jfif',
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
                       ),
-                      child: const Icon(Icons.school, size: 48, color: Colors.white),
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'EduPlatform',
+                      'THE GUIDE',
                       style: theme.textTheme.headlineMedium?.copyWith(color: theme.colorScheme.primary),
                     ),
                     Text(
-                      'Learn Anything, Anywhere',
+                      'Your path to smarter learning',
                       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
                   ],

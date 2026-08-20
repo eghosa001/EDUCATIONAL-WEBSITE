@@ -1,11 +1,11 @@
-# Nigerian Educational Platform
+# THE GUIDE
 
-A comprehensive educational platform covering primary school through university/professional learning for Nigeria.
+Your path to smarter learning. A comprehensive educational platform covering primary school through university/professional learning for Nigeria.
 
 ## Architecture Overview
 
 ```
-EDUCATIONAL PLATFORM
+THE GUIDE
          │
 ��────────��────────��
 │        │        │

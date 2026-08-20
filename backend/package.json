@@ -1,7 +1,7 @@
 {
   "name": "educational-platform-backend",
   "version": "1.0.0",
-  "description": "Backend API for Nigerian Educational Platform",
+  "description": "Backend API for THE GUIDE",
   "main": "src/index.js",
   "type": "module",
   "scripts": {

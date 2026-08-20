@@ -45,13 +45,8 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
       {/* Top bar */}
       <header className="bg-white border-b border-gray-200 h-14 flex items-center px-6 justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.94.94 2.573 1.066 2.573 1.066z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </div>
-          <span className="font-bold text-gray-900">EduPlatform Admin</span>
+          <img src="/logos/primary-logo.jfif" alt="THE GUIDE" className="w-8 h-8 rounded-lg object-cover" />
+          <span className="font-bold text-gray-900">THE GUIDE Admin</span>
         </div>
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-500">{user?.firstName} {user?.lastName}</span>

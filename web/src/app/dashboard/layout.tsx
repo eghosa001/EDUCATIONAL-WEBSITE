@@ -76,10 +76,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Mobile header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 h-14 flex items-center px-4 justify-between">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <AcademicCapIcon className="w-5 h-5 text-white" />
-          </div>
-          <span className="font-bold text-gray-900">EduPlatform</span>
+          <img src="/logos/primary-logo.jfif" alt="THE GUIDE" className="w-8 h-8 rounded-lg object-cover" />
+          <span className="font-bold text-gray-900">THE GUIDE</span>
         </Link>
         <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg hover:bg-gray-100">
           {sidebarOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
@@ -102,10 +100,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* Logo */}
           <div className="h-14 flex items-center px-4 border-b border-gray-100">
             <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <AcademicCapIcon className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-bold text-gray-900">EduPlatform</span>
+              <img src="/logos/primary-logo.jfif" alt="THE GUIDE" className="w-8 h-8 rounded-lg object-cover" />
+              <span className="font-bold text-gray-900">THE GUIDE</span>
             </Link>
             <button onClick={() => setSidebarOpen(false)} className="lg:hidden ml-auto p-1 rounded hover:bg-gray-100">
               <XMarkIcon className="w-5 h-5" />

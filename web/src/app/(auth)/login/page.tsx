@@ -48,9 +48,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <AcademicCapIcon className="w-7 h-7 text-white" />
-          </div>
+          <img src="/logos/primary-logo.jfif" alt="THE GUIDE" className="w-16 h-16 rounded-xl object-cover mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
           <p className="text-gray-500 mt-1">Sign in to your account</p>
         </div>

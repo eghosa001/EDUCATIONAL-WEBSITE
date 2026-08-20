@@ -1,4 +1,4 @@
-Demo Accounts - LearnForge Educational Platform
+Demo Accounts - THE GUIDE
 ================================================
 
 Main Demo Accounts (created by seed.js):

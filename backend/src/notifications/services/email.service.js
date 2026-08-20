@@ -47,9 +47,9 @@ export const emailService = {
   async sendWelcomeEmail(userId, email, firstName) {
     return this.send(
       email,
-      `Welcome to EduPlatform, ${firstName}!`,
-      `<h1>Welcome, ${firstName}!</h1><p>Thank you for joining EduPlatform. Start your learning journey today.</p>`,
-      `Welcome, ${firstName}! Thank you for joining EduPlatform.`
+      `Welcome to THE GUIDE, ${firstName}!`,
+      `<h1>Welcome, ${firstName}!</h1><p>Thank you for joining THE GUIDE. Start your learning journey today.</p>`,
+      `Welcome, ${firstName}! Thank you for joining THE GUIDE.`
     );
   },
 
