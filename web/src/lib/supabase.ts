@@ -1,16 +1,27 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xanrzsszrysianxhpprk.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+function getSupabaseUrl() {
+  return process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xanrzsszrysianxhpprk.supabase.co';
+}
 
-if (!supabaseAnonKey) {
-  console.warn('[supabase] No anon key provided — Supabase client operations will fail. Set NEXT_PUBLIC_SUPABASE_ANON_KEY.');
+function getSupabaseAnonKey() {
+  return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
 }
 
 export const createClientComponent = () => {
-  return createClient(supabaseUrl, supabaseAnonKey);
+  return createClient(getSupabaseUrl(), getSupabaseAnonKey());
 };
 
-export const supabase = createClientComponent();
+let _supabase: ReturnType<typeof createClientComponent> | null = null;
+export function getSupabase() {
+  if (!_supabase) _supabase = createClientComponent();
+  return _supabase;
+}
 
-export default { createClientComponent, supabase };
+export const supabase = new Proxy({} as ReturnType<typeof createClientComponent>, {
+  get(_, prop) {
+    return (getSupabase() as any)[prop];
+  },
+});
+
+export default { createClientComponent, supabase: getSupabase };

@@ -2,10 +2,12 @@ import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function POST(request: Request) {
   const { email, password } = await request.json();
@@ -13,6 +15,7 @@ export async function POST(request: Request) {
     return Response.json({ success: false, error: 'Email and password required' }, { status: 400 });
   }
 
+  const supabase = getSupabase();
   const { data: user, error } = await supabase.from('users').select('*').eq('email', email).single();
   if (error || !user || !user.is_active) {
     return Response.json({ success: false, error: 'Invalid email or password' }, { status: 401 });
