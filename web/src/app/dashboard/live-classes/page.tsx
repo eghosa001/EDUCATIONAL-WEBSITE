@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { VideoIcon, CalendarIcon, UsersIcon, ClockIcon, PlusIcon } from 'lucide-react';
 import { useAuthStore } from '@/state/auth/authStore';
+import { fetchMyLiveClasses, type LiveClass as LiveClassType } from '@/features/liveClasses/service';
 
 interface LiveClass {
   id: string;
@@ -20,21 +21,17 @@ interface LiveClass {
 
 export default function LiveClassesPage() {
   const { token, user } = useAuthStore();
-  const [classes, setClasses] = useState<LiveClass[]>([]);
+  const [classes, setClasses] = useState<LiveClassType[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'live' | 'recorded'>('all');
 
   useEffect(() => {
     if (!token) return;
-    // Use schoolService as fallback since there's no dedicated live classes service yet
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/live-classes${user?.role === 'teacher' ? '/my' : ''}?page=1&limit=20`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(res => res.json())
-      .then(data => setClasses(data.data?.classes || []))
+    fetchMyLiveClasses(token, { page: 1, limit: 20 })
+      .then(res => setClasses((res.data as LiveClassType[]) || []))
       .catch(() => setClasses([]))
       .finally(() => setLoading(false));
-  }, [token, user]);
+  }, [token]);
 
   const filtered = filter === 'all' ? classes : classes.filter(c => {
     if (filter === 'upcoming') return c.status === 'scheduled';

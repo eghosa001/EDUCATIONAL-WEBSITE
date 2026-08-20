@@ -34,3 +34,8 @@ flashcardRoutes.delete('/:id',
   validateRequest({ params: schemas.idParam }),
   asyncHandler(flashcardController.deleteFlashcard)
 );
+
+flashcardRoutes.get('/my',
+  authMiddleware,
+  asyncHandler(flashcardController.getMyFlashcards)
+);

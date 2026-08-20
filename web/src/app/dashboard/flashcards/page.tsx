@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BookOpenIcon, BrainIcon, Sparkles } from 'lucide-react';
 import { useAuthStore } from '@/state/auth/authStore';
-import { generateAiFlashcards } from '@/services/api/aiService';
+import { generateAiFlashcards, fetchMyFlashcards } from '@/services/api/aiService';
 
 interface Flashcard {
   id: string;
@@ -25,7 +25,14 @@ export default function FlashcardsPage() {
 
   useEffect(() => {
     if (token) {
-      // Load saved flashcards from backend or generate defaults
+      fetchMyFlashcards(token, { page: 1, limit: 50 })
+        .then(res => {
+          setFlashcards((res.flashcards || []) as Flashcard[]);
+          setGenerated(true);
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    } else {
       setLoading(false);
     }
   }, [token]);

@@ -289,6 +289,88 @@ export const schemas = {
       stream: Joi.boolean().default(false),
     }),
   },
+
+  marketplace: {
+    createProduct: Joi.object({
+      title: Joi.string().min(3).max(300).required(),
+      slug: Joi.string().min(3).max(300).optional(),
+      description: Joi.string().optional(),
+      category: Joi.string().valid('ebook', 'video_course', 'audio', 'template', 'tool', 'notepad', 'worksheet', 'assessment', 'other').optional(),
+      price: Joi.number().min(0).precision(2).default(0),
+      currency: Joi.string().length(3).default('NGN'),
+      file_type: Joi.string().optional(),
+      file_size_bytes: Joi.number().integer().min(0).optional(),
+      file_url: Joi.string().uri().optional(),
+      thumbnail_url: Joi.string().uri().optional(),
+      tags: Joi.array().items(Joi.string()).default([]),
+      status: Joi.string().valid('draft', 'active', 'archived', 'delisted').default('draft'),
+    }),
+
+    createOrder: Joi.object({
+      productId: Joi.string().uuid().required(),
+      amount: Joi.number().min(0).precision(2).optional(),
+      currency: Joi.string().length(3).default('NGN'),
+    }),
+
+    addToCart: Joi.object({
+      productId: Joi.string().uuid().required(),
+      quantity: Joi.number().integer().min(1).default(1),
+    }),
+  },
+
+  corporateTraining: {
+    createTraining: Joi.object({
+      organizationId: Joi.string().uuid().optional(),
+      title: Joi.string().min(3).max(300).required(),
+      slug: Joi.string().min(3).max(300).optional(),
+      description: Joi.string().optional(),
+      curriculum: Joi.object().optional(),
+      price: Joi.number().min(0).precision(2).default(0),
+      currency: Joi.string().length(3).default('NGN'),
+      isFree: Joi.boolean().default(false),
+      durationDays: Joi.number().integer().min(1).optional(),
+      maxParticipants: Joi.number().integer().min(1).optional(),
+      status: Joi.string().valid('draft', 'active', 'archived', 'completed').default('draft'),
+    }),
+
+    bulkEnroll: Joi.object({
+      userIds: Joi.array().items(Joi.string().uuid()).min(1).required(),
+    }),
+  },
+
+  affiliate: {
+    recordConversion: Joi.object({
+      refCode: Joi.string().required(),
+      orderId: Joi.string().uuid().optional(),
+      orderAmount: Joi.number().min(0).precision(2).required(),
+      commissionAmount: Joi.number().min(0).precision(2).required(),
+    }),
+  },
+
+  advertising: {
+    createCampaign: Joi.object({
+      placementId: Joi.string().uuid().optional(),
+      title: Joi.string().min(3).max(300).required(),
+      description: Joi.string().optional(),
+      campaignType: Joi.string().valid('banner', 'native', 'sponsored_content', 'video', 'popup').default('banner'),
+      budget: Joi.number().min(0).precision(2).default(0),
+      bidsPerClick: Joi.number().min(0).precision(2).optional(),
+      startDate: Joi.date().optional(),
+      endDate: Joi.date().optional(),
+      status: Joi.string().valid('draft', 'active', 'paused', 'completed', 'rejected').default('draft'),
+      creativeUrl: Joi.string().uri().optional(),
+      targetAudience: Joi.object().optional(),
+    }),
+
+    createPlacement: Joi.object({
+      name: Joi.string().min(2).max(200).required(),
+      slotType: Joi.string().valid('banner_top', 'banner_bottom', 'sidebar', 'in_content', 'interstitial', 'native', 'header').required(),
+      width: Joi.number().integer().optional(),
+      height: Joi.number().integer().optional(),
+      description: Joi.string().optional(),
+      isActive: Joi.boolean().default(true),
+    }),
+  },
 };
 
 export default schemas;

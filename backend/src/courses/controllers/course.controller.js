@@ -191,3 +191,37 @@ export const getCourseStats = async (req, res) => {
 
   res.json({ success: true, data: { stats: result.rows[0] } });
 };
+
+export const listSavedCourses = async (req, res) => {
+  const { page, limit } = req.query;
+  const offset = ((parseInt(page) || 1) - 1) * (parseInt(limit) || 20);
+  const pLimit = parseInt(limit) || 20;
+
+  const result = await query(
+    `SELECT c.id, c.title, c.slug, c.thumbnail_url, c.short_description,
+            c.difficulty, c.is_free, c.price, c.currency, c.rating, c.review_count,
+            b.created_at as bookmarked_at
+     FROM bookmarks b
+     JOIN courses c ON b.course_id = c.id
+     WHERE b.user_id = $1
+     ORDER BY b.created_at DESC
+     LIMIT $2 OFFSET $3`,
+    [req.user.id, pLimit, offset]
+  );
+
+  const countResult = await query(
+    'SELECT COUNT(*) as total FROM bookmarks WHERE user_id = $1',
+    [req.user.id]
+  );
+
+  res.json({
+    success: true,
+    data: { courses: result.rows },
+    pagination: {
+      page: parseInt(page) || 1,
+      limit: pLimit,
+      total: parseInt(countResult.rows[0]?.total || 0),
+      totalPages: Math.ceil(parseInt(countResult.rows[0]?.total || 0) / pLimit),
+    },
+  });
+};

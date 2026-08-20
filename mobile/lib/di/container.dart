@@ -20,6 +20,12 @@ import '../../shared/repositories/community_repository.dart';
 import '../../shared/repositories/parent_repository.dart';
 import '../../shared/repositories/teacher_repository.dart';
 import '../../shared/repositories/school_repository.dart';
+import '../../shared/repositories/authentication_repository.dart';
+import '../../shared/repositories/home_repository.dart';
+import '../../shared/repositories/onboarding_repository.dart';
+import '../../shared/repositories/profile_repository.dart';
+import '../../shared/repositories/flashcard_repository.dart';
+import '../../shared/repositories/subscription_repository.dart';
 
 // Core infrastructure
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
@@ -88,6 +94,30 @@ final teacherRepositoryProvider = Provider<TeacherRepository>((ref) {
 });
 final schoolRepositoryProvider = Provider<SchoolRepository>((ref) {
   return SchoolRepository(ref.watch(apiClientProvider));
+});
+final authenticationRepositoryProvider = Provider<AuthenticationRepository>((ref) {
+  return AuthenticationRepository(
+    ref.watch(apiClientProvider),
+    ref.watch(storageServiceProvider),
+  );
+});
+final homeRepositoryProvider = Provider<HomeRepository>((ref) {
+  return HomeRepository(ref.watch(apiClientProvider));
+});
+final onboardingRepositoryProvider = Provider<OnboardingRepository>((ref) {
+  return OnboardingRepository(ref.watch(apiClientProvider));
+});
+final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
+  return ProfileRepository(
+    ref.watch(apiClientProvider),
+    ref.watch(storageServiceProvider),
+  );
+});
+final flashcardRepositoryProvider = Provider<FlashcardRepository>((ref) {
+  return FlashcardRepository(ref.watch(apiClientProvider));
+});
+final subscriptionRepositoryProvider = Provider<SubscriptionRepository>((ref) {
+  return SubscriptionRepository(ref.watch(apiClientProvider));
 });
 
 // Auth state

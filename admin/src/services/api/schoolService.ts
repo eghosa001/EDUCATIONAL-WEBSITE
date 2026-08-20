@@ -7,6 +7,7 @@ export interface SchoolRow {
   id: string;
   name: string;
   code: string;
+  description?: string;
   email?: string;
   phone?: string;
   address?: string;

@@ -3,19 +3,17 @@
 import { useEffect, useState } from 'react';
 import { Award, Download, Calendar, User } from 'lucide-react';
 import { useAuthStore } from '@/state/auth/authStore';
+import { fetchMyCertificates, type Certificate } from '@/services/api/certificateService';
 
 export default function CertificatesPage() {
   const { token } = useAuthStore();
-  const [certificates, setCertificates] = useState<any[]>([]);
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!token) return;
-    fetch('/api/certificates/my', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(res => res.json())
-      .then(data => setCertificates(data.data || []))
+    fetchMyCertificates(token)
+      .then(res => setCertificates(res.data || []))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [token]);
@@ -54,9 +52,9 @@ export default function CertificatesPage() {
                 </div>
                 <div className="flex-1">
                   <h3 className="font-semibold text-gray-900">{cert.courseTitle || 'Course'}</h3>
-                  <p className="text-sm text-gray-500 mt-1">Certificate ID: {cert.certificateId || cert.certificate_id || 'N/A'}</p>
+                  <p className="text-sm text-gray-500 mt-1">Certificate ID: {cert.certificateId || 'N/A'}</p>
                   <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
-                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(cert.issuedAt || cert.issued_at).toLocaleDateString()}</span>
+                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(cert.issuedAt).toLocaleDateString()}</span>
                     <span className="flex items-center gap-1"><User className="w-3 h-3" /> {cert.studentName || 'Student'}</span>
                   </div>
                 </div>

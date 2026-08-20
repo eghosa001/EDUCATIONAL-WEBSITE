@@ -58,3 +58,13 @@ export const deleteFlashcard = async (req, res) => {
 
   res.json({ success: true, message: 'Flashcard deleted' });
 };
+
+export const getMyFlashcards = async (req, res) => {
+  const { page, limit, difficulty } = req.query;
+  const { data, pagination } = await flashcardModel.listByUser(req.user.id, {
+    page: page ? parseInt(page) : undefined,
+    limit: limit ? parseInt(limit) : undefined,
+    difficulty,
+  });
+  res.json({ success: true, data: { flashcards: data }, pagination });
+};

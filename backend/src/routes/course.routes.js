@@ -31,6 +31,11 @@ courseRoutes.get('/my',
   asyncHandler(courseController.listMyCourses)
 );
 
+courseRoutes.get('/saved',
+  authMiddleware,
+  asyncHandler(courseController.listSavedCourses)
+);
+
 courseRoutes.post('/',
   authMiddleware,
   validateRequest(schemas.course.create),

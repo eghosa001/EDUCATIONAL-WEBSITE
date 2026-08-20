@@ -12,7 +12,7 @@ import { useUsers, hasRole } from './hooks';
 import type { AdminUserRow } from '@/services/api/userService';
 
 interface UsersTableProps {
-  roleFilter?: 'student' | 'parent' | 'teacher' | 'all';
+  roleFilter?: 'student' | 'parent' | 'teacher' | 'school_admin' | 'all';
 }
 
 export default function UsersTable({ roleFilter = 'all' }: UsersTableProps) {

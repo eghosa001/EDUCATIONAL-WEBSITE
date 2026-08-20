@@ -188,6 +188,30 @@ export const generateAiFlashcards = async (
   return handleApiError(response);
 };
 
+export interface SavedFlashcard {
+  id: string;
+  front: string;
+  back: string;
+  subjectId?: string;
+  topicId?: string;
+  courseId?: string;
+  difficulty?: string;
+}
+
+export const fetchMyFlashcards = async (
+  token: string,
+  params: { page?: number; limit?: number; difficulty?: string } = {}
+): Promise<{ flashcards: SavedFlashcard[]; pagination: { page: number; limit: number; total: number } }> => {
+  const query = new URLSearchParams();
+  if (params.page) query.set('page', String(params.page));
+  if (params.limit) query.set('limit', String(params.limit));
+  if (params.difficulty) query.set('difficulty', params.difficulty);
+  const response = await fetch(`${baseUrl}/flashcards/my?${query.toString()}`, {
+    headers: getAuthHeaders(token), credentials: 'include'
+  });
+  return handleApiError(response);
+};
+
 // ========== AI SUMMARIZER ==========
 
 export interface AiSummarizeRequest {

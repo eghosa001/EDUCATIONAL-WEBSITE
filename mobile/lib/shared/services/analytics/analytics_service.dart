@@ -1,63 +1,95 @@
 /// Analytics service for tracking user behavior and platform metrics
-/// This is a placeholder for the actual implementation
+/// Sends events to the backend for centralized analytics storage
+
+import '../../../core/network/api_client.dart';
+import '../../../core/constants/app_endpoints.dart';
+import '../../../core/storage/storage_service.dart';
 
 class AnalyticsService {
-  /// Track a screen view
-  static Future<void> trackScreenView(String screenName) async {
-    // TODO: Implement screen view tracking
-    // This could use Firebase Analytics, Mixpanel, or a custom backend
-    print('Tracked screen view: $screenName');
+  final ApiClient _apiClient;
+  final StorageService _storage;
+
+  AnalyticsService({required ApiClient apiClient, required StorageService storage})
+      : _apiClient = apiClient,
+        _storage = storage;
+
+  Future<void> trackScreenView(String screenName) async {
+    final token = _storage.token;
+    if (token == null || token.isEmpty) return;
+    try {
+      await _apiClient.post(
+        '/analytics/events',
+        data: {
+          'type': 'screen_view',
+          'screenName': screenName,
+          'userId': _storage.userId,
+        },
+      );
+    } catch (e) {
+      // Silently fail — analytics should never break the app
+    }
   }
 
-  /// Track an event
-  static Future<void> trackEvent({
+  Future<void> trackEvent({
     required String eventName,
     Map<String, dynamic>? parameters,
   }) async {
-    // TODO: Implement event tracking
-    print('Tracked event: $eventName with parameters: $parameters');
+    final token = _storage.token;
+    if (token == null || token.isEmpty) return;
+    try {
+      await _apiClient.post(
+        '/analytics/events',
+        data: {
+          'type': 'event',
+          'eventName': eventName,
+          'parameters': parameters ?? {},
+          'userId': _storage.userId,
+        },
+      );
+    } catch (e) {
+      // Silently fail
+    }
   }
 
-  /// Track user login
-  static Future<void> trackLogin(String userId) async {
-    await trackEvent(
-      eventName: 'user_login',
-      parameters: {'user_id': userId},
-    );
+  Future<void> setUserProperties(Map<String, dynamic> properties) async {
+    final token = _storage.token;
+    if (token == null || token.isEmpty) return;
+    try {
+      await _apiClient.patch(
+        '/analytics/user-properties',
+        data: {'properties': properties},
+      );
+    } catch (e) {
+      // Silently fail
+    }
   }
 
-  /// Track course enrollment
-  static Future<void> trackCourseEnrollment({
+  Future<void> trackLogin(String userId) async {
+    await trackEvent(eventName: 'user_login', parameters: {'user_id': userId});
+  }
+
+  Future<void> trackCourseEnrollment({
     required String userId,
     required String courseId,
   }) async {
     await trackEvent(
       eventName: 'course_enrollment',
-      parameters: {
-        'user_id': userId,
-        'course_id': courseId,
-      },
+      parameters: {'user_id': userId, 'course_id': courseId},
     );
   }
 
-  /// Track lesson completion
-  static Future<void> trackLessonCompletion({
+  Future<void> trackLessonCompletion({
     required String userId,
     required String lessonId,
     required String courseId,
   }) async {
     await trackEvent(
       eventName: 'lesson_completion',
-      parameters: {
-        'user_id': userId,
-        'lesson_id': lessonId,
-        'course_id': courseId,
-      },
+      parameters: {'user_id': userId, 'lesson_id': lessonId, 'course_id': courseId},
     );
   }
 
-  /// Track exam attempt
-  static Future<void> trackExamAttempt({
+  Future<void> trackExamAttempt({
     required String userId,
     required String examId,
     required double score,
@@ -65,33 +97,22 @@ class AnalyticsService {
   }) async {
     await trackEvent(
       eventName: 'exam_attempt',
-      parameters: {
-        'user_id': userId,
-        'exam_id': examId,
-        'score': score,
-        'passed': passed,
-      },
+      parameters: {'user_id': userId, 'exam_id': examId, 'score': score, 'passed': passed},
     );
   }
 
-  /// Track subscription
-  static Future<void> trackSubscription({
+  Future<void> trackSubscription({
     required String userId,
     required String planId,
     required double amount,
   }) async {
     await trackEvent(
       eventName: 'subscription',
-      parameters: {
-        'user_id': userId,
-        'plan_id': planId,
-        'amount': amount,
-      },
+      parameters: {'user_id': userId, 'plan_id': planId, 'amount': amount},
     );
   }
 
-  /// Track payment
-  static Future<void> trackPayment({
+  Future<void> trackPayment({
     required String userId,
     required double amount,
     required String method,
@@ -99,21 +120,7 @@ class AnalyticsService {
   }) async {
     await trackEvent(
       eventName: 'payment',
-      parameters: {
-        'user_id': userId,
-        'amount': amount,
-        'method': method,
-        'success': success,
-      },
+      parameters: {'user_id': userId, 'amount': amount, 'method': method, 'success': success},
     );
-  }
-
-  /// Set user properties
-  static Future<void> setUserProperties({
-    required String userId,
-    required Map<String, dynamic> properties,
-  }) async {
-    // TODO: Implement setting user properties
-    print('Set user properties for $userId: $properties');
   }
 }

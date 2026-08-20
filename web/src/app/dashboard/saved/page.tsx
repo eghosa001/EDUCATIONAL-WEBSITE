@@ -4,17 +4,17 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BookmarkIcon, BookOpenIcon, StarIcon } from 'lucide-react';
 import { useAuthStore } from '@/state/auth/authStore';
-import { fetchCourses } from '@/services/api/courseService';
 
 interface SavedCourse {
   id: string;
   slug: string;
   title: string;
   shortDescription?: string;
-  teacherId?: string;
+  thumbnailUrl?: string;
   rating?: number;
   isFree: boolean;
   price: number;
+  bookmarkedAt: string;
 }
 
 export default function SavedPage() {
@@ -24,8 +24,11 @@ export default function SavedPage() {
 
   useEffect(() => {
     if (!token) return;
-    fetchCourses({ page: 1, limit: 20, featured: true }, token)
-      .then(res => setSavedCourses((res.data || []) as unknown as SavedCourse[]))
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/courses/saved`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(data => setSavedCourses(data.data?.courses || []))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [token]);

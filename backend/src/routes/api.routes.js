@@ -30,6 +30,11 @@ import { certificateRoutes } from './certificate.routes.js';
 import { liveClassRoutes } from './live-classes.routes.js';
 import { pastQuestionRoutes } from './past-questions.routes.js';
 import { documentRoutes } from './document.routes.js';
+import { marketplaceRoutes } from './marketplace.routes.js';
+import { corporateTrainingRoutes } from './corporate-training.routes.js';
+import { affiliateRoutes } from './affiliate.routes.js';
+import { advertisingRoutes } from './advertising.routes.js';
+import { bookmarkRoutes } from './bookmark.routes.js';
 
 export const apiRoutes = Router();
 
@@ -64,6 +69,11 @@ apiRoutes.use('/certificates', certificateRoutes);
 apiRoutes.use('/live-classes', liveClassRoutes);
 apiRoutes.use('/past-questions', pastQuestionRoutes);
 apiRoutes.use('/documents', documentRoutes);
+apiRoutes.use('/marketplace', marketplaceRoutes);
+apiRoutes.use('/corporate-training', corporateTrainingRoutes);
+apiRoutes.use('/affiliate', affiliateRoutes);
+apiRoutes.use('/advertising', advertisingRoutes);
+apiRoutes.use('/bookmarks', bookmarkRoutes);
 
 apiRoutes.get('/', (req, res) => {
   res.json({
@@ -101,6 +111,11 @@ apiRoutes.get('/', (req, res) => {
       liveClasses: '/api/v1/live-classes',
       pastQuestions: '/api/v1/past-questions',
       documents: '/api/v1/documents',
+      marketplace: '/api/v1/marketplace',
+      corporateTraining: '/api/v1/corporate-training',
+      affiliate: '/api/v1/affiliate',
+      advertising: '/api/v1/advertising',
+      bookmarks: '/api/v1/bookmarks',
     },
   });
 });

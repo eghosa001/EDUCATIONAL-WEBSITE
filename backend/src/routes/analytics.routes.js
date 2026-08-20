@@ -34,3 +34,14 @@ analyticsRoutes.get('/dashboard',
   requireRole('admin', 'super_admin'),
   asyncHandler(analyticsController.getAdminDashboard)
 );
+
+// Client-side event tracking (any authenticated user)
+analyticsRoutes.post('/events',
+  authMiddleware,
+  asyncHandler(analyticsController.trackEventController)
+);
+
+analyticsRoutes.patch('/user-properties',
+  authMiddleware,
+  asyncHandler(analyticsController.updateUserPropertiesController)
+);

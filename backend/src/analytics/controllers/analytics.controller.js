@@ -1,5 +1,6 @@
 import { HTTP_STATUS, ERROR_CODES, AppError } from '../../common/errors/index.js';
 import { analyticsService } from '../services/analytics.service.js';
+import { trackEvent, updateUserProperties } from '../services/event.service.js';
 import { query } from '../../common/database/index.js';
 
 export const getPlatformMetrics = async (req, res) => {
@@ -66,4 +67,14 @@ export const getAdminDashboard = async (req, res) => {
       engagementTrend: engagement,
     },
   });
+};
+
+export const trackEventController = async (req, res) => {
+  await trackEvent({ ...req.body, userId: req.user?.id });
+  res.json({ success: true, message: 'Event tracked' });
+};
+
+export const updateUserPropertiesController = async (req, res) => {
+  await updateUserProperties(req.user.id, req.body.properties || {});
+  res.json({ success: true, message: 'User properties updated' });
 };
