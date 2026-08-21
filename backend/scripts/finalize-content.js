@@ -1,26 +1,37 @@
 import('@supabase/supabase-js').then(async ({ createClient }) => {
-  const sb = createClient('https://xanrzsszrysianxhpprk.supabase.co', 'sb_secret_cUUTPK62ueOSheC5JzFVFQ_DkNpJOYO');
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  const { data: courses } = await sb.from('courses').select('id,subject_id,class_id,term_id,title');
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error(
+      'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY. Set them in the environment; never hard-code service-role credentials.'
+    );
+  }
+
+  const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  const { data: courses, error: coursesError } = await sb
+    .from('courses')
+    .select('id,subject_id,class_id,term_id,title');
+  if (coursesError) throw coursesError;
+
   console.log('Total courses:', courses?.length || 0);
 
-  // Count and delete duplicates
+  // Report duplicate courses instead of deleting them automatically.
+  // Destructive cleanup should be reviewed before production execution.
   const kept = {};
-  const toDelete = [];
+  const duplicates = [];
   for (const c of courses || []) {
     const key = `${c.subject_id}|${c.class_id}|${c.term_id}`;
-    if (kept[key]) { toDelete.push(c.id); }
-    else { kept[key] = c.id; }
+    if (kept[key]) duplicates.push(c);
+    else kept[key] = c.id;
   }
-  console.log('Duplicates to delete:', toDelete.length);
-
-  if (toDelete.length > 0) {
-    const { error } = await sb.from('courses').delete().in('id', toDelete);
-    if (error) console.error('Delete error:', error.message);
-    else console.log('Deleted', toDelete.length, 'duplicate courses');
+  console.log('Duplicate course candidates:', duplicates.length);
+  for (const c of duplicates) {
+    console.log(`  DUPLICATE: ${c.id} — ${c.title || '(untitled)'}`);
   }
 
-  // Check curated course lessons
+  // Check curated course lessons. Do not guess topic relationships.
   const curatedIds = [
     'eaef1d05-67d8-4710-816b-4d8f68fbf164',
     'de2e1389-10a9-4f1d-bffe-1cd105dbcac7',
@@ -29,56 +40,35 @@ import('@supabase/supabase-js').then(async ({ createClient }) => {
     '91715dad-43d5-411e-b660-f27e891f67b1',
     'b58b82dd-9a0f-4bb4-8319-b20d3f36bf50'
   ];
-  for (const cid of curatedIds) {
-    const { data: ls } = await sb.from('lessons').select('id,title,topic_id').eq('course_id', cid);
-    const topicsLinked = (ls || []).filter(l => l.topic_id).length;
-    console.log(`  Course ${cid.substring(0, 8)}: ${(ls||[]).length} lessons, ${topicsLinked} with topic_id`);
-  }
-
-  // Update curriculum topics for curated courses that lack them
-  // Map slug -> subject_code
-  const slugToSubject = {
-    'chemistry-waec-jamb': 'CHM',
-    'waec-biology-prep': 'BIO',
-    'english-grammar-comprehension': 'ENG',
-    'government-civics-guide': 'GOV',
-    'jamb-math-mastery': 'MATH',
-    'physics-basics-advanced': 'PHY'
-  };
-
-  const { data: subjects } = await sb.from('subjects').select('id,code');
-  const subjById = {};
-  for (const s of subjects || []) subjById[s.code] = s.id;
 
   for (const cid of curatedIds) {
-    const { data: crs } = await sb.from('courses').select('slug,subject_id').eq('id', cid).single();
-    if (!crs) continue;
-    const code = slugToSubject[crs.slug];
-    if (!code) continue;
-    const subjId = subjById[code];
-    if (!subjId) continue;
-
-    const { data: ls } = await sb.from('lessons').select('id').eq('course_id', cid).is('topic_id', null);
-    const missing = ls || [];
-    if (missing.length === 0) continue;
-
-    // Get topics for this subject
-    const { data: topics } = await sb.from('topics').select('id').eq('subject_id', subjId).order('order_index');
-    const topicIds = (topics || []).map(t => t.id);
-    if (topicIds.length === 0) continue;
-
-    for (let i = 0; i < missing.length; i++) {
-      await sb.from('lessons').update({ topic_id: topicIds[i % topicIds.length] }).eq('id', missing[i].id);
+    const { data: ls, error } = await sb
+      .from('lessons')
+      .select('id,title,topic_id')
+      .eq('course_id', cid);
+    if (error) {
+      console.error(`  Could not inspect course ${cid}: ${error.message}`);
+      continue;
     }
-    console.log(`  Linked ${missing.length} lessons in "${crs.slug}" to topics`);
+    const missingTopics = (ls || []).filter(l => !l.topic_id);
+    console.log(
+      `  Course ${cid.substring(0, 8)}: ${(ls || []).length} lessons, ` +
+      `${missingTopics.length} missing explicit topic_id`
+    );
   }
 
-  // Final counts
+  console.log('\nNo automatic topic reassignment was performed.');
+  console.log('Lessons without topic_id must be mapped from their source metadata/title and reviewed.');
+
   const tables = ['topics', 'lessons', 'questions', 'past_questions', 'flashcards', 'courses'];
   console.log('\n── FINAL STATE ──');
   for (const tbl of tables) {
-    const { count } = await sb.from(tbl).select('*', { count: 'exact', head: true });
-    console.log(`  ${tbl}: ${(count ?? 0).toLocaleString()}`);
+    const { count, error } = await sb.from(tbl).select('*', { count: 'exact', head: true });
+    if (error) console.log(`  ${tbl}: ERROR — ${error.message}`);
+    else console.log(`  ${tbl}: ${(count ?? 0).toLocaleString()}`);
   }
   console.log('\nDone!');
-}).catch(e => console.error(e.message));
+}).catch(e => {
+  console.error(e.message);
+  process.exitCode = 1;
+});
