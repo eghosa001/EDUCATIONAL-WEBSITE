@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuthStore } from '@/state/auth/authStore';
-import { login as apiLogin, register as apiRegister, logout as apiLogout, getCurrentUser } from '@/services/api/authService';
 import { getSupabase } from '@/lib/supabase';
 import type { User } from '@/types/models/user';
 
@@ -25,99 +24,117 @@ export function useAuth() {
   return context;
 }
 
+async function loadProfile(supabase: ReturnType<typeof getSupabase>, authUser: any): Promise<User> {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', authUser.id)
+    .maybeSingle();
+
+  const { data: roleRows } = await supabase
+    .from('user_roles')
+    .select('roles(name, permissions)')
+    .eq('user_id', authUser.id);
+
+  const roles = (roleRows || [])
+    .map((row: any) => row.roles?.name)
+    .filter(Boolean) as string[];
+  const role = (roles[0] || authUser.user_metadata?.role || 'student') as User['role'];
+  const createdAt = profile?.created_at || authUser.created_at || new Date().toISOString();
+
+  return {
+    id: authUser.id,
+    email: authUser.email || profile?.email || '',
+    firstName: profile?.first_name || authUser.user_metadata?.first_name || '',
+    lastName: profile?.last_name || authUser.user_metadata?.last_name || '',
+    role,
+    avatar: profile?.avatar_url || undefined,
+    createdAt,
+    updatedAt: profile?.updated_at || createdAt,
+  } as User;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { user, token, isAuthenticated, isLoading, setUser, setToken, setRefreshToken, setLoading, logout: storeLogout } = useAuthStore();
-  const [initialized, setInitialized] = useState(false);
+  const [, setInitialized] = useState(false);
   const supabase = getSupabase();
 
-  /** Restore session from Supabase auth session, fallback to localStorage. */
+  const clearLocalAuth = () => {
+    localStorage.removeItem('edu_user');
+    localStorage.removeItem('edu_token');
+    localStorage.removeItem('edu_refresh_token');
+    storeLogout();
+  };
+
   const restoreSession = async () => {
-    // Try Supabase session first (handles cookie-based sessions automatically)
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (sessionData.session) {
-      const accessToken = sessionData.session.access_token;
-      // Fetch user profile via API
-      try {
-        const response = await getCurrentUser(accessToken);
-        if (response?.data?.user) {
-          setUser(response.data.user as User);
-          setToken(accessToken);
-          setRefreshToken(sessionData.session.refresh_token || null);
-          localStorage.setItem('edu_user', JSON.stringify(response.data.user));
-          localStorage.setItem('edu_token', accessToken);
-          if (sessionData.session.refresh_token) {
-            localStorage.setItem('edu_refresh_token', sessionData.session.refresh_token);
-          }
-          setInitialized(true);
-          return;
-        }
-      } catch {}
+    const { data, error } = await supabase.auth.getSession();
+    if (error || !data.session?.user) {
+      clearLocalAuth();
+      setInitialized(true);
+      return;
     }
 
-    // Fallback to localStorage
-    const storedUser = localStorage.getItem('edu_user');
-    const storedToken = localStorage.getItem('edu_token');
-    if (storedUser && storedToken) {
-      setUser(JSON.parse(storedUser));
-      setToken(storedToken);
-      setRefreshToken(localStorage.getItem('edu_refresh_token'));
+    try {
+      const userData = await loadProfile(supabase, data.session.user);
+      setUser(userData);
+      setToken(data.session.access_token);
+      setRefreshToken(data.session.refresh_token || null);
+      localStorage.setItem('edu_user', JSON.stringify(userData));
+      localStorage.setItem('edu_token', data.session.access_token);
+      if (data.session.refresh_token) localStorage.setItem('edu_refresh_token', data.session.refresh_token);
+    } catch (error) {
+      console.error('[auth] Failed to restore profile:', error);
+      clearLocalAuth();
+    } finally {
+      setInitialized(true);
+      setLoading(false);
     }
-    setInitialized(true);
   };
 
   useEffect(() => {
-    restoreSession().catch(() => {
+    restoreSession().catch((error) => {
+      console.error('[auth] Session restore failed:', error);
+      clearLocalAuth();
       setInitialized(true);
+      setLoading(false);
     });
 
-    // Listen for auth changes (e.g. tab close, sign out from another device)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!session?.user) {
+        clearLocalAuth();
+        return;
+      }
+      try {
+        const userData = await loadProfile(supabase, session.user);
+        setUser(userData);
+        setToken(session.access_token);
+        setRefreshToken(session.refresh_token || null);
+        localStorage.setItem('edu_user', JSON.stringify(userData));
         localStorage.setItem('edu_token', session.access_token);
-        if (session.refresh_token) {
-          localStorage.setItem('edu_refresh_token', session.refresh_token);
-        }
-      } else {
-        handleLogoutSilent();
+        if (session.refresh_token) localStorage.setItem('edu_refresh_token', session.refresh_token);
+      } catch (error) {
+        console.error('[auth] Failed to load user after auth change:', error);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => listener.subscription.unsubscribe();
   }, []);
 
-  const refreshSession = async () => {
-    const currentRefreshToken = localStorage.getItem('edu_refresh_token') || undefined;
-    if (!currentRefreshToken) return;
-
-    try {
-      const { data } = await supabase.auth.refreshSession({ refresh_token: currentRefreshToken });
-      if (data.session) {
-        setToken(data.session.access_token);
-        setRefreshToken(data.session.refresh_token);
-        localStorage.setItem('edu_token', data.session.access_token);
-        localStorage.setItem('edu_refresh_token', data.session.refresh_token);
-      }
-    } catch {
-      handleLogoutSilent();
-    }
-  };
-
-  const login = async (credentials: { email: string; password: string }) => {
+  const login = async ({ email, password }: { email: string; password: string }) => {
     setLoading(true);
     try {
-      const response = await apiLogin(credentials);
-      const { user: userData, session } = response.data;
-
-      setUser(userData as User);
-      const accessToken = session?.access_token || '';
-      setToken(accessToken);
-      setRefreshToken(session?.refresh_token || null);
-
-      localStorage.setItem('edu_user', JSON.stringify(userData));
-      localStorage.setItem('edu_token', accessToken);
-      if (session?.refresh_token) {
-        localStorage.setItem('edu_refresh_token', session.refresh_token);
+      const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+      if (error || !data.user || !data.session) {
+        throw new Error(error?.message || 'Invalid email or password');
       }
+
+      const userData = await loadProfile(supabase, data.user);
+      setUser(userData);
+      setToken(data.session.access_token);
+      setRefreshToken(data.session.refresh_token || null);
+      localStorage.setItem('edu_user', JSON.stringify(userData));
+      localStorage.setItem('edu_token', data.session.access_token);
+      if (data.session.refresh_token) localStorage.setItem('edu_refresh_token', data.session.refresh_token);
     } finally {
       setLoading(false);
     }
@@ -126,48 +143,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async (data: { email: string; password: string; firstName: string; lastName: string; role: 'student' | 'teacher' | 'parent' }) => {
     setLoading(true);
     try {
-      const response = await apiRegister(data);
-      const userData = response.data.user;
+      const { data: result, error } = await supabase.auth.signUp({
+        email: data.email.trim().toLowerCase(),
+        password: data.password,
+        options: {
+          data: {
+            first_name: data.firstName,
+            last_name: data.lastName,
+            role: data.role,
+          },
+        },
+      });
+      if (error) throw new Error(error.message);
+      if (!result.user) throw new Error('Registration failed');
 
-      setUser({ ...userData, role: data.role, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as User);
-      setToken(null);
-      setRefreshToken(null);
-      localStorage.setItem('edu_user', JSON.stringify({ ...userData, role: data.role, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }));
+      if (result.session) {
+        const userData = await loadProfile(supabase, result.user);
+        setUser(userData);
+        setToken(result.session.access_token);
+        setRefreshToken(result.session.refresh_token || null);
+        localStorage.setItem('edu_user', JSON.stringify(userData));
+        localStorage.setItem('edu_token', result.session.access_token);
+        if (result.session.refresh_token) localStorage.setItem('edu_refresh_token', result.session.refresh_token);
+      } else {
+        throw new Error('Registration succeeded, but email verification is required before signing in.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogoutSilent = () => {
-    localStorage.removeItem('edu_user');
-    localStorage.removeItem('edu_token');
-    localStorage.removeItem('edu_refresh_token');
-    storeLogout();
-  };
-
-  const handleLogout = async () => {
-    try {
-      await apiLogout(localStorage.getItem('edu_token') || '');
-    } catch {}
-    await supabase.auth.signOut();
-    handleLogoutSilent();
+  const refreshSession = async () => {
+    const { data, error } = await supabase.auth.refreshSession();
+    if (error || !data.session?.user) {
+      clearLocalAuth();
+      return;
+    }
+    const userData = await loadProfile(supabase, data.session.user);
+    setUser(userData);
+    setToken(data.session.access_token);
+    setRefreshToken(data.session.refresh_token || null);
+    localStorage.setItem('edu_user', JSON.stringify(userData));
+    localStorage.setItem('edu_token', data.session.access_token);
+    if (data.session.refresh_token) localStorage.setItem('edu_refresh_token', data.session.refresh_token);
   };
 
   const logout = async () => {
-    await handleLogout();
+    await supabase.auth.signOut();
+    clearLocalAuth();
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      token,
-      isAuthenticated,
-      isLoading,
-      login,
-      register,
-      logout,
-      refreshSession,
-    }}>
+    <AuthContext.Provider value={{ user, token, isAuthenticated, isLoading, login, register, logout, refreshSession }}>
       {children}
     </AuthContext.Provider>
   );
