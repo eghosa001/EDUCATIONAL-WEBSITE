@@ -75,7 +75,7 @@ export default function LandingPage() {
       <footer className="border-t border-gray-200 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <Link href="/" aria-label="THE GUIDE home">
-            <img src="/logos/the-guide-wordmark.webp" alt="THE GUIDE" className="w-[160px] h-auto" />
+            <img src="/logos/the-guide-wordmark.svg" alt="THE GUIDE" className="w-[160px] h-auto" />
           </Link>
           <p className="text-sm text-gray-500">© {new Date().getFullYear()} THE GUIDE. All rights reserved.</p>
         </div>
