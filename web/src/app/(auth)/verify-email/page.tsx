@@ -3,59 +3,53 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { CheckCircleIcon, XCircleIcon } from 'lucide-react';
 import { verifyEmail } from '@/services/api/authService';
 
 export default function VerifyEmailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const userId = searchParams.get('id');
-  const token = searchParams.get('token');
+  const token = searchParams.get('token') || searchParams.get('token_hash');
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
 
   useEffect(() => {
-    if (!userId || !token) {
+    if (!token) {
       setStatus('error');
       return;
     }
 
-    verifyEmail(userId, token)
+    verifyEmail(undefined, token)
       .then(() => setStatus('success'))
       .catch(() => setStatus('error'));
-  }, [userId]);
+  }, [token]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-md w-full text-center">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
+      <div className="w-full max-w-md text-center">
         {status === 'loading' && (
           <div>
-            <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-gray-500">Verifying your email...</p>
+            <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-brand-100 border-t-brand-600 dark:border-brand-950 dark:border-t-brand-300" />
+            <p className="text-slate-500 dark:text-slate-400">Verifying your email...</p>
           </div>
         )}
         {status === 'success' && (
           <div>
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/40">
+              <CheckCircleIcon className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Email verified!</h2>
-            <p className="text-gray-500 text-sm mb-6">Your email has been successfully verified.</p>
-            <button onClick={() => router.push('/dashboard')} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
-              Go to Dashboard
-            </button>
+            <h2 className="mb-2 text-xl font-bold text-slate-950 dark:text-white">Email verified!</h2>
+            <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">Your email has been successfully verified.</p>
+            <button onClick={() => router.push('/dashboard')} className="rounded-lg bg-brand-600 px-6 py-2.5 font-medium text-white hover:bg-brand-700">Go to Dashboard</button>
           </div>
         )}
         {status === 'error' && (
           <div>
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/40">
+              <XCircleIcon className="h-8 w-8 text-red-600 dark:text-red-400" />
             </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Verification failed</h2>
-            <p className="text-gray-500 text-sm mb-6">This verification link is invalid or has expired.</p>
-            <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">Back to login</Link>
+            <h2 className="mb-2 text-xl font-bold text-slate-950 dark:text-white">Verification failed</h2>
+            <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">This verification link is invalid or has expired.</p>
+            <Link href="/login" className="font-medium text-brand-600 hover:text-brand-700 dark:text-brand-300">Back to login</Link>
           </div>
         )}
       </div>
