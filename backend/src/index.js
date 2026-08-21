@@ -59,6 +59,35 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// The authentication controller uses HttpOnly cookies, but the backend does
+// not depend on cookie-parser. Implement the small subset of cookie response
+// helpers we need so registration/login work in Vercel serverless mode too.
+const serializeCookie = (name, value, options = {}) => {
+  const parts = [`${name}=${encodeURIComponent(value)}`];
+  if (options.maxAge !== undefined) parts.push(`Max-Age=${Math.floor(options.maxAge / 1000)}`);
+  if (options.domain) parts.push(`Domain=${options.domain}`);
+  parts.push(`Path=${options.path || '/'}`);
+  if (options.httpOnly) parts.push('HttpOnly');
+  if (options.secure) parts.push('Secure');
+  if (options.sameSite) {
+    const sameSite = String(options.sameSite).toLowerCase();
+    parts.push(`SameSite=${sameSite.charAt(0).toUpperCase()}${sameSite.slice(1)}`);
+  }
+  return parts.join('; ');
+};
+
+app.use((req, res, next) => {
+  res.cookie = (name, value, options = {}) => {
+    res.append('Set-Cookie', serializeCookie(name, value, options));
+    return res;
+  };
+  res.clearCookie = (name, options = {}) => {
+    res.append('Set-Cookie', serializeCookie(name, '', { ...options, maxAge: 0 }));
+    return res;
+  };
+  next();
+});
+
 if (config.env !== 'test') {
   app.use(morgan('combined'));
 }
@@ -100,7 +129,7 @@ app.get('/health', async (req, res) => {
     dbStatus.mode = 'connecting...';
   }
   const allOk = dbStatus.local === 'ok' || dbStatus.supabase === 'ok';
-  res.json({
+  res.status(allOk ? 200 : 503).json({
     success: allOk,
     message: allOk ? 'Educational Platform API is running' : 'API running but database connectivity degraded',
     timestamp: new Date().toISOString(),
