@@ -11,8 +11,8 @@ export default function Spinner({ size = 'md', className, label }: SpinnerProps)
 
   return (
     <div className={cn('flex flex-col items-center justify-center gap-3', className)}>
-      <div className={cn('animate-spin rounded-full border-4 border-gray-200 border-t-blue-600', sizes[size])} />
-      {label && <p className="text-sm text-gray-500">{label}</p>}
+      <div className={cn('animate-spin rounded-full border-4 border-slate-200 border-t-brand-600 dark:border-slate-700 dark:border-t-brand-400', sizes[size])} />
+      {label && <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>}
     </div>
   );
 }
