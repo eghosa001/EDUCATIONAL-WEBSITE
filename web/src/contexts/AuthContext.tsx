@@ -36,9 +36,7 @@ async function loadProfile(supabase: ReturnType<typeof getSupabase>, authUser: a
     .select('roles(name, permissions)')
     .eq('user_id', authUser.id);
 
-  const roles = (roleRows || [])
-    .map((row: any) => row.roles?.name)
-    .filter(Boolean) as string[];
+  const roles = (roleRows || []).map((row: any) => row.roles?.name).filter(Boolean) as string[];
   const role = (roles[0] || authUser.user_metadata?.role || 'student') as User['role'];
   const createdAt = profile?.created_at || authUser.created_at || new Date().toISOString();
 
@@ -61,9 +59,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const clearLocalAuth = () => {
     localStorage.removeItem('edu_user');
-    localStorage.removeItem('edu_token');
-    localStorage.removeItem('edu_refresh_token');
+    // Supabase owns persistence and refresh-token storage. Do not duplicate
+    // access/refresh tokens in application-managed localStorage keys.
     storeLogout();
+  };
+
+  const applySession = async (session: any) => {
+    if (!session?.user) {
+      clearLocalAuth();
+      return;
+    }
+    const userData = await loadProfile(supabase, session.user);
+    setUser(userData);
+    setToken(session.access_token);
+    setRefreshToken(session.refresh_token || null);
+    localStorage.setItem('edu_user', JSON.stringify(userData));
   };
 
   const restoreSession = async () => {
@@ -71,17 +81,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error || !data.session?.user) {
       clearLocalAuth();
       setInitialized(true);
+      setLoading(false);
       return;
     }
 
     try {
-      const userData = await loadProfile(supabase, data.session.user);
-      setUser(userData);
-      setToken(data.session.access_token);
-      setRefreshToken(data.session.refresh_token || null);
-      localStorage.setItem('edu_user', JSON.stringify(userData));
-      localStorage.setItem('edu_token', data.session.access_token);
-      if (data.session.refresh_token) localStorage.setItem('edu_refresh_token', data.session.refresh_token);
+      await applySession(data.session);
     } catch (error) {
       console.error('[auth] Failed to restore profile:', error);
       clearLocalAuth();
@@ -100,20 +105,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!session?.user) {
-        clearLocalAuth();
-        return;
-      }
       try {
-        const userData = await loadProfile(supabase, session.user);
-        setUser(userData);
-        setToken(session.access_token);
-        setRefreshToken(session.refresh_token || null);
-        localStorage.setItem('edu_user', JSON.stringify(userData));
-        localStorage.setItem('edu_token', session.access_token);
-        if (session.refresh_token) localStorage.setItem('edu_refresh_token', session.refresh_token);
+        await applySession(session);
       } catch (error) {
-        console.error('[auth] Failed to load user after auth change:', error);
+        console.error('[auth] Failed to apply auth state:', error);
       }
     });
 
@@ -124,17 +119,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
-      if (error || !data.user || !data.session) {
-        throw new Error(error?.message || 'Invalid email or password');
-      }
-
-      const userData = await loadProfile(supabase, data.user);
-      setUser(userData);
-      setToken(data.session.access_token);
-      setRefreshToken(data.session.refresh_token || null);
-      localStorage.setItem('edu_user', JSON.stringify(userData));
-      localStorage.setItem('edu_token', data.session.access_token);
-      if (data.session.refresh_token) localStorage.setItem('edu_refresh_token', data.session.refresh_token);
+      if (error || !data.user || !data.session) throw new Error(error?.message || 'Invalid email or password');
+      await applySession(data.session);
     } finally {
       setLoading(false);
     }
@@ -146,25 +132,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: result, error } = await supabase.auth.signUp({
         email: data.email.trim().toLowerCase(),
         password: data.password,
-        options: {
-          data: {
-            first_name: data.firstName,
-            last_name: data.lastName,
-            role: data.role,
-          },
-        },
+        options: { data: { first_name: data.firstName, last_name: data.lastName, role: data.role } },
       });
       if (error) throw new Error(error.message);
       if (!result.user) throw new Error('Registration failed');
-
       if (result.session) {
-        const userData = await loadProfile(supabase, result.user);
-        setUser(userData);
-        setToken(result.session.access_token);
-        setRefreshToken(result.session.refresh_token || null);
-        localStorage.setItem('edu_user', JSON.stringify(userData));
-        localStorage.setItem('edu_token', result.session.access_token);
-        if (result.session.refresh_token) localStorage.setItem('edu_refresh_token', result.session.refresh_token);
+        await applySession(result.session);
       } else {
         throw new Error('Registration succeeded, but email verification is required before signing in.');
       }
@@ -179,13 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearLocalAuth();
       return;
     }
-    const userData = await loadProfile(supabase, data.session.user);
-    setUser(userData);
-    setToken(data.session.access_token);
-    setRefreshToken(data.session.refresh_token || null);
-    localStorage.setItem('edu_user', JSON.stringify(userData));
-    localStorage.setItem('edu_token', data.session.access_token);
-    if (data.session.refresh_token) localStorage.setItem('edu_refresh_token', data.session.refresh_token);
+    await applySession(data.session);
   };
 
   const logout = async () => {
