@@ -2,7 +2,8 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuthStore } from '@/state/auth/authStore';
-import { login as apiLogin, register as apiRegister, logout as apiLogout, refreshToken as apiRefreshToken, getCurrentUser } from '@/services/api/authService';
+import { login as apiLogin, register as apiRegister, logout as apiLogout, getCurrentUser } from '@/services/api/authService';
+import { getSupabase } from '@/lib/supabase';
 import type { User } from '@/types/models/user';
 
 interface AuthContextType {
@@ -27,58 +28,74 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { user, token, isAuthenticated, isLoading, setUser, setToken, setRefreshToken, setLoading, logout: storeLogout } = useAuthStore();
   const [initialized, setInitialized] = useState(false);
+  const supabase = getSupabase();
 
-  /** Restore session from server-side cookie (no token needed in request). */
+  /** Restore session from Supabase auth session, fallback to localStorage. */
   const restoreSession = async () => {
-    try {
-      const response = await getCurrentUser('');
-      if (response?.data?.user) {
-        setUser(response.data.user as User);
-        setToken(response.data.tokens?.accessToken || null);
-        setRefreshToken(response.data.tokens?.refreshToken || null);
-        // Sync localStorage for stores that read from it directly
-        localStorage.setItem('edu_user', JSON.stringify(response.data.user));
-        if (response.data.tokens?.accessToken) {
-          localStorage.setItem('edu_token', response.data.tokens.accessToken);
+    // Try Supabase session first (handles cookie-based sessions automatically)
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (sessionData.session) {
+      const accessToken = sessionData.session.access_token;
+      // Fetch user profile via API
+      try {
+        const response = await getCurrentUser(accessToken);
+        if (response?.data?.user) {
+          setUser(response.data.user as User);
+          setToken(accessToken);
+          setRefreshToken(sessionData.session.refresh_token || null);
+          localStorage.setItem('edu_user', JSON.stringify(response.data.user));
+          localStorage.setItem('edu_token', accessToken);
+          if (sessionData.session.refresh_token) {
+            localStorage.setItem('edu_refresh_token', sessionData.session.refresh_token);
+          }
+          setInitialized(true);
+          return;
         }
-        if (response.data.tokens?.refreshToken) {
-          localStorage.setItem('edu_refresh_token', response.data.tokens.refreshToken);
-        }
-      } else {
-        // No valid session — clear stale localStorage
-        handleLogoutSilent();
-      }
-    } catch {
-      handleLogoutSilent();
+      } catch {}
     }
+
+    // Fallback to localStorage
+    const storedUser = localStorage.getItem('edu_user');
+    const storedToken = localStorage.getItem('edu_token');
+    if (storedUser && storedToken) {
+      setUser(JSON.parse(storedUser));
+      setToken(storedToken);
+      setRefreshToken(localStorage.getItem('edu_refresh_token'));
+    }
+    setInitialized(true);
   };
 
   useEffect(() => {
-    // Try cookie-based session restore first
     restoreSession().catch(() => {
-      // If cookie auth fails, fall back to localStorage
-      const storedUser = localStorage.getItem('edu_user');
-      const storedToken = localStorage.getItem('edu_token');
-      if (storedUser && storedToken) {
-        setUser(JSON.parse(storedUser));
-        setToken(storedToken);
-        setRefreshToken(localStorage.getItem('edu_refresh_token'));
+      setInitialized(true);
+    });
+
+    // Listen for auth changes (e.g. tab close, sign out from another device)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        localStorage.setItem('edu_token', session.access_token);
+        if (session.refresh_token) {
+          localStorage.setItem('edu_refresh_token', session.refresh_token);
+        }
+      } else {
+        handleLogoutSilent();
       }
     });
-    setInitialized(true);
-  }, [setUser, setToken, setRefreshToken]);
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const refreshSession = async () => {
     const currentRefreshToken = localStorage.getItem('edu_refresh_token') || undefined;
     if (!currentRefreshToken) return;
 
     try {
-      const response = await apiRefreshToken(currentRefreshToken);
-      if (response.data?.tokens) {
-        setToken(response.data.tokens.accessToken);
-        setRefreshToken(response.data.tokens.refreshToken);
-        localStorage.setItem('edu_token', response.data.tokens.accessToken);
-        localStorage.setItem('edu_refresh_token', response.data.tokens.refreshToken);
+      const { data } = await supabase.auth.refreshSession({ refresh_token: currentRefreshToken });
+      if (data.session) {
+        setToken(data.session.access_token);
+        setRefreshToken(data.session.refresh_token);
+        localStorage.setItem('edu_token', data.session.access_token);
+        localStorage.setItem('edu_refresh_token', data.session.refresh_token);
       }
     } catch {
       handleLogoutSilent();
@@ -89,15 +106,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       const response = await apiLogin(credentials);
-      const { user: userData, tokens } = response.data;
+      const { user: userData, session } = response.data;
 
       setUser(userData as User);
-      setToken(tokens.accessToken);
-      setRefreshToken(tokens.refreshToken);
-      // Cookie is set server-side via HttpOnly; also sync localStorage for direct API calls
+      const accessToken = session?.access_token || '';
+      setToken(accessToken);
+      setRefreshToken(session?.refresh_token || null);
+
       localStorage.setItem('edu_user', JSON.stringify(userData));
-      localStorage.setItem('edu_token', tokens.accessToken);
-      localStorage.setItem('edu_refresh_token', tokens.refreshToken);
+      localStorage.setItem('edu_token', accessToken);
+      if (session?.refresh_token) {
+        localStorage.setItem('edu_refresh_token', session.refresh_token);
+      }
     } finally {
       setLoading(false);
     }
@@ -107,15 +127,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       const response = await apiRegister(data);
-      const { user: userData, tokens } = response.data;
+      const userData = response.data.user;
 
       setUser({ ...userData, role: data.role, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as User);
-      setToken(tokens.accessToken);
-      setRefreshToken(tokens.refreshToken);
-      // Cookie is set server-side via HttpOnly; also sync localStorage for direct API calls
+      setToken(null);
+      setRefreshToken(null);
       localStorage.setItem('edu_user', JSON.stringify({ ...userData, role: data.role, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }));
-      localStorage.setItem('edu_token', tokens.accessToken);
-      localStorage.setItem('edu_refresh_token', tokens.refreshToken);
     } finally {
       setLoading(false);
     }
@@ -132,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await apiLogout(localStorage.getItem('edu_token') || '');
     } catch {}
+    await supabase.auth.signOut();
     handleLogoutSilent();
   };
 

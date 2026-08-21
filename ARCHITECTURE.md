@@ -1,1056 +1,449 @@
-# Educational Platform — Architecture & Roadmap
+# THE GUIDE — Recommended Architecture
 
-> A **large Nigerian educational platform covering primary school through university/professional learning** should be built as **one ecosystem**, not as a simple website with videos.
-
-> **One backend + one database + shared educational content system + web app + mobile app + admin platform.**
-
-The website and mobile app should consume the **same backend/API and educational content**, while their interfaces can be different.
-
----
-
-## 1. Overall Architecture
-
-```text
-                    EDUCATIONAL PLATFORM
-                           │
-          ┌────────────────┼────────────────┐
-          │                │                │
-      WEB APP          MOBILE APP       ADMIN PANEL
-          │                │                │
-          └────────────────┼────────────────┘
-                           │
-                       API / BACKEND
-                           │
-       ┌───────────────────┼───────────────────┐
-       │                   │                   │
-   PostgreSQL          File Storage        Authentication
-   Database             Videos/PDFs        & Security
-       │                   │                   │
-       └───────────────────┼───────────────────┘
-                           │
-                    EDUCATION ENGINE
-                           │
-       ┌───────────┬───────┼────────┬───────────┐
-       │           │       │        │           │
-     Courses     Exams   Progress  AI      Payments
-       │           │       │        │           │
-       └───────────┴───────┴────────┴───────────┘
-```
-
-Divide the entire project into **10 major systems**.
+> **Project:** THE GUIDE Educational Platform  
+> **Architecture:** Supabase-first, web/mobile/admin ecosystem  
+> **Status:** Recommended replacement for the previous custom-backend-heavy architecture  
+> **Updated:** 2026-08-21
 
 ---
 
-## 2. Main User Types
+## 1. Architecture Decision
 
-Do not build the platform around only "students." Create different roles from the beginning.
+THE GUIDE should **not** be built around a large custom Express/Node backend as the default path.
 
-### A. Student
-
-Can:
-
-* Create account
-* Select education level
-* Select class/course
-* Watch lessons
-* Read notes
-* Take quizzes
-* Take examinations
-* Download materials
-* Track progress
-* Save lessons
-* Ask AI questions
-* Join study groups
-* View results
-* Earn certificates
-* Subscribe to premium content
-
-### B. Parent
-
-Can:
-
-* Create parent account
-* Add children
-* Monitor children's progress
-* View examination results
-* View study time
-* View courses
-* Receive notifications
-* Pay for subscriptions
-* Download reports
-
-### C. Teacher
-
-Can:
-
-* Create teacher profile
-* Create courses
-* Upload lessons
-* Upload notes
-* Create quizzes
-* Create assignments
-* Mark assignments
-* Conduct live classes
-* View student performance
-* Earn money from courses
-
-### D. School
-
-Schools can have an organizational account.
+The recommended architecture is:
 
 ```text
-School
- ├── Administrators
- ├── Teachers
- ├── Students
- ├── Classes
- ├── Subjects
- ├── Exams
- └── Results
+                         THE GUIDE
+                            |
+             +--------------+---------------+
+             |              |               |
+          WEB APP       MOBILE APP       ADMIN APP
+         Next.js        Flutter/React     Next.js
+             |              |               |
+             +--------------+---------------+
+                            |
+                    Supabase Platform
+                            |
+        +-------------------+-------------------+
+        |                   |                   |
+   PostgreSQL            Auth              Storage
+   Database              Users              PDFs
+   RLS                   Sessions            Videos
+   Functions             OAuth               Images
+        |                   |                   |
+        +-------------------+-------------------+
+                            |
+                    Supabase Edge Functions
+                            |
+              +-------------+-------------+
+              |             |             |
+             AI          Payments     Background Jobs
 ```
 
-### E. Content Administrator
+### Core principle
 
-Manages:
+Use Supabase for the majority of backend infrastructure:
 
-* Subjects
-* Curriculum
-* Courses
-* Lessons
-* Questions
-* Exams
-* Teachers
-* Educational resources
+- PostgreSQL database
+- Authentication
+- Row Level Security
+- Storage
+- Realtime
+- APIs
+- Edge Functions
+- Database triggers
+- Scheduled/async server-side work where appropriate
 
-### F. Super Admin
-
-Controls everything.
+Use additional backend services only when Supabase does not provide the right tool for the job.
 
 ---
 
-## 3. Education Structure
+# 2. What Supabase Replaces
 
-This is one of the most important parts. Do not hard-code levels. Create a flexible hierarchy.
+The old architecture created a large custom backend responsible for many things that Supabase can already provide.
+
+### Old approach
 
 ```text
-Education System
-│
-├── Early Years
-│
-├── Primary
-│   ├── Primary 1
-│   ├── Primary 2
-│   ├── Primary 3
-│   ├── Primary 4
-│   ├── Primary 5
-│   └── Primary 6
-│
-├── Junior Secondary
-│   ├── JSS 1
-│   ├── JSS 2
-│   └── JSS 3
-│
-├── Senior Secondary
-│   ├── SS 1
-│   ├── SS 2
-│   └── SS 3
-│
-├── Tertiary
-│   ├── University
-│   ├── Polytechnic
-│   ├── College of Education
-│   └── Other Institutions
-│
-├── Professional
-│   ├── Certification
-│   ├── Professional Exams
-│   └── Career Training
-│
-└── Adult / Vocational Learning
+Frontend
+   |
+   v
+Express Backend
+   |
+   +--> Custom Auth
+   +--> Custom JWT
+   +--> PostgreSQL
+   +--> Storage
+   +--> Business APIs
+   |
+   v
+Supabase
 ```
 
-This allows expansion later without rebuilding the database.
+### New approach
+
+```text
+Web / Mobile / Admin
+          |
+          v
+      Supabase
+   +------+------+
+   |             |
+Database       Auth
+   |             |
+Storage      Security/RLS
+   |
+Edge Functions
+   |
+AI / Payments / Protected Logic
+```
+
+The custom Express backend is therefore **removed from the critical path unless a feature specifically requires it**.
 
 ---
 
-## 4. Curriculum Structure
+# 3. Responsibility Matrix
 
-The next level:
+| Requirement | Recommended Service |
+|---|---|
+| User registration | Supabase Auth |
+| Login/logout | Supabase Auth |
+| Password reset | Supabase Auth |
+| OAuth | Supabase Auth |
+| Session management | Supabase Auth |
+| User profiles | PostgreSQL |
+| Roles | PostgreSQL + RLS |
+| Permissions | PostgreSQL + RLS |
+| Courses | PostgreSQL |
+| Curriculum | PostgreSQL |
+| Subjects | PostgreSQL |
+| Topics | PostgreSQL |
+| Lessons | PostgreSQL |
+| Questions | PostgreSQL |
+| Quizzes | PostgreSQL |
+| Exams | PostgreSQL |
+| Progress | PostgreSQL |
+| Analytics data | PostgreSQL |
+| PDFs | Supabase Storage |
+| Images | Supabase Storage |
+| Lesson videos | Supabase Storage or external video provider |
+| File access control | Storage policies + RLS |
+| Realtime notifications | Supabase Realtime |
+| AI API keys | Edge Functions |
+| AI tutor | Edge Functions |
+| AI quiz generation | Edge Functions |
+| AI explanations | Edge Functions |
+| Payment secrets | Edge Functions |
+| Payment webhooks | Edge Functions |
+| Scheduled processing | Edge Functions / external job service when needed |
+| Complex long-running processing | Separate worker service only when necessary |
+| Public website hosting | Vercel |
+| Mobile application | Flutter/React Native |
+| Admin application | Next.js |
+| Search | PostgreSQL initially; dedicated search later if scale requires it |
+
+---
+
+# 4. Final System Architecture
 
 ```text
-Education Level
-       ↓
-Class / Program
-       ↓
-Subject
-       ↓
-Term / Semester
-       ↓
-Topic
-       ↓
-Subtopic
-       ↓
-Lesson
-       ↓
-Learning Materials
-       ↓
-Assessment
+                                THE GUIDE
+                                    |
+       +----------------------------+----------------------------+
+       |                            |                            |
+       v                            v                            v
+   WEB APP                      MOBILE APP                  ADMIN APP
+  Next.js/Vercel              Flutter/React Native         Next.js/Vercel
+       |                            |                            |
+       +----------------------------+----------------------------+
+                                    |
+                            SUPABASE PLATFORM
+                                    |
+         +--------------------------+--------------------------+
+         |                          |                          |
+         v                          v                          v
+    SUPABASE AUTH             POSTGRESQL DATABASE        SUPABASE STORAGE
+         |                          |                          |
+         |                          |                          |
+   Authentication              RLS Policies              PDFs/Images
+   Sessions                    Functions                 Documents
+   OAuth                       Triggers                  Media
+   Recovery                    Views
+                                    |
+                                    v
+                          SUPABASE EDGE FUNCTIONS
+                                    |
+              +---------------------+----------------------+
+              |                     |                      |
+              v                     v                      v
+         AI PROVIDER          PAYMENT PROVIDER       OTHER SERVICES
+         Bynara/OpenAI        Flutterwave/Paystack   Email/SMS/etc.
 ```
+
+---
+
+# 5. Frontend Architecture
+
+## 5.1 Web
+
+Use:
+
+```text
+Next.js
+  |
+  +-- Vercel
+  |
+  +-- Supabase client
+```
+
+The web application should communicate with Supabase directly for normal authenticated CRUD operations.
 
 Example:
-
-```text
-SS 2
- │
- └── Biology
-      │
-      └── First Term
-           │
-           └── Cell Biology
-                │
-                ├── Cell Structure
-                │    ├── Video
-                │    ├── Notes
-                │    ├── Images
-                │    ├── Quiz
-                │    └── Practice Questions
-                │
-                └── Cell Division
-                     ├── Video
-                     ├── Notes
-                     ├── Quiz
-                     └── Exam
-```
-
-This structure is extremely important because it allows reusing the same content system across the entire platform.
-
----
-
-## 5. Student Application
-
-The student-facing application can have:
-
-```text
-Home
-│
-├── Continue Learning
-├── Recommended Courses
-├── Recent Lessons
-├── Upcoming Exams
-├── Study Streak
-├── Performance
-└── Announcements
-```
-
-### Learning
-
-```text
-Learning
-│
-├── My Courses
-├── Browse Courses
-├── Subjects
-├── Curriculum
-├── Saved Lessons
-├── Downloads
-└── Recently Viewed
-```
-
-### Course
-
-```text
-Course
-│
-├── Overview
-├── Curriculum
-├── Lessons
-├── Resources
-├── Quizzes
-├── Assignments
-├── Exams
-├── Discussion
-└── Progress
-```
-
----
-
-## 6. Lesson System
-
-Every lesson should have a standard structure.
-
-```text
-Lesson
-│
-├── Title
-├── Description
-├── Learning Objectives
-│
-├── Video
-│
-├── Written Lesson
-│
-├── Images
-│
-├── Diagrams
-│
-├── PDF
-│
-├── Examples
-│
-├── Key Points
-│
-├── Practice Questions
-│
-├── Quiz
-│
-└── Next Lesson
-```
-
-A lesson doesn't have to be just a YouTube-style video. Combine: **Video + text + diagrams + questions + assessment.**
-
----
-
-## 7. Examination System
-
-This should be a major system of its own.
-
-```text
-EXAMINATION
-│
-├── Practice Test
-├── Timed Test
-├── Mock Examination
-├── Past Questions
-├── Subject Test
-├── Topic Test
-├── Full Examination
-└── Competition
-```
-
-Question structure:
-
-```text
-Question
-│
-├── Question Text
-├── Question Image
-├── Question Type
-│
-├── Option A
-├── Option B
-├── Option C
-├── Option D
-│
-├── Correct Answer
-├── Explanation
-├── Difficulty
-├── Subject
-├── Topic
-└── Exam Source
-```
-
-Support different question types:
-
-* MCQ
-* True/False
-* Fill in the blank
-* Matching
-* Short answer
-* Essay
-* Numerical
-* Image-based questions
-
----
-
-## 8. Past Questions System
-
-This could become one of the biggest parts of the Nigerian platform.
-
-```text
-Past Questions
-│
-├── WAEC
-├── NECO
-├── JAMB
-├── NABTEB
-├── Post-UTME
-├── University Exams
-├── Professional Exams
-└── Custom Exams
-```
-
-Then:
-
-```text
-JAMB
-│
-├── Mathematics
-├── English
-├── Physics
-├── Chemistry
-├── Biology
-└── ...
-```
-
-Each question should be connected to:
-
-```text
-Exam
-Year
-Subject
-Topic
-Question
-Answer
-Explanation
-Difficulty
-```
-
-This enables intelligent analytics later. Example: *"You are weak in Organic Chemistry questions from JAMB."*
-
----
-
-## 9. Assessment Engine
-
-Don't put assessment logic inside individual courses. Create a reusable **Assessment Engine**.
-
-```text
-Assessment Engine
-│
-├── Question Bank
-├── Quiz Generator
-├── Exam Generator
-├── Random Questions
-├── Difficulty Selection
-├── Timer
-├── Auto Marking
-├── Manual Marking
-├── Results
-├── Analytics
-└── Performance Tracking
-```
-
-Example: student chooses Biology → Genetics → 20 questions → Medium difficulty → Start. The system generates the examination automatically.
-
----
-
-## 10. Student Progress System
-
-Track practically everything meaningful.
-
-```text
-Student Progress
-│
-├── Courses Completed
-├── Lessons Completed
-├── Quiz Scores
-├── Exam Scores
-├── Study Time
-├── Questions Attempted
-├── Questions Correct
-├── Weak Topics
-├── Strong Topics
-├── Study Streak
-└── Overall Performance
-```
-
-Example:
-
-```text
-Biology
-████████░░ 82%
-
-Chemistry
-██████░░░░ 61%
-
-Physics
-█████████░ 91%
-```
-
-The system can then recommend: *Study "Electrolysis" next.*
-
----
-
-## 11. AI Learning System
-
-Create a separate AI layer.
-
-```text
-AI EDUCATION ENGINE
-│
-├── AI Tutor
-├── Question Explainer
-├── Homework Assistant
-├── Quiz Generator
-├── Study Plan Generator
-├── Summary Generator
-├── Flashcard Generator
-├── Essay Assistant
-├── Revision Assistant
-└── Personalized Recommendations
-```
-
-Example: *"Explain mitosis like I'm 12."* The AI responds according to the student's level.
-
-The AI should ideally know:
-
-```text
-Student Level
-+
-Current Subject
-+
-Current Topic
-+
-Learning History
-+
-Curriculum
-```
-
-rather than being a generic chatbot.
-
----
-
-## 12. AI Tutor Architecture
 
 ```text
 Student
-   │
-   ↓
-AI Chat
-   │
-   ↓
-AI Service
-   │
-   ├── Student Context
-   ├── Course Context
-   ├── Curriculum Context
-   ├── Previous Questions
-   └── Educational Knowledge Base
-           │
-           ↓
-        AI Model
-           │
-           ↓
-     Educational Answer
+   |
+   v
+Next.js
+   |
+   v
+Supabase Auth
+   |
+   v
+PostgreSQL + RLS
 ```
 
-Eventually you can use RAG:
+The frontend does **not** receive privileged secrets.
 
-```text
-Student Question
-       ↓
-Search Educational Database
-       ↓
-Relevant Curriculum Content
-       ↓
-AI Model
-       ↓
-Answer
+### Frontend environment variables
+
+Safe client-side variables:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 ```
 
-This reduces hallucinations.
+Never expose:
 
----
-
-## 13. Flashcard System
-
-```text
-Flashcards
-│
-├── My Flashcards
-├── Course Flashcards
-├── AI Generated
-├── Subject
-├── Topic
-└── Revision
-```
-
-Use spaced repetition:
-
-```text
-Day 1
-Day 2
-Day 4
-Day 7
-Day 14
-Day 30
+```env
+SUPABASE_SERVICE_ROLE_KEY=...
+DATABASE_PASSWORD=...
+JWT_SECRET=...
+AI_API_KEY=...
+PAYMENT_SECRET_KEY=...
 ```
 
 ---
 
-## 14. Assignment System
+# 6. Mobile Architecture
+
+The mobile app should use the same backend services and educational data as the website.
 
 ```text
-Assignments
-│
-├── Assignment
-├── Questions
-├── Instructions
-├── Deadline
-├── Submission
-├── Teacher Marking
-├── Score
-├── Feedback
-└── Resubmission
+Flutter / React Native
+          |
+          +---- Supabase Auth
+          |
+          +---- Supabase Database
+          |
+          +---- Supabase Storage
+          |
+          +---- Edge Functions
 ```
+
+This means:
+
+```text
+Web student
+    |
+    +--> Same account
+    |
+    +--> Same courses
+    |
+    +--> Same progress
+    |
+    +--> Same exam history
+    |
+    +--> Same subscriptions
+
+Mobile student
+```
+
+There should be **one source of truth** for educational data.
 
 ---
 
-## 15. Live Class System
+# 7. Authentication Architecture
+
+## Use Supabase Auth
+
+The previous custom JWT system should be phased out.
+
+Recommended flow:
 
 ```text
-Live Classes
-│
-├── Upcoming
-├── Live Now
-├── Recorded Classes
-├── Calendar
-├── Attendance
-├── Chat
-├── Questions
-└── Resources
+Student
+   |
+   v
+Supabase Auth
+   |
+   v
+Authenticated user session
+   |
+   v
+auth.uid()
+   |
+   v
+PostgreSQL RLS
 ```
 
-You don't necessarily need to build video infrastructure yourself initially. You could integrate an external video provider.
+Supabase Auth should handle:
 
----
+- Email/password
+- Password recovery
+- Email verification
+- OAuth providers when needed
+- Session refresh
+- Secure authentication tokens
+- MFA if eventually enabled
 
-## 16. Digital Library
-
-This should be independent from courses.
-
-```text
-Library
-│
-├── Textbooks
-├── Study Notes
-├── Past Questions
-├── Research Materials
-├── Handouts
-├── Lecture Notes
-├── PDFs
-├── Articles
-└── Educational Videos
-```
-
-Search:
-
-```text
-Search
- ↓
-Subject
- ↓
-Level
- ↓
-Topic
- ↓
-Resource
-```
-
----
-
-## 17. Parent Dashboard
-
-```text
-Parent Dashboard
-│
-├── Children
-│
-├── Child Performance
-│
-├── Courses
-│
-├── Study Time
-│
-├── Examination Results
-│
-├── Weak Areas
-│
-├── Strong Areas
-│
-├── Payments
-│
-└── Notifications
-```
+The application database stores the user's educational profile separately.
 
 Example:
 
 ```text
-CHILD: John
-
-Study Time       14h 32m
-Courses          6
-Average Score    78%
-Lessons          43
-Current Streak   8 days
-
-Strong:
-✓ Mathematics
-✓ Biology
-
-Needs Attention:
-⚠ Chemistry
-⚠ Physics
-```
-
----
-
-## 18. Teacher Dashboard
-
-```text
-Teacher Dashboard
-│
-├── Overview
-├── My Courses
-├── Students
-├── Lessons
-├── Assignments
-├── Quizzes
-├── Exams
-├── Live Classes
-├── Results
-├── Analytics
-├── Earnings
-└── Profile
-```
-
-Teacher analytics:
-
-```text
-Students
-Active Students
-Course Completion
-Average Score
-Quiz Performance
-Assignment Performance
-Revenue
-```
-
----
-
-## 19. School Management System
-
-Build this as a separate module.
-
-```text
-School
-│
-├── Dashboard
-├── Students
-├── Teachers
-├── Classes
-├── Subjects
-├── Timetable
-├── Assignments
-├── Exams
-├── Results
-├── Attendance
-├── Announcements
-├── Fees
-└── Reports
-```
-
-This could become a separate revenue stream.
-
----
-
-## 20. Admin Dashboard
-
-The control center.
-
-```text
-ADMIN
-│
-├── Dashboard
-├── Users
-│   ├── Students
-│   ├── Parents
-│   ├── Teachers
-│   └── Schools
-│
-├── Education
-│   ├── Levels
-│   ├── Classes
-│   ├── Subjects
-│   ├── Topics
-│   └── Curriculum
-│
-├── Courses
-│
-├── Lessons
-│
-├── Questions
-│
-├── Exams
-│
-├── Library
-│
-├── AI
-│
-├── Payments
-│
-├── Subscriptions
-│
-├── Reports
-│
-├── Notifications
-│
-├── Moderation
-│
-├── Content Approval
-│
-└── System Settings
-```
-
----
-
-## 21. Content Management System
-
-```text
-Content Management
-│
-├── Draft
-├── Review
-├── Approved
-├── Published
-└── Archived
-```
-
-Content workflow:
-
-```text
-Teacher creates lesson
-        ↓
-Draft
-        ↓
-Editor reviews
-        ↓
-Admin approves
-        ↓
-Published
-```
-
-Important if hundreds of teachers eventually upload content.
-
----
-
-## 22. Subscription System
-
-Don't simply make one subscription. Build a flexible system.
-
-```text
-Plans
-│
-├── Free
-├── Student Basic
-├── Student Premium
-├── Parent
-├── Teacher
-├── School
-└── Enterprise
-```
-
-Subscription controls:
-
-```text
-Subscription
-│
-├── Plan
-├── Price
-├── Duration
-├── Features
-├── Limits
-├── Start Date
-├── End Date
-├── Status
-└── Payment History
-```
-
----
-
-## 23. Payment System
-
-For Nigeria, design a payment abstraction so you aren't locked to one provider.
-
-```text
-Payment Engine
-│
-├── Payment Gateway
-├── Transaction
-├── Subscription
-├── Refund
-├── Invoice
-├── Wallet
-└── Payment Verification
-```
-
-Potential gateways integrated behind the same internal interface.
-
----
-
-## 24. Other Revenue Systems
-
-Don't design the architecture around subscriptions only.
-
-```text
-Revenue
-│
-├── Subscriptions
-├── Individual Course Sales
-├── Exam Packages
-├── Premium Past Questions
-├── Certificates
-├── Teacher Course Revenue
-├── School SaaS
-├── Corporate Training
-├── Advertising
-├── Sponsored Educational Content
-├── Marketplace Commission
-└── Affiliate Revenue
-```
-
----
-
-## 25. Notification System
-
-Centralized notification service:
-
-```text
-Notifications
-│
-├── Push
-├── Email
-├── SMS
-├── In-App
-└── WhatsApp (future)
-```
-
-Events:
-
-```text
-New Course
-Exam Reminder
-Assignment Deadline
-Payment Expiring
-New Result
-Teacher Announcement
-Study Reminder
-Subscription Expiry
-```
-
----
-
-## 26. Gamification
-
-```text
-Gamification
-│
-├── XP
-├── Points
-├── Badges
-├── Levels
-├── Streaks
-├── Leaderboards
-├── Achievements
-└── Rewards
-```
-
-Example:
-
-```text
-🏆 Completed 50 lessons
-🔥 14-day study streak
-⭐ 10,000 XP
-🎯 90% Biology score
-```
-
----
-
-## 27. Community
-
-```text
-Community
-│
-├── Discussion Forums
-├── Subject Groups
-├── Study Groups
-├── Questions & Answers
-├── Teacher Discussions
-└── Announcements
-```
-
-You need moderation from day one.
-
----
-
-## 28. Search System
-
-Search should be global.
-
-```text
-GLOBAL SEARCH
-│
-├── Courses
-├── Subjects
-├── Lessons
-├── Questions
-├── Teachers
-├── Videos
-├── PDFs
-├── Past Questions
-└── Topics
-```
-
-Search example: "Photosynthesis" could return:
-
-```text
-Courses
-Lessons
-Videos
-Notes
-Past Questions
-Quizzes
-Flashcards
-AI explanations
-```
-
----
-
-## 29. Database Structure
-
-A simplified database could look like:
-
-```text
-users
+auth.users
+     |
+     | 1:1
+     v
 profiles
-roles
-permissions
+     |
+     +--> role
+     +--> education_level
+     +--> class/program
+     +--> preferences
+```
 
+---
+
+# 8. Authorization Architecture
+
+Use a combination of:
+
+```text
+Supabase Auth
+       +
+PostgreSQL Row Level Security
+       +
+Application roles
+```
+
+Example roles:
+
+```text
+student
+parent
+teacher
+school_admin
+content_editor
+content_admin
+finance_admin
+super_admin
+```
+
+Do not rely only on frontend checks such as:
+
+```javascript
+if (user.role === "admin") {
+  showAdminPanel();
+}
+```
+
+The database itself must enforce access.
+
+---
+
+# 9. Row Level Security
+
+RLS becomes a core security boundary.
+
+Example:
+
+```sql
+create policy "Students can read own progress"
+on student_progress
+for select
+to authenticated
+using (user_id = auth.uid());
+```
+
+Example:
+
+```sql
+create policy "Students can update own progress"
+on student_progress
+for update
+to authenticated
+using (user_id = auth.uid())
+with check (user_id = auth.uid());
+```
+
+Administrative operations should use properly protected server-side functions where needed.
+
+Do not place service-role credentials in the browser.
+
+---
+
+# 10. Database Architecture
+
+Use one central Supabase PostgreSQL database.
+
+### Core identity tables
+
+```text
+profiles
+user_roles
+parent_children
+teachers
+schools
+school_members
+```
+
+### Education structure
+
+```text
 education_levels
 programs
 classes
 terms
 semesters
-
 subjects
 topics
 subtopics
 curriculum
+```
 
+### Learning content
+
+```text
 courses
 course_sections
 lessons
 lesson_resources
-
-videos
-documents
-images
 library_resources
+documents
+videos
+images
+```
 
+### Assessments
+
+```text
 questions
 question_options
 question_topics
-question_explanations
-
 quizzes
 quiz_questions
 exams
@@ -1058,458 +451,1391 @@ exam_questions
 exam_attempts
 exam_answers
 exam_results
-
 assignments
 submissions
 grades
+```
 
+### Progress
+
+```text
 student_courses
 student_progress
 lesson_progress
 study_sessions
+weak_topics
+```
 
-flashcards
-flashcard_reviews
+### AI
 
-teachers
-teacher_courses
-teacher_earnings
+```text
+ai_conversations
+ai_messages
+ai_usage
+ai_feedback
+```
 
-parents
-parent_children
+### Commerce
 
-schools
-school_students
-school_teachers
-school_classes
-
-subscriptions
+```text
 subscription_plans
+subscriptions
 payments
 transactions
 invoices
+```
 
+### Engagement
+
+```text
 notifications
-
+flashcards
+flashcard_reviews
 badges
 achievements
 student_points
 leaderboards
+```
 
-ai_conversations
-ai_messages
-ai_usage
+### Community
 
-reviews
-ratings
+```text
+study_groups
+group_members
+discussion_threads
+discussion_posts
 comments
-
 reports
+```
+
+### Administration
+
+```text
 audit_logs
+content_reviews
+content_versions
+system_settings
 ```
 
 ---
 
-## 30. Backend Structure
+# 11. Curriculum Architecture
+
+The platform must support the entire educational ecosystem without hard-coding one level.
 
 ```text
-backend/
-│
-├── src/
-│   │
-│   ├── auth/
-│   ├── users/
-│   ├── education/
-│   ├── curriculum/
-│   ├── courses/
-│   ├── lessons/
-│   ├── assessments/
-│   ├── questions/
-│   ├── exams/
-│   ├── assignments/
-│   ├── progress/
-│   ├── library/
-│   ├── teachers/
-│   ├── parents/
-│   ├── schools/
-│   ├── subscriptions/
-│   ├── payments/
-│   ├── notifications/
-│   ├── ai/
-│   ├── gamification/
-│   ├── community/
-│   ├── search/
-│   ├── analytics/
-│   ├── reports/
-│   ├── storage/
-│   ├── certificates/
-│   ├── administration/
-│   │
-│   ├── common/            # Shared config, middleware, utils, validators,
-│   │                      # errors, constants, database, queue, cache, events
-│   ├── routes/            # Express route definitions (one file per module)
-│   ├── index.js           # App entry point
-│   └── *.test.mjs         # Backend integration tests
-│
-├── scripts/               # DB migrations, seeding, curriculum parsing
-├── package.json
-└── jest.config.mjs
+Education Level
+      |
+      v
+Class / Program
+      |
+      v
+Subject
+      |
+      v
+Term / Semester
+      |
+      v
+Topic
+      |
+      v
+Subtopic
+      |
+      v
+Lesson
+      |
+      v
+Resources
+      |
+      v
+Assessment
 ```
 
-Each module owns its own business logic, organized into `controllers/`, `models/`, and `services/` sub-directories.
-
----
-
-## 31. Mobile App Structure
-
-If using Flutter:
+Example:
 
 ```text
-mobile/
-│
-├── lib/
-│   │
-│   ├── core/
-│   │   ├── config/
-│   │   ├── constants/
-│   │   ├── errors/
-│   │   ├── network/
-│   │   ├── storage/
-│   │   ├── security/
-│   │   ├── theme/
-│   │   └── utils/
-│   │
-│   ├── features/
-│   │   │
-│   │   ├── authentication/
-│   │   ├── onboarding/
-│   │   ├── home/
-│   │   ├── courses/
-│   │   ├── lessons/
-│   │   ├── exams/
-│   │   ├── questions/
-│   │   ├── library/
-│   │   ├── progress/
-│   │   ├── flashcards/
-│   │   ├── ai_tutor/
-│   │   ├── notifications/
-│   │   ├── profile/
-│   │   ├── subscriptions/
-│   │   └── community/
-│   │
-│   ├── shared/
-│   │   ├── widgets/
-│   │   ├── models/
-│   │   └── services/
-│   │
-│   └── main.dart
+SS 2
+ |
+ +-- Biology
+      |
+      +-- First Term
+           |
+           +-- Cell Biology
+                |
+                +-- Cell Structure
+                |    +-- Lesson
+                |    +-- Notes
+                |    +-- Video
+                |    +-- Quiz
+                |
+                +-- Cell Division
+                     +-- Lesson
+                     +-- Notes
+                     +-- Quiz
 ```
-
-This is much better than a flat `screens/ widgets/ models/ services/` layout with hundreds of unrelated files mixed together.
 
 ---
 
-## 32. Web Application Structure
+# 12. Content Architecture
+
+Every lesson should support multiple learning formats.
 
 ```text
-web/
-│
-├── public/
-│
-├── src/
-│
-│   ├── app/
-│   ├── components/
-│   ├── layouts/
-│   ├── pages/
-│   │
-│   ├── features/
-│   │   ├── auth/
-│   │   ├── courses/
-│   │   ├── lessons/
-│   │   ├── exams/
-│   │   ├── library/
-│   │   ├── ai/
-│   │   ├── subscriptions/
-│   │   └── profile/
-│   │
-│   ├── services/
-│   ├── api/
-│   ├── state/
-│   ├── hooks/
-│   ├── utils/
-│   └── types/
-│
-└── package.json
+Lesson
+ |
+ +-- Title
+ +-- Description
+ +-- Learning Objectives
+ +-- Written Content
+ +-- Video
+ +-- Images
+ +-- Diagrams
+ +-- PDF
+ +-- Examples
+ +-- Key Points
+ +-- Practice Questions
+ +-- Quiz
+ +-- Related Lessons
+```
+
+This keeps THE GUIDE from becoming just a video website.
+
+---
+
+# 13. Past Questions Architecture
+
+Past questions should be first-class educational data.
+
+```text
+Exam
+ |
+ +-- Year
+ +-- Subject
+ +-- Topic
+ +-- Question
+ +-- Options
+ +-- Correct Answer
+ +-- Explanation
+ +-- Difficulty
+ +-- Source
+```
+
+Support:
+
+```text
+WAEC
+NECO
+JAMB
+NABTEB
+Post-UTME
+University exams
+Professional exams
+Custom exams
+```
+
+Past-question content should be stored and indexed so that the assessment engine and AI system can reuse it.
+
+---
+
+# 14. Assessment Engine
+
+The assessment engine should be implemented as reusable database logic plus application logic.
+
+```text
+Assessment Engine
+ |
+ +-- Question Bank
+ +-- Random Selection
+ +-- Difficulty Selection
+ +-- Topic Selection
+ +-- Timer
+ +-- Auto Marking
+ +-- Manual Marking
+ +-- Results
+ +-- Analytics
+ +-- Recommendations
+```
+
+Example:
+
+```text
+Biology
+   |
+Genetics
+   |
+20 questions
+   |
+Medium difficulty
+   |
+Start exam
+```
+
+The resulting attempt is stored centrally in PostgreSQL.
+
+---
+
+# 15. Progress System
+
+Track educational progress centrally.
+
+```text
+Student Progress
+ |
+ +-- Courses completed
+ +-- Lessons completed
+ +-- Quiz scores
+ +-- Exam scores
+ +-- Study time
+ +-- Questions attempted
+ +-- Correct answers
+ +-- Weak topics
+ +-- Strong topics
+ +-- Streak
+ +-- Overall performance
+```
+
+This data powers:
+
+- Dashboards
+- Recommendations
+- AI tutoring
+- Parent reports
+- Teacher analytics
+- Gamification
+
+---
+
+# 16. AI Architecture
+
+AI should **not** be called directly from the browser when an API secret is required.
+
+Use:
+
+```text
+Student
+   |
+   v
+Web / Mobile
+   |
+   v
+Supabase Edge Function
+   |
+   +--> Authenticate user
+   +--> Check permissions
+   +--> Check subscription/usage
+   +--> Load relevant educational context
+   |
+   v
+AI Provider
+   |
+   v
+Edge Function
+   |
+   v
+Store response in Supabase
+   |
+   v
+Frontend
+```
+
+AI services:
+
+```text
+AI Tutor
+Question Explainer
+Quiz Generator
+Study Plan Generator
+Summary Generator
+Flashcard Generator
+Revision Assistant
+Personalized Recommendations
 ```
 
 ---
 
-## 33. Admin Application
+# 17. AI Tutor Context
 
-Don't put the admin dashboard inside the student's UI. Make it a separate application/interface:
+The AI should be given structured educational context.
+
+```text
+Student Level
+      +
+Current Subject
+      +
+Current Topic
+      +
+Current Lesson
+      +
+Learning History
+      +
+Relevant Curriculum Content
+      +
+Previous Conversation
+```
+
+Later, a RAG layer can retrieve relevant approved educational content:
+
+```text
+Student Question
+      |
+      v
+Search educational knowledge
+      |
+      v
+Relevant content
+      |
+      v
+AI model
+      |
+      v
+Answer
+```
+
+---
+
+# 18. Payment Architecture
+
+Payments should use Edge Functions for secrets and webhooks.
+
+```text
+Frontend
+   |
+   v
+Edge Function
+   |
+   v
+Payment Provider
+   |
+   v
+Webhook
+   |
+   v
+Edge Function
+   |
+   v
+Verify transaction
+   |
+   v
+Update subscriptions/payments
+```
+
+The frontend must never contain:
+
+```text
+PAYMENT_SECRET_KEY
+```
+
+Supported providers can sit behind an internal payment abstraction.
+
+Example:
+
+```text
+PaymentService
+ |
+ +-- Flutterwave
+ +-- Paystack
+ +-- Future Provider
+```
+
+---
+
+# 19. Storage Architecture
+
+Use Supabase Storage for the platform's file assets.
+
+```text
+Storage
+ |
+ +-- course-materials
+ +-- lesson-pdfs
+ +-- images
+ +-- question-images
+ +-- certificates
+ +-- user-uploads
+```
+
+Store metadata in PostgreSQL:
+
+```text
+lesson_resources
+document metadata
+file path
+mime type
+size
+owner
+visibility
+```
+
+Do not store large PDFs or videos directly inside PostgreSQL rows.
+
+---
+
+# 20. Admin Architecture
+
+The admin interface should be a separate application or clearly isolated admin area.
+
+Recommended:
 
 ```text
 admin/
-│
-├── dashboard/
-├── users/
-├── teachers/
-├── schools/
-├── curriculum/
-├── courses/
-├── lessons/
-├── questions/
-├── exams/
-├── payments/
-├── subscriptions/
-├── reports/
-├── moderation/
-├── AI/
-└── settings/
+ |
+ +-- Dashboard
+ +-- Users
+ +-- Teachers
+ +-- Schools
+ +-- Curriculum
+ +-- Courses
+ +-- Lessons
+ +-- Questions
+ +-- Exams
+ +-- Library
+ +-- AI
+ +-- Payments
+ +-- Subscriptions
+ +-- Reports
+ +-- Moderation
+ +-- Settings
 ```
+
+Admins should use the same Supabase Auth system with elevated roles enforced server-side and by database policy.
 
 ---
 
-## 34. API Structure
+# 21. Content Management Workflow
+
+Use a publishing workflow:
 
 ```text
-/api/v1
-
-/auth
-/users
-/students
-/parents
-/teachers
-/schools
-
-/education
-/curriculum
-/subjects
-/topics
-
-/courses
-/lessons
-/resources
-
-/questions
-/quizzes
-/exams
-/assignments
-
-/progress
-/analytics
-
-/library
-
-/ai
-
-/subscriptions
-/payments
-
-/notifications
-
-/community
-
-/admin
+Draft
+  |
+  v
+Review
+  |
+  v
+Approved
+  |
+  v
+Published
+  |
+  v
+Archived
 ```
 
-Use `/v1` so that `/v2` can be introduced later without breaking old apps.
+For example:
+
+```text
+Teacher creates lesson
+        |
+        v
+Draft
+        |
+        v
+Editor reviews
+        |
+        v
+Admin approves
+        |
+        v
+Published
+```
+
+This is essential when THE GUIDE eventually has large amounts of educational content.
 
 ---
 
-## 35. Security Architecture
+# 22. Search Architecture
+
+Start with PostgreSQL search.
+
+Search across:
+
+```text
+Courses
+Lessons
+Subjects
+Topics
+Questions
+Teachers
+PDFs
+Past Questions
+Videos
+```
+
+Example:
+
+```text
+"Photosynthesis"
+       |
+       +-- Courses
+       +-- Lessons
+       +-- Notes
+       +-- Past Questions
+       +-- Quizzes
+       +-- Flashcards
+       +-- AI explanations
+```
+
+Introduce a dedicated search engine only when the scale actually requires it.
+
+---
+
+# 23. Realtime Features
+
+Use Supabase Realtime where appropriate.
+
+Examples:
+
+```text
+Realtime
+ |
+ +-- Notifications
+ +-- Live class presence
+ +-- Discussion updates
+ +-- Teacher announcements
+ +-- Progress updates
+```
+
+Do not build a custom websocket server unless there is a demonstrated requirement for one.
+
+---
+
+# 24. Web Deployment
+
+Use:
+
+```text
+Next.js
+   |
+   v
+Vercel
+```
+
+Production web environment:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+No database passwords or service keys belong here.
+
+---
+
+# 25. Supabase Deployment
+
+Supabase is the backend platform.
+
+Production services:
+
+```text
+Supabase
+ |
+ +-- Auth
+ +-- Database
+ +-- Storage
+ +-- RLS
+ +-- Realtime
+ +-- Edge Functions
+```
+
+Keep database migrations in the repository:
+
+```text
+supabase/
+ |
+ +-- migrations/
+ +-- seed/
+ +-- functions/
+```
+
+The database schema should be reproducible from version-controlled migrations.
+
+---
+
+# 26. Edge Functions Structure
+
+Recommended:
+
+```text
+supabase/functions/
+ |
+ +-- ai-tutor/
+ +-- ai-explain/
+ +-- ai-quiz-generator/
+ +-- create-payment/
+ +-- payment-webhook/
+ +-- send-notification/
+ +-- generate-certificate/
+ +-- admin-actions/
+```
+
+Each function should:
+
+1. Validate the request.
+2. Authenticate the user when required.
+3. Check authorization.
+4. Validate input.
+5. Execute protected logic.
+6. Return a safe response.
+7. Log important failures without exposing secrets.
+
+---
+
+# 27. When a Separate Backend IS Needed
+
+Do not eliminate a custom backend forever.
+
+Introduce one only when there is a real requirement such as:
+
+```text
+Large background processing
+Very long-running jobs
+High-compute workloads
+Specialized media processing
+Complex external integrations
+Dedicated worker architecture
+Advanced queue processing
+Machine learning infrastructure
+```
+
+Then the architecture becomes:
+
+```text
+Frontend
+   |
+Supabase
+   |
+Edge Functions
+   |
+   +---- normal application logic
+   |
+   +---- Custom Worker Service
+            |
+            +---- heavy processing
+            +---- queues
+            +---- specialized jobs
+```
+
+The key difference is that the custom backend is **an additional specialized service**, not the default backend for everything.
+
+---
+
+# 28. What to Do With the Existing Express Backend
+
+Do not delete it immediately.
+
+First classify its existing modules.
+
+### Candidate for removal/migration
+
+```text
+Custom Auth
+Custom JWT
+Basic CRUD APIs
+User sessions
+Simple profile APIs
+Simple course queries
+Simple progress queries
+Basic storage routes
+```
+
+These can often move to Supabase Auth, RLS and normal database access.
+
+### Candidate to remain as Edge Functions
+
+```text
+AI
+Payments
+Webhooks
+Sensitive server-side logic
+Admin operations requiring privileged access
+```
+
+### Candidate for a future worker service
+
+```text
+Heavy document processing
+Large-scale ingestion
+Long-running jobs
+Queue workers
+Complex media processing
+```
+
+---
+
+# 29. Migration Strategy
+
+Do not attempt a destructive rewrite.
+
+### Phase A — Secure the existing system
+
+- Rotate exposed credentials.
+- Remove secrets from Git.
+- Protect service-role keys.
+- Verify database access.
+- Verify payment secrets.
+- Verify storage policies.
+
+### Phase B — Adopt Supabase Auth
+
+Move from:
+
+```text
+Custom users + custom JWT
+```
+
+to:
+
+```text
+Supabase Auth + profiles + RLS
+```
+
+### Phase C — Move normal CRUD to Supabase
+
+Gradually replace endpoints for:
+
+```text
+profiles
+courses
+lessons
+subjects
+topics
+questions
+progress
+```
+
+with direct Supabase queries protected by RLS.
+
+### Phase D — Move protected server logic to Edge Functions
+
+Move:
+
+```text
+AI
+Payments
+Webhooks
+Sensitive admin operations
+```
+
+### Phase E — Remove unnecessary Express modules
+
+After each feature is verified in production, remove the duplicated custom backend implementation.
+
+---
+
+# 30. Recommended Repository Structure
+
+```text
+the-guide/
+ |
+ +-- web/
+ |    +-- src/
+ |    +-- public/
+ |    +-- package.json
+ |
+ +-- mobile/
+ |    +-- lib/
+ |    +-- pubspec.yaml
+ |
+ +-- admin/
+ |    +-- src/
+ |    +-- package.json
+ |
+ +-- supabase/
+ |    +-- migrations/
+ |    +-- functions/
+ |    +-- seed/
+ |    +-- config.toml
+ |
+ +-- scripts/
+ |    +-- import-content/
+ |    +-- process-questions/
+ |    +-- seed-curriculum/
+ |
+ +-- docs/
+ |    +-- architecture.md
+ |    +-- database.md
+ |    +-- security.md
+ |
+ +-- package.json
+ +-- README.md
+ +-- .gitignore
+```
+
+A large custom `backend/` directory is **not required initially**.
+
+---
+
+# 31. Frontend Feature Structure
+
+```text
+web/src/
+ |
+ +-- app/
+ +-- components/
+ +-- features/
+ |    +-- auth/
+ |    +-- onboarding/
+ |    +-- home/
+ |    +-- courses/
+ |    +-- lessons/
+ |    +-- exams/
+ |    +-- questions/
+ |    +-- library/
+ |    +-- ai/
+ |    +-- progress/
+ |    +-- subscriptions/
+ |    +-- notifications/
+ |    +-- profile/
+ |    +-- community/
+ |
+ +-- lib/
+ |    +-- supabase/
+ |    +-- auth/
+ |    +-- api/
+ |
+ +-- hooks/
+ +-- state/
+ +-- types/
+ +-- utils/
+```
+
+---
+
+# 32. Mobile Feature Structure
+
+```text
+mobile/lib/
+ |
+ +-- core/
+ |    +-- config/
+ |    +-- security/
+ |    +-- network/
+ |    +-- storage/
+ |
+ +-- features/
+ |    +-- authentication/
+ |    +-- onboarding/
+ |    +-- home/
+ |    +-- courses/
+ |    +-- lessons/
+ |    +-- exams/
+ |    +-- library/
+ |    +-- progress/
+ |    +-- ai_tutor/
+ |    +-- notifications/
+ |    +-- subscriptions/
+ |    +-- profile/
+ |
+ +-- shared/
+ +-- main.dart
+```
+
+---
+
+# 33. Security Architecture
 
 ```text
 Security
-│
-├── Authentication
-├── Authorization
-├── Role-Based Access Control
-├── Row-Level Security
-├── API Security
-├── Rate Limiting
-├── Input Validation
-├── File Validation
-├── Payment Verification
-├── Audit Logs
-├── Encryption
-├── Session Management
-└── Account Recovery
+ |
+ +-- Supabase Auth
+ +-- RLS
+ +-- Role permissions
+ +-- Input validation
+ +-- Edge Function authorization
+ +-- Rate limiting
+ +-- Storage policies
+ +-- Payment verification
+ +-- Audit logs
+ +-- Secret management
+ +-- Account recovery
 ```
 
-Especially important because the platform holds: children, student information, parent information, teacher information, payment information, school information, and educational records.
+Important rule:
+
+> **The frontend is never a security boundary.**
+
+A user must not gain access merely because a frontend button is hidden.
 
 ---
 
-## 36. Analytics System
+# 34. Secret Management
 
-Track platform-level analytics.
+Secrets belong only in server-side environments.
+
+### Browser-safe
+
+```env
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+```
+
+### Server-only
+
+```env
+SUPABASE_SERVICE_ROLE_KEY
+DATABASE_PASSWORD
+AI_API_KEY
+PAYMENT_SECRET_KEY
+JWT_SECRET
+WEBHOOK_SECRET
+```
+
+Do not commit secret values.
+
+Do not place server-only variables in:
 
 ```text
+web/.env.*
+public/
+client-side JavaScript
+mobile source code
+Git history
+```
+
+---
+
+# 35. Development Environment
+
+A simple local development setup should be possible.
+
+```text
+Web:
+localhost:3000
+
+Supabase:
+local Supabase CLI stack
+OR
+development Supabase project
+```
+
+The old requirement that a Node backend must start before the frontend is no longer fundamental.
+
+Development becomes:
+
+```text
+npm run dev
+        |
+        +--> Next.js
+        |
+        +--> Supabase
+```
+
+When Edge Functions are needed, run them through the Supabase local development workflow.
+
+---
+
+# 36. Production Data Flow
+
+## Normal data request
+
+```text
+Student
+   |
+   v
+Next.js
+   |
+   v
+Supabase
+   |
+   +--> Auth
+   +--> PostgreSQL
+   +--> RLS
+   |
+   v
+Response
+```
+
+## AI request
+
+```text
+Student
+   |
+   v
+Next.js
+   |
+   v
+Edge Function
+   |
+   +--> Auth check
+   +--> Usage check
+   +--> Read educational context
+   |
+   v
+AI Provider
+   |
+   v
+Edge Function
+   |
+   v
+Supabase Database
+   |
+   v
+Student
+```
+
+## Payment request
+
+```text
+Student
+   |
+   v
+Next.js
+   |
+   v
+Edge Function
+   |
+   v
+Payment Provider
+   |
+   v
+Webhook
+   |
+   v
+Edge Function
+   |
+   v
+Supabase
+```
+
+---
+
+# 37. Why This Architecture Is Better for THE GUIDE
+
+The new architecture reduces unnecessary infrastructure.
+
+### Previous architecture
+
+```text
+Frontend
+   |
+Custom API
+   |
+Custom Auth
+   |
+PostgreSQL
+   |
+Storage
+   |
+Redis
+   |
+Queue
+   |
+Supabase
+```
+
+This creates more code, more deployment points and more opportunities for configuration failures.
+
+### New architecture
+
+```text
+Frontend
+    |
+Supabase
+    |
++---+-----------------+
+|   |   |   |         |
+DB Auth Storage RLS Realtime
+    |
+Edge Functions
+    |
+AI / Payments / Protected Logic
+```
+
+Benefits:
+
+- Smaller codebase
+- Less infrastructure to maintain
+- Fewer deployment problems
+- Built-in authentication
+- Built-in database
+- Built-in RLS
+- Built-in storage
+- Easier mobile/web sharing
+- Easier scaling
+- Lower initial operational complexity
+- Faster development
+
+---
+
+# 38. What Should NOT Be Built Yet
+
+Do not add infrastructure just because the roadmap mentions it.
+
+Avoid initially building:
+
+```text
+Custom Redis infrastructure
+Custom websocket server
+BullMQ cluster
+Custom authentication
+Custom JWT system
+Dedicated search engine
+Microservices
+Kubernetes
+Complex event bus
+Separate database per feature
+```
+
+Build these only when measurable requirements justify them.
+
+---
+
+# 39. MVP Architecture
+
+For the first production version, use only:
+
+```text
+                    THE GUIDE MVP
+
+             +-----------------------+
+             |   Next.js Web App     |
+             |        Vercel         |
+             +-----------+-----------+
+                         |
+                         v
+               +-------------------+
+               |     Supabase      |
+               +-------------------+
+               | Auth              |
+               | PostgreSQL        |
+               | RLS               |
+               | Storage           |
+               | Realtime          |
+               +---------+---------+
+                         |
+                         v
+                Supabase Functions
+                         |
+                 +-------+-------+
+                 |               |
+                 v               v
+                AI          Payments
+```
+
+This is enough for:
+
+- Registration
+- Login
+- Profiles
+- Classes
+- Subjects
+- Courses
+- Lessons
+- PDFs
+- Questions
+- Quizzes
+- Exams
+- Past questions
+- Progress
+- AI tutor
+- Subscriptions
+- Payments
+- Admin content management
+
+---
+
+# 40. Development Phases
+
+## Phase 1 — Foundation
+
+Build:
+
+```text
+Supabase project
+Database schema
+Supabase Auth
+Profiles
+Education levels
+Classes/programs
+Subjects
+Curriculum
+RLS
+Admin foundation
+```
+
+## Phase 2 — Core Learning
+
+Build:
+
+```text
+Courses
+Lessons
+Videos
+Notes
+PDFs
+Resources
+Progress
+Search
+```
+
+## Phase 3 — Assessment
+
+Build:
+
+```text
+Question bank
+Question options
+Quizzes
+Past questions
+Mock exams
+Exam attempts
+Results
 Analytics
-│
-├── Users
-├── Active Users
-├── Course Enrollment
-├── Course Completion
-├── Exam Performance
-├── Revenue
-├── Subscriptions
-├── Churn
-├── Popular Subjects
-├── Popular Courses
-├── Search Queries
-├── AI Usage
-└── Engagement
 ```
 
-Admin dashboard:
+## Phase 4 — Monetization
+
+Build:
 
 ```text
-TOTAL STUDENTS       125,430
-ACTIVE TODAY          21,430
-COURSES                 2,845
-QUESTIONS              94,210
-SUBSCRIBERS            18,450
-MONTHLY REVENUE       ₦XX,XXX,XXX
+Plans
+Subscriptions
+Payments
+Payment webhooks
+Premium content
+```
+
+## Phase 5 — AI
+
+Build:
+
+```text
+AI Tutor
+AI explanations
+Quiz generation
+Study plans
+Summaries
+Flashcards
+Recommendations
+```
+
+## Phase 6 — Ecosystem
+
+Build:
+
+```text
+Parents
+Teachers
+Schools
+Community
+Live classes
+Gamification
+Certificates
+```
+
+## Phase 7 — Scale
+
+Only when required:
+
+```text
+Dedicated search
+Background workers
+Heavy processing infrastructure
+Advanced analytics
+Additional services
 ```
 
 ---
 
-## 37. Recommended Final Ecosystem
+# 41. Immediate Changes to the Current Project
+
+The current project should be changed from:
 
 ```text
-                         EDUCATIONAL PLATFORM
-                                  │
-             ┌────────────────────┼────────────────────┐
-             │                    │                    │
-          STUDENTS             PARENTS             TEACHERS
-             │                    │                    │
-             └────────────────────┼────────────────────┘
-                                  │
-                              PLATFORM
-                                  │
-        ┌─────────────┬───────────┼───────────┬─────────────┐
-        │             │           │           │             │
-     Courses       Exams       Library       AI        Community
-        │             │           │           │             │
-        └─────────────┴───────────┼───────────┴─────────────┘
-                                  │
-                              BACKEND
-                                  │
-       ┌───────────┬──────────────┼──────────────┬───────────┐
-       │           │              │              │           │
-   Database     Storage        Payments      Analytics    Security
-       │           │              │              │           │
-       └───────────┴──────────────┼──────────────┴───────────┘
-                                  │
-                           ADMIN PLATFORM
-                                  │
-          ┌───────────────────────┼───────────────────────┐
-          │                       │                       │
-       Content                  Users                  Business
-      Management              Management              Management
+web/
+backend/
+Supabase
+```
+
+to:
+
+```text
+web/
+supabase/
+admin/
+mobile/
+scripts/
+docs/
+```
+
+The existing `backend/` should be treated as a **migration source**, not automatically as the permanent architecture.
+
+The first implementation tasks should be:
+
+1. Audit the current Express routes.
+2. Map every route to one of:
+   - Supabase direct query
+   - Supabase Auth
+   - RLS policy
+   - Edge Function
+   - Future worker
+   - Still-required custom service
+3. Introduce Supabase Auth.
+4. Rebuild database authorization around `auth.uid()`.
+5. Remove the custom JWT authentication flow.
+6. Move AI and payments into Edge Functions.
+7. Migrate simple CRUD features away from Express.
+8. Delete duplicated backend code only after the replacements are tested.
+
+---
+
+# 42. Final Architecture
+
+```text
+                                THE GUIDE
+                                   |
+        +--------------------------+--------------------------+
+        |                          |                          |
+        v                          v                          v
+      WEB                       MOBILE                      ADMIN
+    Next.js                     Flutter                    Next.js
+    Vercel                                                    Vercel
+        |                          |                          |
+        +--------------------------+--------------------------+
+                                   |
+                                   v
+                         +---------------------+
+                         |      SUPABASE       |
+                         +---------------------+
+                         |                     |
+                  +------+------+       +------+------+
+                  |             |       |             |
+                  v             v       v             v
+               AUTH         DATABASE  STORAGE      REALTIME
+                              |
+                              v
+                         RLS POLICIES
+                              |
+                              v
+                       EDGE FUNCTIONS
+                              |
+              +---------------+----------------+
+              |               |                |
+              v               v                v
+             AI           PAYMENTS       PROTECTED LOGIC
+              |               |
+              +---------------+
+                      |
+                      v
+                 External APIs
+
+                  Optional later:
+                      |
+                      v
+                Worker Services
 ```
 
 ---
 
-## 38. The most important design decision
+# 43. Final Rule for the Project
 
-**Don't build separate educational content for the website and app.**
+> **Use Supabase as the backend platform, not merely as a database.**
 
-```text
-                    DATABASE
-                       │
-                    API
-                       │
-          ┌────────────┴────────────┐
-          │                         │
-       WEBSITE                  MOBILE APP
-          │                         │
-       Student                   Student
-       Teacher                   Teacher
-       Parent                    Parent
-```
+The frontend should use Supabase directly for normal authenticated data operations.
 
-If you add *"SS2 Biology → Genetics → Mendelian Genetics → Lesson 4"* on the admin panel, it automatically becomes available to both the website and mobile app.
+Edge Functions should be used for secrets, AI, payments, webhooks and other protected server-side logic.
 
-Likewise, if a student completes the lesson on their phone:
+A separate Node/Express backend should only be introduced when a requirement exists that Supabase cannot reasonably handle.
 
-```text
-Mobile
-   ↓
-API
-   ↓
-Database
-   ↓
-Progress = 100%
-   ↓
-Website immediately shows completed
-```
-
-That is the architecture to build for the platform.
-
----
-
-## 39. How to actually build it
-
-**Phase 1 — Foundation**
-* Authentication
-* User profiles
-* Education levels
-* Classes/programs
-* Subjects
-* Curriculum
-* Database
-* Admin panel
-
-**Phase 2 — Core learning**
-* Courses
-* Lessons
-* Videos
-* Notes
-* PDFs
-* Student progress
-* Search
-
-**Phase 3 — Examination**
-* Question bank
-* Quizzes
-* Past questions
-* Mock exams
-* Results
-* Performance analytics
-
-**Phase 4 — Monetization**
-* Subscription
-* Payment system
-* Premium courses
-* Premium questions
-* Teacher monetization
-
-**Phase 5 — AI**
-* AI tutor
-* AI explanations
-* AI quiz generation
-* AI study plans
-* Personalized recommendations
-
-**Phase 6 — Ecosystem**
-* Parents
-* Teachers
-* Schools
-* Live classes
-* Community
-* Gamification
-* Certificates
-
-**Phase 7 — Scale**
-* Advanced analytics
-* School management
-* Marketplace
-* Corporate training
-* More African countries
-* Multi-language support
-
-**The key is not to build all seven phases at once.** Build the **education/content + assessment foundation** correctly first. Everything else—AI, subscriptions, parents, schools, analytics, and monetization—can then plug into that foundation without forcing a rebuild of the application.
+This architecture keeps THE GUIDE simple enough to build now while preserving a path to a very large educational ecosystem later.

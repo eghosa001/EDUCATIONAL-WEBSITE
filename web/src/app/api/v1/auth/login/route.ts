@@ -1,8 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-
 export const dynamic = 'force-dynamic';
+
+import { createClient } from '@supabase/supabase-js';
 
 function getSupabase() {
   return createClient(
@@ -13,55 +11,64 @@ function getSupabase() {
 
 export async function POST(request: Request) {
   const { email, password } = await request.json();
+
   if (!email || !password) {
     return Response.json({ success: false, error: 'Email and password required' }, { status: 400 });
   }
 
   const supabase = getSupabase();
-  const { data: user, error } = await supabase.from('users').select('*').eq('email', email).single();
-  if (error || !user || !user.is_active) {
-    return Response.json({ success: false, error: 'Invalid email or password' }, { status: 401 });
+
+  // Sign in using Supabase Auth
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+  if (error || !data.user) {
+    return Response.json(
+      { success: false, error: 'Invalid email or password' },
+      { status: 401 }
+    );
   }
 
-  const valid = await bcrypt.compare(password, user.password_hash);
-  if (!valid) {
-    return Response.json({ success: false, error: 'Invalid email or password' }, { status: 401 });
-  }
+  // Fetch profile and roles
+  const { data: profile, error: profileErr } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', data.user.id)
+    .single();
 
-  const { data: roleRows } = await supabase
+  const roleRows = (await supabase
     .from('user_roles')
-    .select('role_id')
-    .eq('user_id', user.id);
-  const roleIds = (roleRows || []).map(r => r.role_id);
-  const { data: roles } = await supabase.from('roles').select('name').in('id', roleIds);
-  const primaryRole = roles?.[0]?.name || 'student';
+    .select('role_id, roles!inner(name, permissions)')
+    .eq('user_id', data.user.id)
+  ).data || [];
 
-  const accessToken = jwt.sign(
-    { sub: user.id, email: user.email, role: primaryRole },
-    process.env.JWT_SECRET!,
-    { expiresIn: '15m', issuer: 'educational-platform', audience: 'educational-platform-users' }
-  );
+  const primaryRole = roleRows.length > 0
+    ? (roleRows[0] as any).roles?.name || 'student'
+    : 'student';
 
-  const refreshToken = jwt.sign(
-    { sub: user.id, type: 'refresh' },
-    process.env.JWT_SECRET!,
-    { expiresIn: '7d', issuer: 'educational-platform', audience: 'educational-platform-users' }
-  );
+  const permissions = roleRows.length > 0
+    ? (roleRows[0] as any).roles?.permissions || {}
+    : {};
 
+  // Return session + profile (no JWT needed — Supabase manages sessions)
   return Response.json({
     success: true,
     message: 'Login successful',
     data: {
+      session: data.session,
       user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        avatarUrl: user.avatar_url,
-        isVerified: user.is_verified,
+        id: data.user.id,
+        email: data.user.email,
+        firstName: profile?.first_name || '',
+        lastName: profile?.last_name || '',
+        middleName: profile?.middle_name || null,
+        dateOfBirth: profile?.date_of_birth || null,
+        gender: profile?.gender || null,
+        avatarUrl: profile?.avatar_url || null,
+        isVerified: data.user.email_confirmed_at !== null,
         role: primaryRole,
+        permissions,
+        createdAt: profile?.created_at || data.user.created_at,
       },
-      tokens: { accessToken, refreshToken },
     },
   });
 }

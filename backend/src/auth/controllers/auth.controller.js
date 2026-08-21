@@ -235,8 +235,8 @@ export const login = async (req, res) => {
   }
 
   // Build roles/permissions from row (PG) or separate query (Supabase)
-  const roles = userRow.roles || rolesRows.map(r => (r.roles || [{}])[0]?.name || 'student');
-  const permissions = userRow.permissions || rolesRows.map(r => (r.roles || [{}])[0]?.permissions || {});
+  const roles = userRow.roles || rolesRows.map(r => (r.roles || {}).name || 'student');
+  const permissions = userRow.permissions || rolesRows.map(r => (r.roles || {}).permissions || {});
   const primaryRole = roles[0] || USER_ROLES.STUDENT;
 
   // Update last login
@@ -349,7 +349,7 @@ export const refreshToken = async (req, res) => {
           select: 'roles!inner(name,permissions)',
           filters: { user_id: sessionData.user_id },
         });
-        sessionRow = { ...sessionData, ...userData, roles: rolesRes?.rows?.map(r => (r.roles || [{}])[0]) || [] };
+        sessionRow = { ...sessionData, ...userData, roles: rolesRes?.rows?.map(r => ({ name: (r.roles || {}).name, permissions: (r.roles || {}).permissions })) || [] };
       }
     }
   } catch (dbErr) {
@@ -494,8 +494,8 @@ export const getCurrentUser = async (req, res) => {
     throw new AppError('User not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
   }
 
-  const roles = userRow.roles || rolesRows.map(r => (r.roles || [{}])[0]?.name || 'student');
-  const permissions = userRow.permissions || rolesRows.map(r => (r.roles || [{}])[0]?.permissions || {});
+  const roles = userRow.roles || rolesRows.map(r => (r.roles || {}).name || 'student');
+  const permissions = userRow.permissions || rolesRows.map(r => (r.roles || {}).permissions || {});
 
   res.json({
     success: true,

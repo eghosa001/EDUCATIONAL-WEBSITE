@@ -14,11 +14,12 @@ export interface LoginResponse {
   success: boolean;
   message: string;
   data: {
-    user: User;
-    tokens: {
-      accessToken: string;
-      refreshToken: string;
+    session: {
+      access_token: string;
+      refresh_token: string;
+      user: { id: string; email: string };
     };
+    user: User;
   };
 }
 
@@ -34,8 +35,7 @@ export interface RegisterResponse {
   success: boolean;
   message: string;
   data: {
-    user: { id: string; email: string; firstName: string; lastName: string; isVerified: boolean };
-    tokens: { accessToken: string; refreshToken: string };
+    user: { id: string; email: string; firstName: string; lastName: string; isVerified: boolean; role: string };
   };
 }
 
