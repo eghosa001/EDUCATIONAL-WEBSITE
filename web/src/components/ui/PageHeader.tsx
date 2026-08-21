@@ -9,12 +9,12 @@ interface PageHeaderProps {
 
 export default function PageHeader({ title, subtitle, action, className }: PageHeaderProps) {
   return (
-    <div className={cn('flex items-center justify-between', className)}>
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-        {subtitle && <p className="text-gray-500 mt-1">{subtitle}</p>}
+    <div className={cn('flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between', className)}>
+      <div className="min-w-0">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">{title}</h1>
+        {subtitle && <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">{subtitle}</p>}
       </div>
-      {action}
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }
