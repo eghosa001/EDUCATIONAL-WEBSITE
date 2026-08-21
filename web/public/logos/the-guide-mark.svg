@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">THE GUIDE</title>
+  <desc id="desc">A clean compass and open book mark representing guided learning.</desc>
+  <defs>
+    <linearGradient id="g" x1="18" y1="16" x2="110" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#0f3b82"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#g)"/>
+  <circle cx="64" cy="53" r="30" fill="none" stroke="#fff" stroke-width="6" opacity=".95"/>
+  <path d="M64 25 72 53 64 81 56 53Z" fill="#fff"/>
+  <path d="M64 34 67.5 53 64 67 60.5 53Z" fill="#2563eb"/>
+  <path d="M30 78c12-7 23-7 34 1 11-8 22-8 34-1v24c-12-7-23-7-34 1-11-8-22-8-34-1Z" fill="#fff"/>
+  <path d="M64 79v24" stroke="#2563eb" stroke-width="4"/>
+  <path d="M39 87c8-3 16-2 25 3M89 87c-8-3-16-2-25 3" fill="none" stroke="#93c5fd" stroke-width="3" stroke-linecap="round"/>
+</svg>
