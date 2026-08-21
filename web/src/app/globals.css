@@ -2,26 +2,98 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --brand-50: 239 246 255;
+  --brand-100: 219 234 254;
+  --brand-200: 191 219 254;
+  --brand-300: 147 197 253;
+  --brand-400: 96 165 250;
+  --brand-500: 59 130 246;
+  --brand-600: 37 99 235;
+  --brand-700: 29 78 216;
+  --brand-800: 30 64 175;
+  --brand-900: 30 58 138;
+  --brand-950: 23 37 84;
+  --surface: 255 255 255;
+  --surface-muted: 248 250 252;
+  --surface-subtle: 241 245 249;
+  --border: 226 232 240;
+  --text: 15 23 42;
+  --text-muted: 71 85 105;
+}
+
+.dark {
+  --surface: 15 23 42;
+  --surface-muted: 15 23 42;
+  --surface-subtle: 30 41 59;
+  --border: 51 65 85;
+  --text: 248 250 252;
+  --text-muted: 148 163 184;
+}
+
 @layer base {
   * {
-    @apply border-gray-200;
+    @apply border-gray-200 dark:border-slate-700;
   }
+
+  html {
+    color-scheme: light;
+    scroll-behavior: smooth;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
   body {
-    @apply bg-gray-50 text-gray-900 font-sans;
+    @apply bg-slate-50 text-slate-900 font-sans antialiased dark:bg-slate-950 dark:text-slate-100;
+    background-image: radial-gradient(circle at 10% 0%, rgb(var(--brand-50) / 0.65), transparent 32rem);
+  }
+
+  .dark body {
+    background-image: radial-gradient(circle at 10% 0%, rgb(var(--brand-950) / 0.35), transparent 32rem);
+  }
+
+  ::selection {
+    background: rgb(var(--brand-100));
+    color: rgb(var(--brand-950));
+  }
+
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    -webkit-tap-highlight-color: transparent;
   }
 }
 
 @layer components {
+  .brand-focus {
+    @apply outline-none ring-2 ring-brand-500/20 border-brand-500;
+  }
+
   .btn-primary {
-    @apply px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-lg font-medium shadow-brand-sm hover:bg-brand-700 hover:shadow-brand transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
   }
+
   .btn-secondary {
-    @apply px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-lg font-medium shadow-sm hover:bg-slate-50 hover:border-brand-200 hover:text-brand-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-slate-900 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-800 dark:hover:border-brand-700 dark:hover:text-brand-300;
   }
+
   .card {
-    @apply bg-white rounded-xl border border-gray-200 p-6;
+    @apply bg-white rounded-2xl border border-slate-200 p-6 shadow-sm dark:bg-slate-900 dark:border-slate-800;
   }
+
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm;
+    @apply w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-100 focus:border-brand-500 outline-none text-sm transition-colors dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 dark:focus:ring-brand-950;
+  }
+
+  .brand-gradient {
+    background: linear-gradient(135deg, rgb(var(--brand-700)), rgb(var(--brand-500)));
+  }
+
+  .brand-glow {
+    box-shadow: 0 10px 35px rgb(var(--brand-600) / 0.18);
   }
 }
