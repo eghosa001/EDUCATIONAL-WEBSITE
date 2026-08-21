@@ -1,0 +1,12 @@
+name = "the-guide-web"
+compatibility_date = "2026-08-21"
+
+# Cloudflare Pages deployment for the Next.js web application.
+# Configure the Cloudflare project root directory as "web".
+# The deployment command should run from the web workspace, not the monorepo root.
+
+[build]
+command = "npm run build"
+
+[build.environment]
+NODE_VERSION = "20"
