@@ -10,7 +10,8 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: '#f9fafb',
     theme_color: '#172554',
     icons: [
-      { src: '/logos/the-guide-mark.webp', sizes: '128x128', type: 'image/webp', purpose: 'any maskable' },
+      { src: '/logos/the-guide-mark.webp', sizes: '128x128', type: 'image/webp', purpose: 'any' },
+      { src: '/logos/the-guide-mark.webp', sizes: '128x128', type: 'image/webp', purpose: 'maskable' },
     ],
   };
 }
