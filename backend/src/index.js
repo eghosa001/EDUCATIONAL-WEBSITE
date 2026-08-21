@@ -114,7 +114,8 @@ app.get('/health', async (req, res) => {
         const r = await supabaseQuery('users', { select: 'id', limit: 1 });
         dbStatus.supabase = r?.rows?.length > 0 ? 'ok' : 'reachable-no-response';
       } catch (e) {
-        dbStatus.supabase = 'error: ' + e.message;
+        console.error('[health] Supabase connectivity check failed:', e.message);
+        dbStatus.supabase = 'error';
       }
     } else {
       try {
@@ -122,10 +123,12 @@ app.get('/health', async (req, res) => {
         const r = await pool.query('SELECT 1');
         dbStatus.local = r?.rowCount > 0 ? 'ok' : 'reachable-no-response';
       } catch (e) {
+        console.error('[health] PostgreSQL connectivity check failed:', e.message);
         dbStatus.local = 'error';
       }
     }
   } catch (e) {
+    console.error('[health] Database initialization failed:', e.message);
     dbStatus.mode = 'connecting...';
   }
   const allOk = dbStatus.local === 'ok' || dbStatus.supabase === 'ok';
