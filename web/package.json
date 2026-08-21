@@ -7,6 +7,9 @@
     "dev": "next dev",
     "prebuild": "node scripts/prepare-brand-assets.mjs",
     "build": "next build",
+    "build:cloudflare": "opennextjs-cloudflare build",
+    "deploy:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "preview:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "start": "next start",
     "lint": "next lint",
     "test": "jest --passWithNoTests",
@@ -59,6 +62,7 @@
     "zustand": "^4.4.0"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "latest",
     "@testing-library/jest-dom": "^6.1.0",
     "@testing-library/react": "^14.0.0",
     "@types/bcryptjs": "^2.4.6",
@@ -70,7 +74,6 @@
     "eslint": "^8.50.0",
     "eslint-config-next": "^14.0.0",
     "jest": "^29.0.0",
-    "postcss": "^8.4.0",
     "prettier": "^3.0.0",
     "prettier-plugin-tailwindcss": "^0.5.0",
     "tailwindcss": "^3.3.0",
