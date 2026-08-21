@@ -11,50 +11,50 @@ const features = [
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="border-b border-gray-200 bg-white/95 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      <nav className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950/95">
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" aria-label="THE GUIDE home" className="flex items-center">
-            <img src="/logos/the-guide-wordmark.webp" alt="THE GUIDE — Your path to smarter learning" className="w-[190px] h-auto object-contain" />
+            <img src="/logos/the-guide-wordmark.svg" alt="THE GUIDE — Your path to smarter learning" className="w-[190px] h-auto object-contain" />
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link href="/login" className="px-3 sm:px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">Log in</Link>
-            <Link href="/register" className="px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700">Sign up</Link>
+            <Link href="/login" className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:text-brand-700 dark:text-slate-300 dark:hover:text-brand-300">Log in</Link>
+            <Link href="/register" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-brand-sm hover:bg-brand-700">Sign up</Link>
           </div>
         </div>
       </nav>
 
       <section className="relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
-          <div className="text-center max-w-3xl mx-auto">
-            <img src="/logos/the-guide-mark.webp" alt="THE GUIDE" className="w-28 h-28 sm:w-32 sm:h-32 mx-auto mb-7 rounded-[28%] shadow-sm" />
-            <p className="text-sm font-semibold tracking-[0.2em] text-blue-600 uppercase">Learn. Practice. Master.</p>
-            <h1 className="mt-3 text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 tracking-tight">
-              Your Path to <span className="text-blue-600">Smarter Learning</span>
+        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
+          <div className="mx-auto max-w-3xl text-center">
+            <img src="/logos/the-guide-mark.svg" alt="THE GUIDE" className="mx-auto mb-7 h-28 w-28 rounded-[28%] shadow-brand-sm sm:h-32 sm:w-32" />
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-600 dark:text-brand-300">Learn. Practice. Master.</p>
+            <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-slate-950 dark:text-white sm:text-5xl lg:text-6xl">
+              Your Path to <span className="text-brand-600 dark:text-brand-300">Smarter Learning</span>
             </h1>
-            <p className="mt-6 text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-600 dark:text-slate-300 sm:text-xl">
               A comprehensive Nigerian educational platform covering primary school through university. Courses, AI tutoring, past questions, and more.
             </p>
-            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/register" className="w-full sm:w-auto px-8 py-3.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 text-center">Get Started Free</Link>
-              <Link href="/login" className="w-full sm:w-auto px-8 py-3.5 bg-white text-gray-700 border border-gray-300 rounded-xl font-semibold hover:bg-gray-50 text-center">I have an account</Link>
+            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <Link href="/register" className="w-full rounded-xl bg-brand-600 px-8 py-3.5 text-center font-semibold text-white shadow-brand hover:bg-brand-700 sm:w-auto">Get Started Free</Link>
+              <Link href="/login" className="w-full rounded-xl border border-slate-300 bg-white px-8 py-3.5 text-center font-semibold text-slate-700 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 sm:w-auto">I have an account</Link>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="py-16 sm:py-24 bg-white border-t border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900">Everything you need to succeed</h2>
-            <p className="mt-3 text-gray-600 text-lg">Built for Nigerian students at every level</p>
+      <section className="border-t border-slate-200 bg-white py-16 dark:border-slate-800 dark:bg-slate-900 sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-12 text-center">
+            <h2 className="text-3xl font-bold text-slate-950 dark:text-white">Everything you need to succeed</h2>
+            <p className="mt-3 text-lg text-slate-600 dark:text-slate-300">Built for Nigerian students at every level</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature) => (
-              <div key={feature.title} className="p-6 rounded-xl border border-gray-200 hover:border-blue-200 hover:shadow-sm transition-all">
-                <div className="w-11 h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-4 text-xl">{feature.icon}</div>
-                <h3 className="font-semibold text-gray-900 mb-2">{feature.title}</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">{feature.description}</p>
+              <div key={feature.title} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-brand-200 hover:shadow-brand-sm dark:border-slate-800 dark:bg-slate-950">
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-xl text-brand-600 dark:bg-brand-950/60 dark:text-brand-300">{feature.icon}</div>
+                <h3 className="mb-2 font-semibold text-slate-950 dark:text-white">{feature.title}</h3>
+                <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -62,22 +62,20 @@ export default function LandingPage() {
       </section>
 
       <section className="py-16 sm:py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-blue-600 rounded-2xl px-8 py-12 sm:px-16 sm:py-16 text-center">
-            <img src="/logos/the-guide-wordmark.webp" alt="THE GUIDE" className="w-[260px] max-w-full h-auto mx-auto mb-6 rounded-xl" />
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="brand-gradient brand-glow rounded-2xl px-8 py-12 text-center sm:px-16 sm:py-16">
+            <img src="/logos/the-guide-wordmark.svg" alt="THE GUIDE" className="mx-auto mb-6 w-[260px] max-w-full rounded-xl" />
             <h2 className="text-3xl font-bold text-white">Ready to start learning?</h2>
-            <p className="mt-3 text-blue-100 text-lg">Build knowledge, confidence, and results with THE GUIDE.</p>
-            <Link href="/register" className="inline-block mt-8 px-8 py-3.5 bg-white text-blue-600 rounded-xl font-semibold hover:bg-blue-50">Create your account</Link>
+            <p className="mt-3 text-brand-100 text-lg">Build knowledge, confidence, and results with THE GUIDE.</p>
+            <Link href="/register" className="mt-8 inline-block rounded-xl bg-white px-8 py-3.5 font-semibold text-brand-700 hover:bg-brand-50">Create your account</Link>
           </div>
         </div>
       </section>
 
-      <footer className="border-t border-gray-200 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <Link href="/" aria-label="THE GUIDE home">
-            <img src="/logos/the-guide-wordmark.svg" alt="THE GUIDE" className="w-[160px] h-auto" />
-          </Link>
-          <p className="text-sm text-gray-500">© {new Date().getFullYear()} THE GUIDE. All rights reserved.</p>
+      <footer className="border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-8 sm:flex-row sm:px-6 lg:px-8">
+          <Link href="/" aria-label="THE GUIDE home"><img src="/logos/the-guide-wordmark.svg" alt="THE GUIDE" className="w-[160px] h-auto" /></Link>
+          <p className="text-sm text-slate-500 dark:text-slate-400">© {new Date().getFullYear()} THE GUIDE. All rights reserved.</p>
         </div>
       </footer>
     </div>
