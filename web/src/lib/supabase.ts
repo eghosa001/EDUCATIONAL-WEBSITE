@@ -1,20 +1,31 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://xanrzsszrysianxhpprk.supabase.co';
-const PUBLIC_SUPABASE_KEY = 'sb_publishable_-b8MMXYbJQKauBFjYVJ0vg_SG0GMpFs';
-
 function getSupabaseUrl() {
-  return process.env.NEXT_PUBLIC_SUPABASE_URL || SUPABASE_URL;
+  const value = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!value) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL is not configured. Add it to the web app environment.');
+  }
+  return value;
 }
 
 function getSupabaseKey() {
-  return process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    PUBLIC_SUPABASE_KEY;
+  const value =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!value) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY) is not configured.');
+  }
+  return value;
 }
 
-export const createClientComponent = () => createClient(getSupabaseUrl(), getSupabaseKey());
+export const createClientComponent = () =>
+  createClient(getSupabaseUrl(), getSupabaseKey(), {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
 
 let _supabase: ReturnType<typeof createClientComponent> | null = null;
 export function getSupabase() {
