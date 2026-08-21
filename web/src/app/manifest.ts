@@ -7,11 +7,11 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Your path to smarter learning',
     start_url: '/',
     display: 'standalone',
-    background_color: '#f9fafb',
-    theme_color: '#172554',
+    background_color: '#F8FAFC',
+    theme_color: '#2563EB',
     icons: [
-      { src: '/logos/the-guide-mark.webp', sizes: '128x128', type: 'image/webp', purpose: 'any' },
-      { src: '/logos/the-guide-mark.webp', sizes: '128x128', type: 'image/webp', purpose: 'maskable' },
+      { src: '/logos/the-guide-mark.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+      { src: '/logos/the-guide-mark.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
     ],
   };
 }
