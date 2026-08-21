@@ -1,37 +1,74 @@
 export const dynamic = 'force-dynamic';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'https://backend-ogs7.vercel.app';
+import { createClient } from '@supabase/supabase-js';
+
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const { email, password, rememberMe, deviceInfo } = body;
+  const { email, password } = await request.json();
 
-    if (!email || !password) {
-      return Response.json({ success: false, error: 'Email and password required' }, { status: 400 });
-    }
+  if (!email || !password) {
+    return Response.json({ success: false, error: 'Email and password required' }, { status: 400 });
+  }
 
-    const response = await fetch(`${BACKEND_URL}/api/v1/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, rememberMe, deviceInfo }),
-      cache: 'no-store',
-    });
+  const supabase = getSupabase();
 
-    const text = await response.text();
-    let data: unknown;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = { success: false, error: text || 'Backend returned an invalid response' };
-    }
+  // Sign in using Supabase Auth
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-    return Response.json(data, { status: response.status });
-  } catch (error) {
-    console.error('[web auth login]', error);
+  if (error || !data.user) {
     return Response.json(
-      { success: false, error: 'Authentication service unavailable. Please try again.' },
-      { status: 503 }
+      { success: false, error: 'Invalid email or password' },
+      { status: 401 }
     );
   }
+
+  // Fetch profile and roles
+  const { data: profile, error: profileErr } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', data.user.id)
+    .single();
+
+  const roleRows = (await supabase
+    .from('user_roles')
+    .select('role_id, roles!inner(name, permissions)')
+    .eq('user_id', data.user.id)
+  ).data || [];
+
+  const primaryRole = roleRows.length > 0
+    ? (roleRows[0] as any).roles?.name || 'student'
+    : 'student';
+
+  const permissions = roleRows.length > 0
+    ? (roleRows[0] as any).roles?.permissions || {}
+    : {};
+
+  // Return session + profile (no JWT needed — Supabase manages sessions)
+  return Response.json({
+    success: true,
+    message: 'Login successful',
+    data: {
+      session: data.session,
+      user: {
+        id: data.user.id,
+        email: data.user.email,
+        firstName: profile?.first_name || '',
+        lastName: profile?.last_name || '',
+        middleName: profile?.middle_name || null,
+        dateOfBirth: profile?.date_of_birth || null,
+        gender: profile?.gender || null,
+        avatarUrl: profile?.avatar_url || null,
+        isVerified: data.user.email_confirmed_at !== null,
+        role: primaryRole,
+        permissions,
+        createdAt: profile?.created_at || data.user.created_at,
+      },
+    },
+  });
 }

@@ -1,36 +1,32 @@
+import { createClient } from '@supabase/supabase-js';
+
 export const dynamic = 'force-dynamic';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'https://backend-ogs7.vercel.app';
-
 export async function GET(request: Request) {
-  try {
-    const incoming = new URL(request.url);
-    const target = new URL(`${BACKEND_URL}/api/v1/courses`);
-    incoming.searchParams.forEach((value, key) => target.searchParams.set(key, value));
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+  const { searchParams } = new URL(request.url);
+  const status = searchParams.get('status');
+  const page = parseInt(searchParams.get('page') || '1');
+  const limit = parseInt(searchParams.get('limit') || '20');
+  const offset = (page - 1) * limit;
 
-    const response = await fetch(target, {
-      headers: {
-        ...(request.headers.get('authorization')
-          ? { Authorization: request.headers.get('authorization') as string }
-          : {}),
-      },
-      cache: 'no-store',
-    });
+  let query = supabase
+    .from('courses')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false });
 
-    const text = await response.text();
-    let data: unknown;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = { success: false, error: text || 'Backend returned an invalid response' };
-    }
+  if (status) query = query.eq('status', status);
+  query = query.range(offset, offset + limit - 1);
 
-    return Response.json(data, { status: response.status });
-  } catch (error) {
-    console.error('[web courses]', error);
-    return Response.json(
-      { success: false, error: 'Course service unavailable. Please try again.' },
-      { status: 503 }
-    );
-  }
+  const { data, error, count } = await query;
+  if (error) return Response.json({ success: false, error: error.message }, { status: 500 });
+
+  return Response.json({
+    success: true,
+    data: { courses: data || [] },
+    pagination: { page, limit, total: count || 0, totalPages: Math.ceil((count || 0) / limit) },
+  });
 }
