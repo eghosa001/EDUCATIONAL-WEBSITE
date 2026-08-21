@@ -1,24 +1,15 @@
+import Link from 'next/link';
+
 export default function NotFound() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center px-4">
-        <div className="w-24 h-24 mx-auto mb-6 bg-blue-100 rounded-full flex items-center justify-center">
-          <svg className="w-12 h-12 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">404</h1>
-        <p className="text-xl text-gray-600 mb-4">Page not found</p>
-        <p className="text-gray-500 mb-8">The page you&apos;re looking for doesn&apos;t exist or has been moved.</p>
-        <a
-          href="/dashboard"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-          </svg>
-          Back to Dashboard
-        </a>
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
+      <div className="max-w-lg text-center">
+        <img src="/logos/the-guide-mark.svg" alt="THE GUIDE" className="mx-auto mb-6 h-20 w-20 rounded-[28%] shadow-brand-sm" />
+        <div className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-brand-600 dark:text-brand-300">THE GUIDE</div>
+        <h1 className="mb-2 text-6xl font-extrabold tracking-tight text-slate-950 dark:text-white">404</h1>
+        <p className="mb-3 text-xl font-semibold text-slate-800 dark:text-slate-100">Page not found</p>
+        <p className="mb-8 text-slate-500 dark:text-slate-400">The page you&apos;re looking for doesn&apos;t exist or has been moved.</p>
+        <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 font-semibold text-white shadow-brand-sm transition hover:bg-brand-700">Back to Dashboard</Link>
       </div>
     </div>
   );
