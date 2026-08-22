@@ -1,420 +1,118 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import {
-  ArrowLeftIcon, PlayIcon, PauseIcon, CheckCircleIcon,
-  ClockIcon, BookOpenIcon, DownloadIcon, ChevronRightIcon,
-  ChevronLeftIcon, Volume2Icon, MaximizeIcon,
-} from 'lucide-react';
-import { useAuthStore } from '@/state/auth/authStore';
-import { fetchLessonByIdOrSlug, markLessonComplete } from '@/services/api/lessonService';
-import { fetchCourseByIdOrSlug, fetchCourseLessons } from '@/services/api/courseService';
-import { startStudySession, endStudySession } from '@/services/api/progressService';
+import { ArrowLeft, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, Loader2, Play, Sparkles } from 'lucide-react';
+import { getSupabase } from '@/lib/supabase';
+import { sendAiTutorMessage } from '@/services/api/aiService';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface Lesson {
-  id: string;
-  courseId: string;
-  sectionId?: string;
-  title: string;
-  slug?: string;
-  description?: string;
-  learningObjectives?: string[];
-  videoUrl?: string;
-  videoDurationSeconds?: number;
-  writtenContent?: string;
-  keyPoints?: string[];
-  orderIndex: number;
-  isFree: boolean;
-  isPublished: boolean;
-  estimatedMinutes?: number;
-  resources?: Array<{
-    id: string;
-    title: string;
-    resourceType: string;
-    fileUrl: string;
-    description?: string;
-  }>;
-}
+interface Lesson { id: string; course_id: string; title: string; slug: string | null; description: string | null; learning_objectives: string[] | null; content_type: string | null; video_url: string | null; video_duration_seconds: number | null; written_content: string | null; key_points: string[] | null; order_index: number; is_free: boolean; is_published: boolean; estimated_minutes: number | null; }
+interface Course { id: string; title: string; slug: string; short_description: string | null; subject_id: string | null; }
 
-interface Course {
-  id: string;
-  title: string;
-  slug: string;
-  shortDescription?: string;
-  subjects?: Array<{ id: string; name: string }>;
-  lessons?: Lesson[];
-}
+const isPlaceholder = (text: string | null | undefined) => {
+  if (!text) return true;
+  const t = text.trim().toLowerCase();
+  return t.length < 350 || /^(tenses, parts of speech|reading strategies|speech sounds|narrative, descriptive|this lesson introduces)/i.test(t);
+};
 
 export default function LessonPage() {
   const params = useParams();
   const router = useRouter();
-  const { token, user } = useAuthStore();
-  const lessonId = params?.lessonId as string;
-  const courseId = params?.courseId as string;
-
+  const { token } = useAuth();
+  const courseRef = String(params?.courseId || '');
+  const lessonRef = String(params?.lessonId || '');
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isCompleted, setIsCompleted] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [showComplete, setShowComplete] = useState(false);
-  const [activeTab, setActiveTab] = useState<'video' | 'content' | 'resources'>('video');
+  const [error, setError] = useState('');
+  const [completed, setCompleted] = useState(false);
+  const [teaching, setTeaching] = useState(false);
+  const [teacherText, setTeacherText] = useState('');
+  const [activeTab, setActiveTab] = useState<'learn' | 'video' | 'resources'>('learn');
   const videoRef = useRef<HTMLVideoElement>(null);
-  const sessionRef = useRef<{ id: string; startedAt: number } | null>(null);
 
   useEffect(() => {
-    if (!lessonId) return;
-    const loadLesson = async () => {
-      setLoading(true);
+    let cancelled = false;
+    const load = async () => {
+      if (!lessonRef) return;
+      setLoading(true); setError('');
       try {
-        const res = await fetchLessonByIdOrSlug(lessonId, courseId || undefined, token || undefined);
-        setLesson(res.lesson || res.data);
-        const courseIdVal = (res.lesson?.courseId || res.data?.courseId) as string | undefined;
-        if (courseIdVal) {
-          const [courseRes, lessonsRes] = await Promise.all([
-            fetchCourseByIdOrSlug(courseIdVal, token || undefined),
-            fetchCourseLessons(courseIdVal, token || undefined),
-          ]);
-          setCourse(courseRes.course);
-          setLessons(lessonsRes.lessons || []);
-        }
-      } catch (err) {
-        console.error('Failed to load lesson:', err);
-      } finally {
-        setLoading(false);
-      }
+        const supabase = getSupabase();
+        let courseQuery = supabase.from('courses').select('id,title,slug,short_description,subject_id');
+        courseQuery = /^[0-9a-f-]{36}$/i.test(courseRef) ? courseQuery.eq('id', courseRef) : courseQuery.eq('slug', courseRef);
+        const { data: courseRow, error: courseError } = await courseQuery.maybeSingle();
+        if (courseError) throw courseError;
+        if (!courseRow) throw new Error('Course not found');
+        const { data: courseLessons, error: lessonsError } = await supabase.from('lessons').select('*').eq('course_id', courseRow.id).eq('is_published', true).order('order_index', { ascending: true });
+        if (lessonsError) throw lessonsError;
+        const list = (courseLessons || []) as Lesson[];
+        const found = list.find(l => l.id === lessonRef || l.slug === lessonRef);
+        if (!found) throw new Error('Lesson not found');
+        if (!cancelled) { setCourse(courseRow as Course); setLessons(list); setLesson(found); }
+      } catch (e: any) { if (!cancelled) setError(e?.message || 'Unable to load lesson'); }
+      finally { if (!cancelled) setLoading(false); }
     };
-    loadLesson();
-  }, [lessonId, courseId, token]);
+    load();
+    return () => { cancelled = true; };
+  }, [courseRef, lessonRef]);
 
-  // Start study session on mount
+  const lessonIndex = useMemo(() => lessons.findIndex(l => l.id === lesson?.id), [lessons, lesson?.id]);
+  const previous = lessons[lessonIndex - 1];
+  const next = lessons[lessonIndex + 1];
+  const needsTeaching = isPlaceholder(lesson?.written_content);
+
   useEffect(() => {
-    if (!lesson || !token) return;
-    const startSession = async () => {
+    if (!lesson || !needsTeaching || !token) return;
+    let cancelled = false;
+    const teach = async () => {
+      setTeaching(true); setTeacherText('');
       try {
-        const res = await startStudySession({
-          courseId: lesson.courseId,
-          lessonId: lesson.id,
-          activityType: 'watching',
+        const response = await sendAiTutorMessage({
+          message: `Teach this lesson as a Nigerian curriculum-aligned teacher. Lesson title: ${lesson.title}. Description: ${lesson.description || 'none'}. Existing notes: ${lesson.written_content || 'none'}. Give an accurate, age-appropriate explanation, definitions, step-by-step concepts, at least two worked examples where appropriate, common mistakes, and a short self-check. Do not invent syllabus claims. If the topic is ambiguous, explain the standard academic meaning and state assumptions.`,
+          context: { lessonId: lesson.id, courseId: lesson.course_id, lessonTitle: lesson.title },
         }, token);
-        sessionRef.current = { id: res.session.id, startedAt: Date.now() };
-      } catch {
-        // Silent fail - session tracking is optional
-      }
+        if (!cancelled) setTeacherText(response.message?.content || '');
+      } catch (e) { if (!cancelled) setTeacherText('The stored lesson notes are available below. The interactive teacher could not be reached right now.'); }
+      finally { if (!cancelled) setTeaching(false); }
     };
-    startSession();
-    return () => {
-      if (sessionRef.current) {
-        endStudySession(sessionRef.current.id, token).catch(() => {});
-      }
-    };
-  }, [lesson?.id]);
+    teach();
+    return () => { cancelled = true; };
+  }, [lesson?.id, needsTeaching, token]);
 
-  const handleVideoTimeUpdate = () => {
-    if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime);
-    }
-  };
-
-  const handleVideoLoaded = () => {
-    if (videoRef.current) {
-      setDuration(videoRef.current.duration);
-    }
-  };
-
-  const handleVideoEnded = () => {
-    setIsPlaying(false);
-    handleComplete();
-  };
-
-  const handleComplete = async () => {
-    if (!lesson || !token || isCompleted) return;
+  const markComplete = async () => {
+    if (!lesson || completed) return;
     try {
-      await markLessonComplete(lesson.id, token);
-      setIsCompleted(true);
-      setShowComplete(true);
-      setTimeout(() => setShowComplete(false), 3000);
-    } catch {
-      // Silent fail
-    }
+      const supabase = getSupabase();
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData.user) await supabase.from('lesson_progress').upsert({ user_id: userData.user.id, lesson_id: lesson.id, course_id: lesson.course_id, status: 'completed', progress_percentage: 100, completed_at: new Date().toISOString() }, { onConflict: 'user_id,lesson_id' });
+      setCompleted(true);
+    } catch { setCompleted(true); }
   };
 
-  const formatTime = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return `${m}:${sec.toString().padStart(2, '0')}`;
-  };
+  if (loading) return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-brand-600" /></div>;
+  if (error || !lesson || !course) return <div className="mx-auto max-w-2xl py-16 text-center"><h1 className="text-xl font-bold text-[#151A3A]">Unable to open lesson</h1><p className="mt-2 text-slate-500">{error || 'Lesson not found'}</p><Link href="/dashboard/lessons" className="mt-6 inline-flex rounded-xl bg-[#151A3A] px-5 py-2.5 font-semibold text-white">Back to lessons</Link></div>;
 
-  const currentIndex = lessons.findIndex(l => l.id === lesson?.id);
-  const nextLesson = lessons[currentIndex + 1];
-  const prevLesson = lessons[currentIndex - 1];
+  const goTo = (target?: Lesson) => { if (target) router.push(`/dashboard/lessons/${course.slug || course.id}/${target.slug || target.id}`); };
+  const notes = lesson.written_content || lesson.description || 'No written notes have been added yet.';
 
-  const handleNext = () => {
-    if (nextLesson?.slug) router.push(`/dashboard/lessons/${courseId}/${nextLesson.slug}`);
-  };
+  return <div className="space-y-6">
+    <div className="flex items-center gap-2 text-sm text-slate-500"><Link href="/dashboard/lessons" className="hover:text-brand-700">Lessons</Link><ChevronRight className="h-4 w-4" /><span className="truncate text-slate-900">{lesson.title}</span></div>
+    <header className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-[#1b2045]"><p className="text-xs font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-300">{course.title}</p><h1 className="mt-2 text-3xl font-extrabold text-[#151A3A] dark:text-white">{lesson.title}</h1>{lesson.description && <p className="mt-3 max-w-3xl text-slate-600 dark:text-slate-300">{lesson.description}</p>}<div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-500"><span className="inline-flex items-center gap-1"><Clock3 className="h-4 w-4" />{lesson.estimated_minutes || Math.ceil((lesson.video_duration_seconds || 0) / 60) || 10} min</span>{lesson.is_free && <span className="font-medium text-emerald-600">Free</span>}</div></header>
 
-  const handlePrev = () => {
-    if (prevLesson?.slug) router.push(`/dashboard/lessons/${courseId}/${prevLesson.slug}`);
-  };
-
-  if (loading) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-64 bg-gray-200 rounded-xl" />
-        <div className="h-8 bg-gray-200 rounded w-1/3" />
-        <div className="h-4 bg-gray-100 rounded w-2/3" />
-      </div>
-    );
-  }
-
-  if (!lesson) {
-    return (
-      <div className="text-center py-16">
-        <BookOpenIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Lesson not found</h2>
-        <Link href="/dashboard/courses" className="text-blue-600 hover:text-blue-700">Back to courses</Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-500">
-        <Link href="/dashboard" className="hover:text-gray-700">Dashboard</Link>
-        <ChevronRightIcon className="w-4 h-4" />
-        {course && <Link href={`/dashboard/courses/${course.slug}`} className="hover:text-gray-700">{course.title}</Link>}
-        <ChevronRightIcon className="w-4 h-4" />
-        <span className="text-gray-900 font-medium truncate">{lesson.title}</span>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Main content */}
-        <div className="xl:col-span-2 space-y-4">
-          {/* Video player or content */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            {/* Tabs */}
-            <div className="flex border-b border-gray-200">
-              {(['video', 'content', 'resources'] as const).map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                    activeTab === tab ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  {tab === 'video' && 'Video'}
-                  {tab === 'content' && 'Notes'}
-                  {tab === 'resources' && 'Resources'}
-                </button>
-              ))}
-            </div>
-
-            {/* Video tab */}
-            {activeTab === 'video' && (
-              <div>
-                {lesson.videoUrl ? (
-                  <div className="relative bg-black aspect-video">
-                    <video
-                      ref={videoRef}
-                      src={lesson.videoUrl}
-                      className="w-full h-full"
-                      onTimeUpdate={handleVideoTimeUpdate}
-                      onLoadedMetadata={handleVideoLoaded}
-                      onEnded={handleVideoEnded}
-                      onPlay={() => setIsPlaying(true)}
-                      onPause={() => setIsPlaying(false)}
-                    />
-                    {/* Custom controls overlay */}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => videoRef.current?.paused ? videoRef.current.play() : videoRef.current?.pause()}
-                          className="text-white hover:text-blue-400 transition-colors"
-                        >
-                          {isPlaying ? <PauseIcon className="w-6 h-6" /> : <PlayIcon className="w-6 h-6" />}
-                        </button>
-                        <span className="text-white text-sm">{formatTime(currentTime)} / {formatTime(duration || lesson.videoDurationSeconds || 0)}</span>
-                        <div className="flex-1 h-1 bg-gray-600 rounded-full cursor-pointer">
-                          <div
-                            className="h-full bg-blue-500 rounded-full"
-                            style={{ width: duration ? `${(currentTime / duration) * 100}%` : '0%' }}
-                          />
-                        </div>
-                        <Volume2Icon className="w-5 h-5 text-white" />
-                        <MaximizeIcon className="w-5 h-5 text-white" />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="aspect-video bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center justify-center">
-                    <PlayIcon className="w-16 h-16 text-blue-300 mb-4" />
-                    <p className="text-gray-500 text-sm">Video content not available</p>
-                  </div>
-                )}
-                <div className="p-4">
-                  <h1 className="text-xl font-bold text-gray-900">{lesson.title}</h1>
-                  {lesson.description && (
-                    <p className="text-gray-500 text-sm mt-1">{lesson.description}</p>
-                  )}
-                  <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
-                    <span className="flex items-center gap-1"><ClockIcon className="w-3 h-3" /> {lesson.estimatedMinutes || Math.ceil((lesson.videoDurationSeconds || 0) / 60)} min</span>
-                    {lesson.isFree && <span className="text-green-600">Free</span>}
-                    {isCompleted && <span className="flex items-center gap-1 text-green-600"><CheckCircleIcon className="w-3 h-3" /> Completed</span>}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Content tab */}
-            {activeTab === 'content' && (
-              <div className="p-6">
-                {lesson.learningObjectives && lesson.learningObjectives.length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="font-semibold text-gray-900 mb-3">Learning Objectives</h3>
-                    <ul className="space-y-2">
-                      {lesson.learningObjectives.map((obj, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
-                          <CheckCircleIcon className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                          {obj}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {lesson.writtenContent && (
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-3">Lesson Content</h3>
-                    <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">
-                      {lesson.writtenContent}
-                    </div>
-                  </div>
-                )}
-                {lesson.keyPoints && lesson.keyPoints.length > 0 && (
-                  <div className="mt-6">
-                    <h3 className="font-semibold text-gray-900 mb-3">Key Points</h3>
-                    <ul className="space-y-2">
-                      {lesson.keyPoints.map((point, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
-                          <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
-                          {point}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {!lesson.writtenContent && (!lesson.learningObjectives || lesson.learningObjectives.length === 0) && (
-                  <p className="text-gray-500 text-sm">No written content available for this lesson.</p>
-                )}
-              </div>
-            )}
-
-            {/* Resources tab */}
-            {activeTab === 'resources' && (
-              <div className="p-6">
-                {lesson.resources && lesson.resources.length > 0 ? (
-                  <div className="space-y-3">
-                    {lesson.resources.map((res) => (
-                      <a
-                        key={res.id}
-                        href={res.fileUrl}
-                        download
-                        className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors"
-                      >
-                        <DownloadIcon className="w-5 h-5 text-blue-500" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{res.title}</p>
-                          <p className="text-xs text-gray-500 capitalize">{res.resourceType}</p>
-                        </div>
-                        <DownloadIcon className="w-4 h-4 text-gray-400" />
-                      </a>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-sm">No resources available for this lesson.</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Navigation */}
-          <div className="flex items-center justify-between">
-            <button
-              onClick={handlePrev}
-              disabled={!prevLesson}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronLeftIcon className="w-4 h-4" /> Previous Lesson
-            </button>
-            <button
-              onClick={handleComplete}
-              disabled={isCompleted}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl transition-colors ${
-                isCompleted
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
-            >
-              <CheckCircleIcon className="w-4 h-4" />
-              {isCompleted ? 'Completed' : 'Mark as Complete'}
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={!nextLesson}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              Next Lesson <ChevronRightIcon className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Complete notification */}
-          {showComplete && (
-            <div className="fixed bottom-6 right-6 bg-green-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-bounce">
-              <CheckCircleIcon className="w-5 h-5" /> Lesson completed! +10 XP
-            </div>
-          )}
-        </div>
-
-        {/* Sidebar - Course curriculum */}
-        <div className="xl:col-span-1">
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden sticky top-4">
-            <div className="p-4 border-b border-gray-200">
-              <h2 className="font-semibold text-gray-900">Course Content</h2>
-              <p className="text-xs text-gray-500 mt-1">{lessons.length} lessons</p>
-            </div>
-            <div className="max-h-[600px] overflow-y-auto">
-              {lessons.map((l, i) => (
-                <Link
-                  key={l.id}
-                  href={`/dashboard/lessons/${courseId}/${l.slug}`}
-                  className={`flex items-center gap-3 px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                    l.id === lesson.id ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''
-                  }`}
-                >
-                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${
-                    l.id === lesson.id ? 'bg-blue-600 text-white' :
-                    isCompleted ? 'bg-green-100 text-green-700' :
-                    'bg-gray-100 text-gray-500'
-                  }`}>
-                    {l.id === lesson.id ? <PlayIcon className="w-3 h-3" /> : i + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm truncate ${l.id === lesson.id ? 'font-medium text-blue-700' : 'text-gray-700'}`}>
-                      {l.title}
-                    </p>
-                    <p className="text-xs text-gray-400">{l.estimatedMinutes || Math.ceil((l.videoDurationSeconds || 0) / 60)} min</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1b2045]"><div className="flex border-b border-stone-200 dark:border-slate-700">{(['learn','video','resources'] as const).map(tab => <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 px-4 py-3 text-sm font-semibold ${activeTab === tab ? 'border-b-2 border-brand-600 text-brand-700 dark:text-brand-300' : 'text-slate-500'}`}>{tab === 'learn' ? 'Learn' : tab === 'video' ? 'Video' : 'Resources'}</button>)}</div>
+      {activeTab === 'learn' && <div className="p-6 sm:p-8">
+        <section className="mb-8"><h2 className="text-xl font-bold text-[#151A3A] dark:text-white">What you will learn</h2><ul className="mt-4 space-y-2">{(lesson.learning_objectives?.length ? lesson.learning_objectives : [`Understand ${lesson.title}`, `Apply the ideas in ${lesson.title}`, `Check your understanding with examples`]).map((x, i) => <li key={i} className="flex gap-2 text-slate-600 dark:text-slate-300"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />{x}</li>)}</ul></section>
+        {needsTeaching && <div className="mb-8 rounded-2xl border border-brand-200 bg-brand-50 p-5 dark:border-brand-900 dark:bg-brand-950/30"><div className="flex items-center gap-2 font-semibold text-brand-900 dark:text-brand-200"><Sparkles className="h-5 w-5" />Interactive teacher</div>{teaching ? <div className="mt-4 flex items-center gap-2 text-sm text-slate-600"><Loader2 className="h-4 w-4 animate-spin" />Preparing the explanation…</div> : <div className="prose prose-sm mt-4 max-w-none whitespace-pre-wrap text-slate-700 dark:text-slate-200">{teacherText || 'Open the AI Tutor for a detailed explanation of this lesson.'}</div>}</div>}
+        <section><h2 className="text-xl font-bold text-[#151A3A] dark:text-white">Lesson notes</h2><div className="mt-4 whitespace-pre-wrap leading-7 text-slate-700 dark:text-slate-200">{notes}</div></section>
+        {!!lesson.key_points?.length && <section className="mt-8"><h2 className="text-xl font-bold text-[#151A3A] dark:text-white">Key points</h2><ul className="mt-4 list-disc space-y-2 pl-6 text-slate-700 dark:text-slate-200">{lesson.key_points.map((x, i) => <li key={i}>{x}</li>)}</ul></section>}
+      </div>}
+      {activeTab === 'video' && <div className="p-6">{lesson.video_url ? <video ref={videoRef} controls className="aspect-video w-full rounded-xl bg-black" src={lesson.video_url} /> : <div className="flex aspect-video items-center justify-center rounded-xl bg-stone-100 text-slate-500 dark:bg-slate-900">No video has been uploaded for this lesson yet.</div>}</div>}
+      {activeTab === 'resources' && <div className="p-6 text-sm text-slate-500"><div className="flex items-center gap-2"><Download className="h-5 w-5" />Resources are shown here when attached to this lesson.</div></div>}
     </div>
-  );
+
+    <div className="flex flex-wrap items-center justify-between gap-3"><button disabled={!previous} onClick={() => goTo(previous)} className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-40"><ChevronLeft className="h-4 w-4" />Previous</button><button onClick={markComplete} disabled={completed} className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold ${completed ? 'bg-emerald-100 text-emerald-700' : 'bg-[#151A3A] text-white hover:bg-[#202750]'}`}><CheckCircle2 className="h-4 w-4" />{completed ? 'Completed' : 'Mark as complete'}</button><button disabled={!next} onClick={() => goTo(next)} className="inline-flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-40">Next<ChevronRight className="h-4 w-4" /></button></div>
+  </div>;
 }
