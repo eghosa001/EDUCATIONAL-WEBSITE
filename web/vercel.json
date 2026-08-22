@@ -2,7 +2,7 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "installCommand": "npm install --prefix=.. --no-audit --no-fund",
+  "installCommand": "npm install --no-audit --no-fund",
   "devCommand": "next dev",
   "env": {
     "NEXT_PUBLIC_API_URL": "/api/v1"
