@@ -7,9 +7,6 @@
     "dev": "next dev",
     "prebuild": "node scripts/prepare-brand-assets.mjs",
     "build": "next build",
-    "build:cloudflare": "opennextjs-cloudflare build",
-    "deploy:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "preview:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "start": "next start",
     "lint": "next lint",
     "test": "jest --passWithNoTests",
@@ -62,7 +59,6 @@
     "zustand": "^4.4.0"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^1.20.2",
     "@testing-library/jest-dom": "^6.1.0",
     "@testing-library/react": "^14.0.0",
     "@types/bcryptjs": "^2.4.6",
