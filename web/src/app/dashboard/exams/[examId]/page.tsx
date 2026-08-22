@@ -1,510 +1,132 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
-import {
-  fetchExamById, startExamAttempt, submitExamAttempt,
-} from '@/services/api/examService';
-import { ArrowLeftIcon, ClockIcon, AlertCircleIcon, CheckCircleIcon, FlagIcon } from 'lucide-react';
 import Link from 'next/link';
+import { AlertCircle, ArrowLeft, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Flag, Loader2 } from 'lucide-react';
+import { getSupabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
+import { fetchExamById, startExamAttempt, submitExamAttempt } from '@/services/api/examService';
 
-type Answer = Record<string, unknown>;
+interface Question { id: string; questionId: string; questionText: string; questionType: string; options: any[]; correctAnswer?: any; explanation?: string; marks: number; orderIndex: number; difficulty?: string; }
+interface Exam { id: string; title: string; description: string | null; duration_minutes: number; total_marks: number; passing_marks: number; instructions: string | null; shuffle_questions: boolean; is_timed: boolean; }
 
-interface ExamQuestion {
-  id: string;
-  orderIndex: number;
-  questionId: string;
-  questionText: string;
-  questionType: string;
-  options: unknown[];
-  marks: number;
-  sectionName?: string;
-  difficulty?: string;
-  timeLimitSeconds?: number;
-}
+type Answers = Record<string, any>;
 
-interface ExamStartData {
-  attempt: { id: string };
-  exam: { title: string; durationMinutes: number; totalQuestions: number };
-  questions: ExamQuestion[];
-}
+const optionText = (option: any) => typeof option === 'string' ? option : option?.text ?? option?.label ?? option?.value ?? String(option ?? '');
+const normalizeAnswer = (value: any) => typeof value === 'object' && value !== null ? value.id ?? value.value ?? value.text : value;
 
 export default function ExamAttemptPage() {
   const params = useParams();
   const router = useRouter();
-  const { token, user } = useAuth();
-  const examId = params?.examId as string;
-
+  const { token } = useAuth();
+  const examId = String(params?.examId || '');
+  const [exam, setExam] = useState<Exam | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
+  const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
-  const [phase, setPhase] = useState<'instructions' | 'exam' | 'submitted'>('instructions');
-  const [exam, setExam] = useState<any>(null);
-  const [attempt, setAttempt] = useState<{ id: string } | null>(null);
-  const [questions, setQuestions] = useState<ExamQuestion[]>([]);
-  const [currentQIdx, setCurrentQIdx] = useState(0);
-  const [answers, setAnswers] = useState<Answer>({});
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [startTime, setStartTime] = useState<number | null>(null);
+  const [phase, setPhase] = useState<'instructions' | 'exam'>('instructions');
+  const [current, setCurrent] = useState(0);
+  const [answers, setAnswers] = useState<Answers>({});
   const [flagged, setFlagged] = useState<Set<string>>(new Set());
-  const [tabSwitchCount, setTabSwitchCount] = useState(0);
-  const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState('');
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const pageVisibilityRef = useRef<DocumentVisibilityState>('visible');
-  const hasStartedRef = useRef(false);
-
-  const durationSec = exam?.durationMinutes ? exam.durationMinutes * 60 : 0;
-
-  const handleTabSwitch = useCallback(() => {
-    if (pageVisibilityRef.current === 'visible' && phase === 'exam') {
-      setTabSwitchCount(prev => prev + 1);
-    }
-  }, [phase]);
 
   useEffect(() => {
-    document.addEventListener('visibilitychange', handleTabSwitch);
-    window.addEventListener('blur', handleTabSwitch);
-    return () => {
-      document.removeEventListener('visibilitychange', handleTabSwitch);
-      window.removeEventListener('blur', handleTabSwitch);
+    if (!examId || !token) return;
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true); setError('');
+      try {
+        const supabase = getSupabase();
+        const { data: examRow, error: examError } = await supabase.from('exams').select('*').eq('id', examId).maybeSingle();
+        if (examError || !examRow) throw new Error(examError?.message || 'Exam not found');
+        const { data: links, error: linkError } = await supabase.from('exam_questions').select('id,exam_id,question_id,order_index,marks,section_name').eq('exam_id', examId).order('order_index', { ascending: true });
+        if (linkError) throw linkError;
+        const ids = (links || []).map((x: any) => x.question_id);
+        const { data: rows, error: questionError } = ids.length ? await supabase.from('questions').select('id,question_text,question_type,options,correct_answer,explanation,difficulty,marks').in('id', ids) : { data: [], error: null } as any;
+        if (questionError) throw questionError;
+        const byId = new Map((rows || []).map((q: any) => [q.id, q]));
+        const mapped = (links || []).map((link: any) => { const q: any = byId.get(link.question_id); return q ? { id: link.id, questionId: q.id, questionText: q.question_text, questionType: q.question_type, options: Array.isArray(q.options) ? q.options : [], correctAnswer: q.correct_answer, explanation: q.explanation, difficulty: q.difficulty, marks: Number(link.marks ?? q.marks ?? 1), orderIndex: link.order_index } : null; }).filter(Boolean) as Question[];
+        if (!mapped.length) throw new Error('This exam has no available questions.');
+        if (!cancelled) { setExam(examRow as Exam); setQuestions(mapped); setSecondsLeft(Number(examRow.duration_minutes || 60) * 60); }
+      } catch (directError: any) {
+        try {
+          const res = await fetchExamById(examId, token);
+          if (!cancelled) { setExam(res.exam as any); }
+          const fallback = await getSupabase().from('exam_questions').select('id,exam_id,question_id,order_index,marks').eq('exam_id', examId).order('order_index');
+          if (fallback.error) throw fallback.error;
+          const ids = (fallback.data || []).map((x: any) => x.question_id);
+          const qs = await getSupabase().from('questions').select('id,question_text,question_type,options,correct_answer,explanation,difficulty,marks').in('id', ids);
+          if (qs.error) throw qs.error;
+          const byId = new Map((qs.data || []).map((q: any) => [q.id, q]));
+          const mapped = (fallback.data || []).map((l: any) => { const q: any = byId.get(l.question_id); return q ? { id: l.id, questionId: q.id, questionText: q.question_text, questionType: q.question_type, options: q.options || [], correctAnswer: q.correct_answer, explanation: q.explanation, difficulty: q.difficulty, marks: Number(l.marks ?? q.marks ?? 1), orderIndex: l.order_index } : null; }).filter(Boolean) as Question[];
+          if (!mapped.length) throw new Error('No questions are available for this exam.');
+          if (!cancelled) { setQuestions(mapped); setSecondsLeft(Number((res.exam as any).durationMinutes || 60) * 60); }
+        } catch (fallbackError: any) { if (!cancelled) setError(fallbackError?.message || directError?.message || 'Failed to load exam questions'); }
+      } finally { if (!cancelled) setLoading(false); }
     };
-  }, [handleTabSwitch]);
+    load();
+    return () => { cancelled = true; };
+  }, [examId, token]);
 
   useEffect(() => {
-    if (!token || !examId) return;
-    setLoading(true);
-    setError('');
+    if (phase !== 'exam' || secondsLeft <= 0) return;
+    const timer = window.setInterval(() => setSecondsLeft(v => Math.max(0, v - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [phase, secondsLeft]);
 
-    Promise.all([
-      fetchExamById(examId, token),
-    ])
-      .then(([examRes]) => {
-        const examData = examRes.exam;
-        setExam(examData);
-        setTimeLeft(examData.durationMinutes * 60);
-      })
-      .catch(err => setError(err.message || 'Failed to load exam'))
-      .finally(() => setLoading(false));
-  }, [token, examId]);
+  useEffect(() => { if (phase === 'exam' && secondsLeft === 0 && startedAt && !submitting) submitExam(true); }, [secondsLeft]);
 
-  const startExam = async () => {
-    if (!token) return;
-    try {
-      const res = await startExamAttempt(examId, token);
-      setAttempt(res.data.attempt);
-      setQuestions(res.data.questions);
-      setStartTime(Date.now());
-      hasStartedRef.current = true;
-      setPhase('exam');
-    } catch (err: any) {
-      setError(err.message || 'Failed to start exam');
-    }
-  };
-
-  // Timer countdown
-  useEffect(() => {
-    if (phase !== 'exam' || timeLeft <= 0) return;
-    timerRef.current = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current!);
-          handleSubmit(true);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [phase, timeLeft]);
-
-  const setAnswer = (questionId: string, value: unknown) => {
-    setAnswers(prev => ({ ...prev, questionId, value }));
-  };
-
-  const toggleFlag = (questionId: string) => {
-    setFlagged(prev => {
-      const next = new Set(prev);
-      if (next.has(questionId)) next.delete(questionId); else next.add(questionId);
-      return next;
-    });
-  };
-
-  const unansweredCount = questions.filter(q => answers[q.id] === undefined || answers[q.id] === '').length;
-
-  const handleSubmit = async (isTimeout = false) => {
-    if (!attempt || !startTime || isTimeout && phase !== 'exam') return;
-    if (!isTimeout && !confirm(`Submit your exam? You have ${unansweredCount} unanswered question(s).`)) return;
-
-    setSubmitting(true);
-    setSubmitError('');
-    setShowConfirmSubmit(false);
-
-    const timeSpent = Math.round((Date.now() - startTime) / 1000);
-    const answerList = Object.entries(answers).map(([questionId, studentAnswer]) => ({
-      questionId, studentAnswer,
-    }));
-
-    try {
-      const res = await submitExamAttempt(examId, attempt.id, {
-        examId, answers: answerList, timeSpentSeconds: timeSpent,
-      }, token!);
-      setPhase('submitted');
-      window.localStorage.setItem(`exam_result_${examId}`, JSON.stringify(res.result));
-      router.push(`/dashboard/exams/${examId}/results`);
-    } catch (err: any) {
-      setSubmitError(err.message || 'Failed to submit exam');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
+  const answered = useMemo(() => questions.filter(q => answers[q.questionId] !== undefined && answers[q.questionId] !== '').length, [questions, answers]);
+  const q = questions[current];
+  const setAnswer = (value: any) => q && setAnswers(prev => ({ ...prev, [q.questionId]: value }));
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-  const q = questions[currentQIdx];
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-      </div>
-    );
+  const start = async () => {
+    setStarting(true); setError('');
+    try {
+      // The backend attempt endpoint is optional; questions are already loaded directly from Supabase.
+      try { if (token) await startExamAttempt(examId, token); } catch { /* continue with local attempt */ }
+      setStartedAt(Date.now()); setPhase('exam');
+    } finally { setStarting(false); }
+  };
+
+  async function submitExam(auto = false) {
+    if (submitting || !startedAt || !exam) return;
+    if (!auto && !window.confirm(`Submit this exam? ${questions.length - answered} question(s) are unanswered.`)) return;
+    setSubmitting(true);
+    const spent = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+    const details = questions.map(item => {
+      const selected = answers[item.questionId];
+      const correct = normalizeAnswer(item.correctAnswer);
+      const isCorrect = selected !== undefined && String(normalizeAnswer(selected)).trim().toLowerCase() === String(correct).trim().toLowerCase();
+      return { questionId: item.questionId, questionText: item.questionText, studentAnswer: selected, correctAnswer: correct, isCorrect, explanation: item.explanation, marks: item.marks };
+    });
+    const correctCount = details.filter(x => x.isCorrect).length;
+    const incorrectCount = details.filter(x => x.studentAnswer !== undefined && !x.isCorrect).length;
+    const unansweredCount = details.filter(x => x.studentAnswer === undefined || x.studentAnswer === '').length;
+    const totalMarks = details.reduce((sum, x) => sum + Number(x.marks || 1), 0) || questions.length;
+    const score = details.reduce((sum, x) => sum + (x.isCorrect ? Number(x.marks || 1) : 0), 0);
+    const percentage = Math.round((score / totalMarks) * 100);
+    const result = { examTitle: exam.title, score, totalMarks, percentage, isPassed: percentage >= Number(exam.passing_marks || 50), correctCount, incorrectCount, unansweredCount, timeSpent: formatTime(spent), answers: details };
+    try {
+      if (token) await submitExamAttempt(examId, 'local', { examId, answers: Object.entries(answers).map(([questionId, studentAnswer]) => ({ questionId, studentAnswer })), timeSpentSeconds: spent }, token).catch(() => null);
+    } finally {
+      window.localStorage.setItem(`exam_result_${examId}`, JSON.stringify(result));
+      router.push(`/dashboard/exams/${examId}/results`);
+    }
   }
 
-  if (error && phase !== 'submitted') {
-    return (
-      <div className="space-y-4">
-        <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
-          <ArrowLeftIcon className="w-4 h-4" /> Back
-        </Link>
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center gap-3">
-          <AlertCircleIcon className="w-5 h-5 shrink-0" />{error}
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-9 w-9 animate-spin text-brand-600" /></div>;
+  if (error || !exam) return <div className="mx-auto max-w-2xl py-16 text-center"><AlertCircle className="mx-auto h-12 w-12 text-red-500" /><h1 className="mt-4 text-xl font-bold">Unable to load exam</h1><p className="mt-2 text-slate-500">{error || 'Exam not found'}</p><Link href="/dashboard/exams" className="mt-6 inline-flex rounded-xl bg-[#151A3A] px-5 py-2.5 font-semibold text-white">Back to exams</Link></div>;
 
-  // ── Instructions Phase ──────────────────────────────────────────────────────
-  if (phase === 'instructions') {
-    return (
-      <div className="space-y-6">
-        <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
-          <ArrowLeftIcon className="w-4 h-4" /> Back
-        </Link>
+  if (phase === 'instructions') return <div className="mx-auto max-w-3xl space-y-6"><Link href="/dashboard/exams" className="inline-flex items-center gap-2 text-sm text-slate-500"><ArrowLeft className="h-4 w-4" />Back to exams</Link><div className="rounded-2xl border border-stone-200 bg-white p-7 shadow-sm dark:border-slate-700 dark:bg-[#1b2045]"><h1 className="text-3xl font-extrabold text-[#151A3A] dark:text-white">{exam.title}</h1><p className="mt-2 text-slate-500 dark:text-slate-300">{exam.description}</p><div className="mt-7 grid grid-cols-2 gap-4 sm:grid-cols-3"><div className="rounded-xl bg-stone-50 p-4 text-center"><b className="block text-2xl text-[#151A3A]">{questions.length}</b><span className="text-sm text-slate-500">Questions</span></div><div className="rounded-xl bg-stone-50 p-4 text-center"><b className="block text-2xl text-[#151A3A]">{exam.duration_minutes || 60}m</b><span className="text-sm text-slate-500">Duration</span></div><div className="rounded-xl bg-stone-50 p-4 text-center"><b className="block text-2xl text-[#151A3A]">{exam.passing_marks || 50}</b><span className="text-sm text-slate-500">Pass mark</span></div></div>{exam.instructions && <div className="mt-7 rounded-xl bg-brand-50 p-5 text-sm text-slate-700 dark:bg-brand-950/30 dark:text-slate-200"><b>Instructions</b><p className="mt-2 whitespace-pre-wrap">{exam.instructions}</p></div>}<button onClick={start} disabled={starting} className="mt-7 w-full rounded-xl bg-[#151A3A] py-3.5 font-semibold text-white hover:bg-[#202750] disabled:opacity-50">{starting ? 'Preparing questions…' : `Start exam (${questions.length} questions)`}</button></div></div>;
 
-        <div className="bg-white rounded-2xl border border-gray-200 p-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-              <ClockIcon className="w-5 h-5 text-blue-600" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900">{exam?.title}</h1>
-          </div>
-          <p className="text-gray-500 mt-1">{exam?.description || ''}</p>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-            {[
-              { label: 'Questions', value: questions.length || exam?.questionCount || 40 },
-              { label: 'Duration', value: `${exam?.durationMinutes || 60} min` },
-              { label: 'Total Marks', value: exam?.stats?.totalMarks || 100 },
-              { label: 'Passing Score', value: `${exam?.passing_marks || 50}%` },
-            ].map(s => (
-              <div key={s.label} className="p-4 bg-gray-50 rounded-xl text-center">
-                <p className="text-2xl font-bold text-gray-900">{s.value}</p>
-                <p className="text-sm text-gray-500 mt-1">{s.label}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-8 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-            <h3 className="font-semibold text-yellow-800 mb-2 flex items-center gap-2">
-              <FlagIcon className="w-4 h-4" /> Anti-Cheat Rules
-            </h3>
-            <ul className="text-sm text-yellow-700 space-y-1">
-              <li>• Do not switch tabs or minimize this window during the exam</li>
-              <li>• Each tab switch will be recorded and may affect your score</li>
-              <li>• Your exam will auto-submit when time runs out</li>
-              <li>• Tab switch violations detected: <span className="font-bold">{tabSwitchCount}</span></li>
-            </ul>
-          </div>
-
-          {exam?.instructions && (
-            <div className="mt-6 p-4 bg-gray-50 rounded-xl">
-              <h3 className="font-semibold text-gray-900 mb-2">Instructions</h3>
-              <p className="text-sm text-gray-600 whitespace-pre-wrap">{exam.instructions}</p>
-            </div>
-          )}
-
-          <button
-            onClick={startExam}
-            disabled={tabSwitchCount > 5}
-            className="mt-8 w-full py-3.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            {tabSwitchCount > 5 ? 'Exam Suspended — Too Many Tab Switches' : 'Start Exam'}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Submitted Phase ──────────────────────────────────────────────────────────
-  if (phase === 'submitted') {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-            <CheckCircleIcon className="w-8 h-8 text-green-600" />
-          </div>
-          <h2 className="text-xl font-bold text-gray-900">Exam Submitted</h2>
-          <p className="text-gray-500 mt-1">Your results are being processed...</p>
-          {submitError && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{submitError}</div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // ── Exam Interface ───────────────────────────────────────────────────────────
-  const progressPercent = Math.round(((currentQIdx + 1) / questions.length) * 100);
-  const answeredCount = questions.filter(q => answers[q.id] !== undefined && answers[q.id] !== '').length;
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top bar */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard" className="text-sm text-gray-500 hover:text-gray-700">
-            <ArrowLeftIcon className="w-4 h-4 inline mr-1" />Exit
-          </Link>
-          <span className="font-semibold text-gray-900 text-sm truncate max-w-xs">{exam?.title}</span>
-        </div>
-        <div className="flex items-center gap-6">
-          {tabSwitchCount > 0 && (
-            <span className="text-xs text-orange-600 flex items-center gap-1">
-              <AlertCircleIcon className="w-3.5 h-3.5" />{tabSwitchCount} tab switch{tabSwitchCount > 1 ? 'es' : ''}
-            </span>
-          )}
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-sm font-bold ${
-            timeLeft < 120 ? 'bg-red-100 text-red-700 animate-pulse' : timeLeft < 300 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'
-          }`}>
-            <ClockIcon className="w-4 h-4" />
-            {formatTime(timeLeft)}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex">
-        {/* Question sidebar */}
-        <aside className="w-56 bg-white border-r border-gray-200 p-4 sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto hidden lg:block">
-          <div className="mb-4">
-            <div className="flex justify-between text-xs text-gray-500 mb-1">
-              <span>Progress</span><span>{answeredCount}/{questions.length}</span>
-            </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-600 rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
-            </div>
-          </div>
-          <div className="grid grid-cols-5 gap-1.5">
-            {questions.map((q, i) => {
-              const isAnswered = answers[q.id] !== undefined && answers[q.id] !== '';
-              const isFlagged = flagged.has(q.id);
-              const isCurrent = i === currentQIdx;
-              return (
-                <button
-                  key={q.id}
-                  onClick={() => setCurrentQIdx(i)}
-                  className={`aspect-square rounded-lg text-xs font-medium flex items-center justify-center transition-colors ${
-                    isCurrent ? 'ring-2 ring-blue-600 bg-blue-50 text-blue-700' :
-                    isAnswered ? 'bg-green-100 text-green-700 hover:bg-green-200' :
-                    'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {i + 1}
-                  {isFlagged && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-orange-400 rounded-full" />}
-                </button>
-              );
-            })}
-          </div>
-        </aside>
-
-        {/* Question area */}
-        <main className="flex-1 p-6">
-          {q && (
-            <div className="max-w-2xl mx-auto space-y-6">
-              {/* Question header */}
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-500">
-                  Question {currentQIdx + 1} of {questions.length}
-                </span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400">{q.marks} mark{q.marks !== 1 ? 's' : ''}</span>
-                  <button
-                    onClick={() => toggleFlag(q.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                      flagged.has(q.id) ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500 hover:bg-orange-50 hover:text-orange-600'
-                    }`}
-                  >
-                    <FlagIcon className="w-3 h-3 inline mr-1" />{flagged.has(q.id) ? 'Flagged' : 'Flag'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Question text */}
-              <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                <p className="text-lg font-medium text-gray-900 leading-relaxed">{q.questionText}</p>
-
-                {/* MCQ options */}
-                {q.questionType === 'mcq' && (
-                  <div className="mt-5 space-y-3">
-                    {(q.options as any[] || []).map((opt, idx) => {
-                      const optLetter = String.fromCharCode(65 + idx);
-                      const isSelected = answers[q.id] === opt.text || answers[q.id] === optLetter;
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => setAnswer(q.id, opt.text || optLetter)}
-                          className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all text-sm ${
-                            isSelected
-                              ? 'border-blue-600 bg-blue-50 text-blue-900'
-                              : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                          }`}
-                        >
-                          <span className="font-semibold mr-3">{optLetter}.</span>
-                          {opt.text || opt}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Multiple select */}
-                {q.questionType === 'multiple_select' && (
-                  <div className="mt-5 space-y-3">
-                    {(q.options as any[] || []).map((opt, idx) => {
-                      const optLetter = String.fromCharCode(65 + idx);
-                      const selected = Array.isArray(answers[q.id])
-                        ? (answers[q.id] as string[]).includes(optLetter)
-                        : false;
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => {
-                            const current = Array.isArray(answers[q.id]) ? [...(answers[q.id] as string[])] : [];
-                            const next = selected ? current.filter(c => c !== optLetter) : [...current, optLetter];
-                            setAnswer(q.id, next);
-                          }}
-                          className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all text-sm ${
-                            selected
-                              ? 'border-blue-600 bg-blue-50 text-blue-900'
-                              : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                          }`}
-                        >
-                          <span className="font-semibold mr-3">{optLetter}.</span>
-                          {opt.text || opt}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* True/False */}
-                {q.questionType === 'true_false' && (
-                  <div className="mt-5 flex gap-3">
-                    {['True', 'False'].map(val => {
-                      const isSelected = answers[q.id] === val;
-                      return (
-                        <button
-                          key={val}
-                          onClick={() => setAnswer(q.id, val)}
-                          className={`flex-1 py-3 rounded-xl border-2 font-medium transition-all ${
-                            isSelected
-                              ? 'border-green-600 bg-green-50 text-green-700'
-                              : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                          }`}
-                        >
-                          {val}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Short answer / essay */}
-                {['short_answer', 'essay', 'fill_blank', 'numerical'].includes(q.questionType) && (
-                  <div className="mt-5">
-                    {q.questionType === 'essay' ? (
-                      <textarea
-                        value={(answers[q.id] as string) || ''}
-                        onChange={e => setAnswer(q.id, e.target.value)}
-                        rows={6}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
-                        placeholder="Write your answer here..."
-                      />
-                    ) : (
-                      <input
-                        type={q.questionType === 'numerical' ? 'number' : 'text'}
-                        value={(answers[q.id] as string) || ''}
-                        onChange={e => setAnswer(q.id, e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                        placeholder="Type your answer..."
-                      />
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Navigation */}
-              <div className="flex items-center justify-between">
-                <button
-                  onClick={() => setCurrentQIdx(prev => Math.max(0, prev - 1))}
-                  disabled={currentQIdx === 0}
-                  className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  Previous
-                </button>
-                <span className="text-sm text-gray-400">{answeredCount} answered · {unansweredCount} remaining</span>
-                {currentQIdx < questions.length - 1 ? (
-                  <button
-                    onClick={() => setCurrentQIdx(prev => Math.min(questions.length - 1, prev + 1))}
-                    className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors"
-                  >
-                    Next
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setShowConfirmSubmit(true)}
-                    className="px-5 py-2.5 text-sm font-medium text-white bg-green-600 rounded-xl hover:bg-green-700 transition-colors"
-                  >
-                    Submit Exam
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-        </main>
-      </div>
-
-      {/* Confirm submit modal */}
-      {showConfirmSubmit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowConfirmSubmit(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Submit Exam?</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              You have <span className="font-semibold text-orange-600">{unansweredCount} unanswered</span> question{unansweredCount !== 1 ? 's' : ''}.
-              {tabSwitchCount > 0 && ` You switched tabs ${tabSwitchCount} time${tabSwitchCount > 1 ? 's' : ''} during the exam.`}
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setShowConfirmSubmit(false)} className="flex-1 py-2.5 text-sm text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">
-                Review Again
-              </button>
-              <button onClick={() => handleSubmit()} disabled={submitting} className="flex-1 py-2.5 text-sm bg-green-600 text-white rounded-xl hover:bg-green-700 disabled:opacity-50 transition-colors">
-                {submitting ? 'Submitting...' : 'Submit'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  if (!q) return <div className="p-10 text-center">No question available.</div>;
+  const selected = answers[q.questionId];
+  const isAnswered = selected !== undefined && selected !== '';
+  return <div className="min-h-[calc(100vh-6rem)] space-y-5"><div className="sticky top-0 z-10 flex items-center justify-between rounded-xl border border-stone-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-[#151A3A]/95"><span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{exam.title}</span><span className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 font-mono text-sm font-bold ${secondsLeft < 120 ? 'bg-red-100 text-red-700' : 'bg-brand-50 text-brand-800'}`}><Clock3 className="h-4 w-4" />{formatTime(secondsLeft)}</span></div><div className="grid gap-5 lg:grid-cols-[220px_1fr]"><aside className="rounded-xl border border-stone-200 bg-white p-4 dark:border-slate-700 dark:bg-[#1b2045]"><div className="mb-3 text-xs text-slate-500">Answered {answered}/{questions.length}</div><div className="grid grid-cols-5 gap-2">{questions.map((item,i)=><button key={item.questionId} onClick={()=>setCurrent(i)} className={`relative aspect-square rounded-lg text-xs font-semibold ${i===current?'ring-2 ring-brand-600 bg-brand-50 text-brand-800':answers[item.questionId]!==undefined?'bg-emerald-100 text-emerald-700':'bg-stone-100 text-slate-600'}`}>{i+1}{flagged.has(item.questionId)&&<Flag className="absolute right-0.5 top-0.5 h-2.5 w-2.5 text-amber-600"/>}</button>)}</div></aside><main className="rounded-xl border border-stone-200 bg-white p-6 sm:p-8 dark:border-slate-700 dark:bg-[#1b2045]"><div className="flex items-center justify-between"><span className="text-sm font-semibold text-slate-500">Question {current+1} of {questions.length}</span><button onClick={()=>setFlagged(prev=>{const n=new Set(prev);n.has(q.questionId)?n.delete(q.questionId):n.add(q.questionId);return n;})} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${flagged.has(q.questionId)?'bg-amber-100 text-amber-700':'bg-stone-100 text-slate-500'}`}><Flag className="mr-1 inline h-3.5 w-3.5" />{flagged.has(q.questionId)?'Flagged':'Flag'}</button></div><h2 className="mt-6 text-xl font-semibold leading-8 text-[#151A3A] dark:text-white">{q.questionText}</h2><div className="mt-6 space-y-3">{q.options.map((option:any,index:number)=>{const value=option?.id ?? option?.value ?? String.fromCharCode(65+index); const label=optionText(option); return <button key={String(value)} onClick={()=>setAnswer(value)} className={`w-full rounded-xl border p-4 text-left transition ${String(selected)===String(value)?'border-brand-600 bg-brand-50 text-brand-900 dark:bg-brand-950/30 dark:text-brand-200':'border-stone-200 hover:border-brand-300 hover:bg-brand-50/50 dark:border-slate-700 dark:hover:bg-slate-800'}`}><span className="mr-3 font-bold">{String(value)}.</span>{label}</button>})}</div>{q.questionType !== 'mcq' && q.options.length===0 && <textarea value={selected || ''} onChange={e=>setAnswer(e.target.value)} rows={6} className="mt-6 w-full rounded-xl border border-stone-300 p-4" placeholder="Type your answer…"/>}<div className="mt-8 flex items-center justify-between gap-3"><button disabled={current===0} onClick={()=>setCurrent(v=>v-1)} className="inline-flex items-center gap-2 rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-semibold disabled:opacity-40"><ChevronLeft className="h-4 w-4"/>Previous</button>{current===questions.length-1?<button onClick={()=>submitExam(false)} disabled={submitting} className="inline-flex items-center gap-2 rounded-xl bg-[#151A3A] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{submitting?'Submitting…':`Submit${isAnswered?'':' anyway'}`}<CheckCircle2 className="h-4 w-4"/></button>:<button onClick={()=>setCurrent(v=>v+1)} className="inline-flex items-center gap-2 rounded-xl bg-[#151A3A] px-5 py-2.5 text-sm font-semibold text-white">Next<ChevronRight className="h-4 w-4"/></button>}</div></main></div></div>;
 }
