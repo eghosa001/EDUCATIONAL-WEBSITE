@@ -58,7 +58,7 @@ export default function PlansPage() {
         { planId: selectedPlan, couponCode: discountApplied > 0 ? couponCode : undefined },
         token
       );
-      if (result.data.authorizationUrl) {
+      if (result.data?.authorizationUrl) {
         window.location.href = result.data.authorizationUrl;
       } else {
         router.push('/subscriptions/billing');
@@ -108,111 +108,61 @@ export default function PlansPage() {
             className={`relative rounded-2xl border-2 p-6 cursor-pointer transition-all hover:shadow-lg ${
               selectedPlan === plan.id
                 ? 'border-emerald-500 shadow-lg bg-emerald-50/50'
-                : 'border-gray-200 bg-white'
-            } ${plan.isPopular ? 'lg:scale-105' : ''}`}
+                : 'border-gray-200'
+            }`}
             onClick={() => handleSelectPlan(plan.id)}
           >
             {plan.isPopular && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1">
-                <Sparkles className="w-3 h-3" /> Most Popular
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-emerald-600 text-white text-xs font-semibold rounded-full flex items-center gap-1">
+                <Sparkles className="w-3 h-3" /> Popular
               </div>
             )}
-
-            <div className="text-center mb-4">
-              <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
-              {plan.description && (
-                <p className="text-sm text-gray-500 mt-1">{plan.description}</p>
-              )}
+            <h2 className="text-xl font-bold text-gray-900">{plan.name}</h2>
+            <p className="text-sm text-gray-500 mt-1 min-h-[40px]">{plan.description}</p>
+            <div className="mt-4">
+              <span className="text-3xl font-bold text-gray-900">{getPlanPrice(plan)}</span>
+              <span className="text-sm text-gray-500 ml-1">/{plan.billingCycle}</span>
             </div>
-
-            <div className="text-center mb-4">
-              <span className="text-4xl font-bold text-gray-900">
-                {getPlanPrice(plan)}
-              </span>
-              {plan.price > 0 && (
-                <span className="text-gray-500 text-sm">/{plan.billingCycle === 'yearly' ? 'year' : 'month'}</span>
-              )}
-              {plan.trialDays && (
-                <p className="text-emerald-600 text-sm mt-1">{plan.trialDays}-day free trial</p>
-              )}
-            </div>
-
-            <ul className="space-y-2 mb-6">
-              {plan.features.slice(0, 5).map((feature, index) => (
-                <li key={index} className="flex items-start gap-2 text-sm text-gray-700">
-                  <Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
-                  <span>{feature}</span>
+            <ul className="mt-6 space-y-3">
+              {plan.features.map((feature) => (
+                <li key={feature} className="flex items-start gap-2 text-sm text-gray-700">
+                  <Check className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                  {feature}
                 </li>
               ))}
             </ul>
-
-            {selectedPlan === plan.id && (
-              <div className="text-center">
-                <span className="text-emerald-600 text-sm font-medium">Selected</span>
-              </div>
-            )}
           </div>
         ))}
       </div>
 
       {selectedPlan && (
-        <div className="max-w-md mx-auto bg-white rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-4">
+        <div className="max-w-xl mx-auto bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Complete your subscription</h3>
+          <div className="flex gap-2 mb-4">
             <input
               type="text"
-              placeholder="Enter coupon code"
               value={couponCode}
               onChange={(e) => setCouponCode(e.target.value)}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+              placeholder="Coupon code"
+              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
             />
             <button
+              type="button"
               onClick={handleApplyCoupon}
               disabled={applyingCoupon || !couponCode}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 text-sm font-medium"
+              className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium disabled:opacity-50"
             >
-              {applyingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
+              {applyingCoupon ? 'Applying...' : 'Apply'}
             </button>
           </div>
-
-          <div className="border-t pt-4 mb-4">
-            {findSelectedPlan() && (
-              <>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span className="text-gray-900">
-                    {findSelectedPlan()!.price > 0
-                      ? `₦${findSelectedPlan()!.price.toLocaleString()}`
-                      : 'Free'}
-                  </span>
-                </div>
-                {discountApplied > 0 && (
-                  <div className="flex justify-between text-sm mt-1">
-                    <span className="text-emerald-600">Discount</span>
-                    <span className="text-emerald-600">-₦{discountApplied.toLocaleString()}</span>
-                  </div>
-                )}
-                <div className="flex justify-between font-bold text-lg mt-2 pt-2 border-t">
-                  <span>Total</span>
-                  <span className="text-emerald-600">
-                    {getPlanPrice(findSelectedPlan()!)}
-                  </span>
-                </div>
-              </>
-            )}
-          </div>
-
           <button
+            type="button"
             onClick={handleSubscribe}
             disabled={submitting}
-            className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+            className="w-full flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-white font-semibold disabled:opacity-50"
           >
-            {submitting ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <>
-                Continue <ArrowRight className="w-4 h-4" />
-              </>
-            )}
+            {submitting ? 'Processing...' : 'Subscribe'}
+            {!submitting && <ArrowRight className="w-4 h-4" />}
           </button>
         </div>
       )}
