@@ -2,134 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchExams } from '@/services/api/examService';
-import { ClockIcon, BookOpenIcon, TrophyIcon, AlertCircleIcon } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { AlertCircle, BookOpen, Clock3, Loader2, Trophy } from 'lucide-react';
 
-interface ExamItem {
-  id: string;
-  title: string;
-  description?: string;
-  exam_type: string;
-  duration_minutes: number;
-  total_marks: number;
-  is_active: boolean;
-  is_public: boolean;
-  created_at: string;
-  questionCount?: number;
-}
-
-const typeColors: Record<string, string> = {
-  past_questions: 'bg-blue-100 text-blue-700',
-  practice: 'bg-green-100 text-green-700',
-  mock: 'bg-purple-100 text-purple-700',
-  timed_test: 'bg-orange-100 text-orange-700',
-  full_examination: 'bg-red-100 text-red-700',
-};
-
-export default function ExamsPage() {
-  const { token } = useAuth();
-  const [exams, setExams] = useState<ExamItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<string>('all');
-
-  useEffect(() => {
-    if (!token) return;
-    setLoading(true);
-    fetchExams({ page: 1, limit: 50 }, token)
-      .then(res => setExams((res.data || []) as unknown as ExamItem[]))
-      .catch(() => [])
-      .finally(() => setLoading(false));
-  }, [token]);
-
-  const filtered = filter === 'all' ? exams : exams.filter(e => e.exam_type === filter);
-  const types = [...new Set(exams.map(e => e.exam_type))];
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">Loading exams...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Practice Exams</h1>
-          <p className="text-gray-500 mt-1">Test yourself with past WAEC, NECO, and JAMB questions</p>
-        </div>
-      </div>
-
-      {/* Filter tabs */}
-      <div className="flex gap-2 flex-wrap">
-        <button
-          onClick={() => setFilter('all')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            filter === 'all' ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          All ({exams.length})
-        </button>
-        {types.map(t => (
-          <button
-            key={t}
-            onClick={() => setFilter(t)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filter === t ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            {t.replace(/_/g, ' ')} ({exams.filter(e => e.exam_type === t).length})
-          </button>
-        ))}
-      </div>
-
-      {/* Exam cards */}
-      {filtered.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-          <BookOpenIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">No exams available yet.</p>
-          <p className="text-sm text-gray-400 mt-1">Check back soon for new practice tests.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map(exam => (
-            <Link
-              key={exam.id}
-              href={`/dashboard/exams/${exam.id}`}
-              className="bg-white rounded-xl border border-gray-200 p-5 hover:border-blue-300 hover:shadow-md transition-all group"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${typeColors[exam.exam_type] || 'bg-gray-100 text-gray-600'}`}>
-                  {exam.exam_type.replace(/_/g, ' ')}
-                </span>
-                {!exam.is_active && (
-                  <AlertCircleIcon className="w-4 h-4 text-yellow-500" />
-                )}
-              </div>
-              <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2">
-                {exam.title}
-              </h3>
-              <p className="text-sm text-gray-500 mt-1 line-clamp-2">{exam.description}</p>
-              <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-100">
-                <div className="flex items-center gap-1 text-sm text-gray-500">
-                  <ClockIcon className="w-4 h-4" />
-                  {exam.duration_minutes} min
-                </div>
-                <div className="flex items-center gap-1 text-sm text-gray-500">
-                  <TrophyIcon className="w-4 h-4" />
-                  {exam.total_marks} marks
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+interface Exam { id:string; title:string; description:string|null; exam_type:string; duration_minutes:number; total_marks:number; passing_marks:number; is_active:boolean; is_public:boolean; created_at:string; questionCount:number; }
+const labels: Record<string,string> = { past_questions:'Past Questions', practice:'Practice', mock:'Mock', timed_test:'Timed Test', full_examination:'Full Examination' };
+export default function ExamsPage(){
+  const {token}=useAuth(); const [exams,setExams]=useState<Exam[]>([]); const [loading,setLoading]=useState(true); const [filter,setFilter]=useState('all'); const [error,setError]=useState('');
+  useEffect(()=>{ if(!token)return; let cancelled=false; (async()=>{try{const s=getSupabase();const {data,error:e}=await s.from('exams').select('*').eq('is_active',true).order('created_at',{ascending:false});if(e)throw e;const rows=data||[];const ids=rows.map((x:any)=>x.id);const {data:links,error:le}=ids.length?await s.from('exam_questions').select('exam_id').in('exam_id',ids):{data:[],error:null} as any;if(le)throw le;const counts=new Map<string,number>();(links||[]).forEach((x:any)=>counts.set(x.exam_id,(counts.get(x.exam_id)||0)+1));if(!cancelled)setExams(rows.map((x:any)=>({...x,questionCount:counts.get(x.id)||0})).filter((x:any)=>x.questionCount>0));}catch(e:any){if(!cancelled)setError(e?.message||'Unable to load exams');}finally{if(!cancelled)setLoading(false);}})();return()=>{cancelled=true}},[token]);
+  const types=[...new Set(exams.map(e=>e.exam_type))];const filtered=filter==='all'?exams:exams.filter(e=>e.exam_type===filter);
+  if(loading)return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-9 w-9 animate-spin text-brand-600"/></div>;
+  return <div className="space-y-6"><div><h1 className="text-2xl font-extrabold text-[#151A3A] dark:text-white">Practice Exams</h1><p className="mt-1 text-slate-500">Practice with structured questions and review every explanation.</p></div>{error&&<div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}<div className="flex flex-wrap gap-2"><button onClick={()=>setFilter('all')} className={`rounded-lg px-4 py-2 text-sm font-semibold ${filter==='all'?'bg-[#151A3A] text-white':'border border-stone-200 bg-white text-slate-600'}`}>All ({exams.length})</button>{types.map(t=><button key={t} onClick={()=>setFilter(t)} className={`rounded-lg px-4 py-2 text-sm font-semibold ${filter===t?'bg-[#151A3A] text-white':'border border-stone-200 bg-white text-slate-600'}`}>{labels[t]||t.replace(/_/g,' ')} ({exams.filter(e=>e.exam_type===t).length})</button>)}</div>{!filtered.length?<div className="rounded-2xl border border-stone-200 bg-white p-12 text-center"><BookOpen className="mx-auto h-12 w-12 text-slate-300"/><p className="mt-4 text-slate-500">No exams with questions are available yet.</p></div>:<div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">{filtered.map(exam=><Link key={exam.id} href={`/dashboard/exams/${exam.id}`} className="group rounded-2xl border border-stone-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-brand-sm dark:border-slate-700 dark:bg-[#1b2045]"><div className="flex items-start justify-between"><span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-800 dark:bg-brand-950/40 dark:text-brand-300">{labels[exam.exam_type]||exam.exam_type.replace(/_/g,' ')}</span>{!exam.is_active&&<AlertCircle className="h-4 w-4 text-amber-500"/>}</div><h2 className="mt-4 line-clamp-2 font-bold text-[#151A3A] group-hover:text-brand-700 dark:text-white dark:group-hover:text-brand-300">{exam.title}</h2><p className="mt-1 line-clamp-2 text-sm text-slate-500">{exam.description}</p><div className="mt-5 flex items-center gap-4 border-t border-stone-100 pt-4 text-xs text-slate-500"><span className="flex items-center gap-1"><Clock3 className="h-4 w-4"/>{exam.duration_minutes} min</span><span className="flex items-center gap-1"><Trophy className="h-4 w-4"/>{exam.total_marks} marks</span><span className="ml-auto font-semibold text-brand-700">{exam.questionCount} questions</span></div></Link>)}</div>}</div>;
 }
