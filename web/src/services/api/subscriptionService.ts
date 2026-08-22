@@ -28,6 +28,7 @@ export const fetchSubscriptionPlanById = async (planId: string, _token?: string)
 };
 
 export interface CreateSubscriptionData { planId: string; paymentMethodId?: string; couponCode?: string; }
+export interface CreateSubscriptionResponse { data?: { authorizationUrl?: string } }
 
 export const fetchMySubscription = async (_token?: string): Promise<{ subscription: Subscription | null }> => {
   const user = (await getSupabase().auth.getUser()).data.user;
@@ -45,7 +46,7 @@ const invokePayment = async <T>(body: Record<string, unknown>): Promise<T> => {
   return data as T;
 };
 
-export const createSubscription = (data: CreateSubscriptionData, _token?: string) => invokePayment({ action: 'create-subscription', ...data });
+export const createSubscription = (data: CreateSubscriptionData, _token?: string): Promise<CreateSubscriptionResponse> => invokePayment<CreateSubscriptionResponse>({ action: 'create-subscription', ...data });
 export const updateSubscription = (subscriptionId: string, data: { planId?: string; paymentMethodId?: string }, _token?: string) => invokePayment({ action: 'update-subscription', subscriptionId, ...data });
 export const cancelSubscription = (subscriptionId: string, _token?: string) => invokePayment({ action: 'cancel-subscription', subscriptionId });
 export const resumeSubscription = (subscriptionId: string, _token?: string) => invokePayment({ action: 'resume-subscription', subscriptionId });
@@ -87,4 +88,4 @@ export const updatePlan = (planId: string, data: Partial<CreatePlanData>, _token
 export const deletePlan = (planId: string, _token?: string) => invokePayment({ action: 'delete-plan', planId });
 
 export interface CouponValidationResult { coupon: import('@/types/models/subscription').Coupon; discountAmount: number; finalAmount: number; }
-export const applyCouponHandler = (couponCode: string, planId: string, _token?: string): Promise<CouponValidationResult> => invokePayment({ action: 'validate-coupon', couponCode, planId });
+export const applyCouponHandler = (couponCode: string, planId: string, _token?: string): Promise<CouponValidationResult> => invokePayment<CouponValidationResult>({ action: 'validate-coupon', couponCode, planId });
