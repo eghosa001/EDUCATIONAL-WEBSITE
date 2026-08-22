@@ -2,11 +2,15 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
+  "installCommand": "npm install --prefix=.. --no-audit --no-fund",
   "devCommand": "next dev",
   "env": {
     "NEXT_PUBLIC_API_URL": "/api/v1"
   },
   "rewrites": [
-    { "source": "/api/v1/:path*", "destination": "https://backend-ogs7.vercel.app/api/v1/:path*" }
+    {
+      "source": "/api/v1/:path*",
+      "destination": "https://backend-ogs7.vercel.app/api/v1/:path*"
+    }
   ]
 }
