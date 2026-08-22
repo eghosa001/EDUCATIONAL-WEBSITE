@@ -30,7 +30,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-stone-50 px-4 py-10 dark:bg-[#151A3A]">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <Link href="/" aria-label="THE GUIDE home"><img src="/logos/app-icon.jfif" alt="THE GUIDE" className="mx-auto mb-4 h-24 w-24 rounded-[28%] object-cover shadow-brand" /></Link>
+          <Link href="/" aria-label="THE GUIDE home"><img src="/logos/the-guide-mark.webp" alt="THE GUIDE" className="mx-auto mb-4 h-24 w-24 rounded-[28%] object-cover shadow-brand" /></Link>
           <h1 className="text-2xl font-bold text-[#151A3A] dark:text-white">Welcome back</h1>
           <p className="mt-1 text-slate-500 dark:text-slate-400">Sign in to your learning journey</p>
         </div>
