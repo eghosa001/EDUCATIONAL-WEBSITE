@@ -3,32 +3,33 @@
 @tailwind utilities;
 
 :root {
-  --brand-50: 239 246 255;
-  --brand-100: 219 234 254;
-  --brand-200: 191 219 254;
-  --brand-300: 147 197 253;
-  --brand-400: 96 165 250;
-  --brand-500: 59 130 246;
-  --brand-600: 37 99 235;
-  --brand-700: 29 78 216;
-  --brand-800: 30 64 175;
-  --brand-900: 30 58 138;
-  --brand-950: 15 59 130;
+  --brand-50: 251 248 241;
+  --brand-100: 245 238 223;
+  --brand-200: 234 223 197;
+  --brand-300: 221 203 163;
+  --brand-400: 201 173 112;
+  --brand-500: 184 147 79;
+  --brand-600: 166 124 56;
+  --brand-700: 138 100 46;
+  --brand-800: 112 79 41;
+  --brand-900: 90 65 37;
+  --brand-950: 56 39 25;
+  --navy-950: 21 26 58;
   --surface: 255 255 255;
-  --surface-muted: 248 250 252;
-  --surface-subtle: 241 245 249;
-  --border: 226 232 240;
-  --text: 15 23 42;
-  --text-muted: 71 85 105;
+  --surface-muted: 249 248 244;
+  --surface-subtle: 244 242 236;
+  --border: 226 222 211;
+  --text: 21 26 58;
+  --text-muted: 82 86 104;
 }
 
 .dark {
-  --surface: 15 23 42;
-  --surface-muted: 15 23 42;
-  --surface-subtle: 30 41 59;
-  --border: 51 65 85;
-  --text: 248 250 252;
-  --text-muted: 148 163 184;
+  --surface: 21 26 58;
+  --surface-muted: 24 29 62;
+  --surface-subtle: 31 36 69;
+  --border: 62 67 96;
+  --text: 248 247 242;
+  --text-muted: 178 181 194;
 }
 
 @layer base {
@@ -36,20 +37,21 @@
   html { color-scheme: light; scroll-behavior: smooth; }
   html.dark { color-scheme: dark; }
   body {
-    @apply bg-slate-50 text-slate-900 font-sans antialiased dark:bg-slate-950 dark:text-slate-100;
-    background-image: radial-gradient(circle at 10% 0%, rgb(var(--brand-50) / 0.65), transparent 32rem);
+    @apply bg-stone-50 text-slate-900 font-sans antialiased dark:bg-[#151A3A] dark:text-slate-100;
+    background-image: radial-gradient(circle at 10% 0%, rgb(var(--brand-100) / 0.55), transparent 32rem);
   }
-  .dark body { background-image: radial-gradient(circle at 10% 0%, rgb(var(--brand-950) / 0.35), transparent 32rem); }
-  ::selection { background: rgb(var(--brand-100)); color: rgb(var(--brand-950)); }
+  .dark body { background-image: radial-gradient(circle at 10% 0%, rgb(var(--brand-900) / 0.22), transparent 32rem); }
+  ::selection { background: rgb(var(--brand-200)); color: rgb(var(--navy-950)); }
   button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
 }
 
 @layer components {
   .brand-focus { @apply outline-none ring-2 ring-brand-500/20 border-brand-500; }
-  .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2 font-medium text-white shadow-brand-sm transition-all duration-200 hover:bg-brand-700 hover:shadow-brand disabled:cursor-not-allowed disabled:opacity-50; }
-  .btn-secondary { @apply inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 font-medium text-slate-700 shadow-sm transition-all duration-200 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-brand-700 dark:hover:bg-slate-800 dark:hover:text-brand-300; }
-  .card { @apply rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900; }
-  .input-field { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-brand-950; }
-  .brand-gradient { background: linear-gradient(135deg, #0f3b82, #2563eb); }
-  .brand-glow { box-shadow: 0 10px 35px rgb(var(--brand-600) / 0.18); }
+  .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-lg bg-[#151A3A] px-4 py-2 font-medium text-white shadow-brand-sm transition-all duration-200 hover:bg-[#202750] disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-secondary { @apply inline-flex items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-4 py-2 font-medium text-slate-700 shadow-sm transition-all duration-200 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-brand-700 dark:hover:bg-slate-800 dark:hover:text-brand-300; }
+  .card { @apply rounded-2xl border border-stone-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-[#1b2045]; }
+  .input-field { @apply w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-brand-950; }
+  .brand-gradient { background: linear-gradient(135deg, #151A3A 0%, #202750 62%, #8a642e 140%); }
+  .brand-glow { box-shadow: 0 10px 35px rgb(21 26 58 / 0.18); }
+  .brand-accent { color: #a67c38; }
 }
