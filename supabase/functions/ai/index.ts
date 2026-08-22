@@ -4,7 +4,6 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
 const openAI = async (messages: Array<{ role: string; content: string }>, maxTokens = 1000, temperature = 0.7) => {
@@ -29,13 +28,17 @@ Deno.serve(async (request) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const authHeader = request.headers.get('Authorization');
-    if (!supabaseUrl || !supabaseAnonKey) return json({ error: 'Supabase configuration is missing' }, 500);
+    if (!supabaseUrl || !anonKey || !serviceRoleKey) return json({ error: 'Supabase Edge Function configuration is incomplete' }, 500);
     if (!authHeader) return json({ error: 'Authentication required' }, 401);
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: authHeader } } });
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // User client proves identity with the caller's JWT. The service-role client is
+    // used only after that check for server-side writes to protected AI tables.
+    const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
     if (userError || !user) return json({ error: 'Authentication required' }, 401);
 
     const body = await request.json();
@@ -48,15 +51,16 @@ Deno.serve(async (request) => {
       const context = body.context || {};
       let sessionId = body.sessionId as string | undefined;
       if (sessionId) {
-        const { data: conversation } = await supabase.from('ai_conversations').select('id').eq('id', sessionId).eq('user_id', user.id).maybeSingle();
+        const { data: conversation } = await userClient.from('ai_conversations').select('id').eq('id', sessionId).maybeSingle();
         if (!conversation) sessionId = undefined;
       }
       if (!sessionId) {
-        const { data: conversation, error } = await supabase.from('ai_conversations').insert({ user_id: user.id, title: message.slice(0, 80) }).select('id').single();
+        const { data: conversation, error } = await adminClient.from('ai_conversations').insert({ user_id: user.id, title: message.slice(0, 80), context }).select('id').single();
         if (error) throw new Error(error.message);
         sessionId = conversation.id;
       }
-      const { data: previous } = await supabase.from('ai_messages').select('role,content').eq('conversation_id', sessionId).eq('user_id', user.id).order('created_at', { ascending: false }).limit(10);
+
+      const { data: previous } = await userClient.from('ai_messages').select('role,content').eq('conversation_id', sessionId).order('created_at', { ascending: false }).limit(10);
       const messages = [
         { role: 'system', content: `You are THE GUIDE educational AI tutor for Nigerian students from primary school through university. Be accurate, encouraging, age-appropriate, and explain reasoning. Student level: ${context.studentLevel || 'unknown'}. Subject: ${context.currentSubject || 'general'}. Topic: ${context.currentTopic || 'general'}.` },
         ...((previous || []).reverse() as Array<{ role: string; content: string }>),
@@ -64,10 +68,11 @@ Deno.serve(async (request) => {
       ];
       const response = await openAI(messages, 1000, 0.7);
       const answer = response.choices?.[0]?.message?.content || 'I could not generate a response.';
-      await supabase.from('ai_messages').insert([
-        { conversation_id: sessionId, user_id: user.id, role: 'user', content: message },
-        { conversation_id: sessionId, user_id: user.id, role: 'assistant', content: answer },
+      await adminClient.from('ai_messages').insert([
+        { conversation_id: sessionId, role: 'user', content: message, model: response.model },
+        { conversation_id: sessionId, role: 'assistant', content: answer, model: response.model, tokens_used: response.usage?.total_tokens || null },
       ]);
+      await adminClient.from('ai_conversations').update({ message_count: ((previous || []).length + 2), last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', sessionId).eq('user_id', user.id);
       result = { message: { id: crypto.randomUUID(), role: 'assistant', content: answer }, sessionId };
     } else if (action === 'explain') {
       const response = await openAI([
@@ -106,7 +111,13 @@ Deno.serve(async (request) => {
       return json({ error: `Unsupported AI action: ${action}` }, 400);
     }
 
-    await supabase.from('ai_usage_events').insert({ user_id: user.id, feature: action });
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: usage } = await adminClient.from('ai_usage').select('id,questions_asked').eq('user_id', user.id).eq('date', today).maybeSingle();
+    if (usage) {
+      await adminClient.from('ai_usage').update({ questions_asked: (usage.questions_asked || 0) + 1 }).eq('id', usage.id);
+    } else {
+      await adminClient.from('ai_usage').insert({ user_id: user.id, date: today, questions_asked: 1, tokens_used: 0, conversations_started: action === 'tutor' ? 1 : 0 });
+    }
     return json(result);
   } catch (error) {
     console.error(error);
