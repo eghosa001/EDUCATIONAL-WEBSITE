@@ -39,3 +39,5 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
+
+// Deployment verification marker: no runtime behavior change.
