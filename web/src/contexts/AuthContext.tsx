@@ -55,16 +55,21 @@ async function loadProfile(supabase: ReturnType<typeof getSupabase>, authUser: a
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { user, token, isAuthenticated, isLoading, setUser, setToken, setRefreshToken, setLoading, logout: storeLogout } = useAuthStore();
   const [, setInitialized] = useState(false);
-  const supabase = getSupabase();
+
+  // Next.js can render client components during static generation. Keep the
+  // Supabase client completely lazy so build-time rendering never requires
+  // browser runtime environment variables.
+  const getClient = () => getSupabase();
 
   const clearLocalAuth = () => {
-    localStorage.removeItem('edu_user');
+    if (typeof window !== 'undefined') localStorage.removeItem('edu_user');
     // Supabase owns persistence and refresh-token storage. Do not duplicate
     // access/refresh tokens in application-managed localStorage keys.
     storeLogout();
   };
 
   const applySession = async (session: any) => {
+    const supabase = getClient();
     if (!session?.user) {
       clearLocalAuth();
       return;
@@ -73,10 +78,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(userData);
     setToken(session.access_token);
     setRefreshToken(session.refresh_token || null);
-    localStorage.setItem('edu_user', JSON.stringify(userData));
+    if (typeof window !== 'undefined') localStorage.setItem('edu_user', JSON.stringify(userData));
   };
 
   const restoreSession = async () => {
+    const supabase = getClient();
     const { data, error } = await supabase.auth.getSession();
     if (error || !data.session?.user) {
       clearLocalAuth();
@@ -97,6 +103,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    const supabase = getClient();
+
     restoreSession().catch((error) => {
       console.error('[auth] Session restore failed:', error);
       clearLocalAuth();
@@ -116,6 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async ({ email, password }: { email: string; password: string }) => {
+    const supabase = getClient();
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
@@ -127,6 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const register = async (data: { email: string; password: string; firstName: string; lastName: string; role: 'student' | 'teacher' | 'parent' }) => {
+    const supabase = getClient();
     setLoading(true);
     try {
       const { data: result, error } = await supabase.auth.signUp({
@@ -147,6 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshSession = async () => {
+    const supabase = getClient();
     const { data, error } = await supabase.auth.refreshSession();
     if (error || !data.session?.user) {
       clearLocalAuth();
@@ -156,6 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    const supabase = getClient();
     await supabase.auth.signOut();
     clearLocalAuth();
   };
