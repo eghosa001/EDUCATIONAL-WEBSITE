@@ -1,195 +1,104 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { BookOpenIcon, BrainIcon, Sparkles } from 'lucide-react';
-import { useAuthStore } from '@/state/auth/authStore';
+import { BrainIcon, Check, ChevronLeft, ChevronRight, Loader2, Sparkles } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { getSupabase } from '@/lib/supabase';
 import { generateAiFlashcards, fetchMyFlashcards } from '@/services/api/aiService';
 
-interface Flashcard {
-  id: string;
-  front: string;
-  back: string;
-  subjectId?: string;
-  topicId?: string;
-}
+interface Flashcard { id: string; front: string; back: string; subjectId?: string; topicId?: string; }
+interface Subject { id: string; name: string; }
 
 export default function FlashcardsPage() {
-  const { token } = useAuthStore();
+  const { token, isLoading: authLoading } = useAuth();
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [subjectId, setSubjectId] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [subjectId, setSubjectId] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState('');
   const [generated, setGenerated] = useState(false);
 
   useEffect(() => {
-    if (token) {
-      fetchMyFlashcards(token, { page: 1, limit: 50 })
-        .then(res => {
-          setFlashcards((res.flashcards || []) as Flashcard[]);
-          setGenerated(true);
-        })
-        .catch(() => {})
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
-  }, [token]);
+    if (authLoading || !token) return;
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true); setError('');
+      try {
+        const supabase = getSupabase();
+        const [{ data: subjectRows, error: subjectError }, saved] = await Promise.all([
+          supabase.from('subjects').select('id,name').eq('is_active', true).order('name'),
+          fetchMyFlashcards(token, { page: 1, limit: 50 }),
+        ]);
+        if (subjectError) throw subjectError;
+        if (!cancelled) {
+          setSubjects((subjectRows || []) as Subject[]);
+          setFlashcards((saved.flashcards || []) as Flashcard[]);
+          setGenerated((saved.flashcards || []).length > 0);
+        }
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message || 'Unable to load flashcards.');
+      } finally { if (!cancelled) setLoading(false); }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [authLoading, token]);
 
   const handleGenerate = async () => {
-    if (!token || !subjectId) return;
-    setLoading(true);
+    if (!token || !subjectId || generating) return;
+    setGenerating(true); setError('');
     try {
       const res = await generateAiFlashcards({ subjectId, count: 20 }, token);
-      setFlashcards(res.flashcards || []);
-      setGenerated(true);
-      setCurrentIndex(0);
-      setIsFlipped(false);
-    } catch {
-      // Fallback to empty
-      setFlashcards([]);
-    } finally {
-      setLoading(false);
-    }
+      const cards = (res.flashcards || []).filter((card: any) => String(card.front || '').trim() && String(card.back || '').trim()) as Flashcard[];
+      if (!cards.length) throw new Error('The AI service returned no flashcards. Please try again.');
+      setFlashcards(cards); setGenerated(true); setCurrentIndex(0); setIsFlipped(false);
+    } catch (e: any) {
+      setError(e?.message || 'Unable to generate flashcards. Check that the AI service is configured and try again.');
+    } finally { setGenerating(false); }
   };
 
-  const handleRate = (rating: 'hard' | 'good' | 'easy') => {
-    if (currentIndex < flashcards.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-      setIsFlipped(false);
-    }
+  const move = (delta: number) => {
+    setCurrentIndex(i => Math.max(0, Math.min(flashcards.length - 1, i + delta)));
+    setIsFlipped(false);
   };
+  const rate = (_rating: 'hard' | 'good' | 'easy') => move(1);
 
-  const handleNext = () => {
-    if (currentIndex < flashcards.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-      setIsFlipped(false);
-    }
-  };
+  if (authLoading || loading) return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-brand-600" /></div>;
 
-  const handlePrev = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(prev => prev - 1);
-      setIsFlipped(false);
-    }
-  };
+  const current = flashcards[currentIndex];
+  const progress = flashcards.length ? ((currentIndex + 1) / flashcards.length) * 100 : 0;
 
-  if (loading && !generated) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">Loading flashcards...</p>
-        </div>
+  return <div className="space-y-6">
+    <header><h1 className="text-2xl font-extrabold text-[#151A3A] dark:text-white">Flashcards</h1><p className="mt-1 text-slate-500">Review concepts with interactive cards. Generate a set from any subject in your curriculum.</p></header>
+
+    {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">{error}</div>}
+
+    <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-[#1b2045]">
+      <div className="mb-4 flex items-center gap-3"><Sparkles className="h-5 w-5 text-brand-600"/><h2 className="font-bold text-[#151A3A] dark:text-white">Generate Flashcards</h2></div>
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <select value={subjectId} onChange={e => setSubjectId(e.target.value)} className="flex-1 rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-[#151A3A] dark:text-white">
+          <option value="">Select a subject</option>{subjects.map(subject => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
+        </select>
+        <button onClick={handleGenerate} disabled={!subjectId || generating} className="rounded-xl bg-[#151A3A] px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
+          {generating ? <><Loader2 className="mr-2 inline h-4 w-4 animate-spin"/>Generating...</> : 'Generate 20 cards'}
+        </button>
       </div>
-    );
-  }
+      <p className="mt-2 text-xs text-slate-500">Choose the actual subject from the curriculum. The subject UUID is sent to the AI service automatically.</p>
+    </section>
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Flashcards</h1>
-          <p className="text-gray-500 mt-1">Study with AI-generated flashcards using spaced repetition</p>
+    {current ? <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-[#1b2045] sm:p-8">
+      <div className="mb-5 flex items-center justify-between text-sm text-slate-500"><span>Card {currentIndex + 1} of {flashcards.length}</span><span>{Math.round(progress)}%</span></div>
+      <div className="mb-6 h-2 overflow-hidden rounded-full bg-stone-100 dark:bg-slate-700"><div className="h-full rounded-full bg-brand-600 transition-all" style={{ width: `${progress}%` }}/></div>
+      <button type="button" onClick={() => setIsFlipped(v => !v)} aria-label={isFlipped ? 'Show question' : 'Reveal answer'} className="group relative min-h-[280px] w-full [perspective:1000px]">
+        <div className="relative min-h-[280px] w-full transition-transform duration-500 [transform-style:preserve-3d]" style={{ transform: isFlipped ? 'rotateY(180deg)' : undefined }}>
+          <div className="absolute inset-0 flex min-h-[280px] flex-col items-center justify-center rounded-2xl border-2 border-brand-200 bg-brand-50 p-8 [backface-visibility:hidden] dark:border-brand-900 dark:bg-brand-950/30"><span className="mb-4 text-xs font-bold uppercase tracking-wider text-brand-600">Question</span><p className="max-w-3xl text-center text-lg font-semibold leading-8 text-slate-900 dark:text-white">{current.front}</p><span className="mt-5 text-xs text-slate-400">Tap to reveal answer</span></div>
+          <div className="absolute inset-0 flex min-h-[280px] flex-col items-center justify-center rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-8 [backface-visibility:hidden] [transform:rotateY(180deg)] dark:border-emerald-900 dark:bg-emerald-950/30"><span className="mb-4 text-xs font-bold uppercase tracking-wider text-emerald-600">Answer</span><p className="max-w-3xl text-center text-lg leading-8 text-slate-900 dark:text-white">{current.back}</p></div>
         </div>
-      </div>
-
-      {/* Generator */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Sparkles className="w-5 h-5 text-indigo-600" />
-          <h2 className="font-semibold text-gray-900">Generate Flashcards</h2>
-        </div>
-        <div className="flex gap-3">
-          <input
-            value={subjectId}
-            onChange={e => setSubjectId(e.target.value)}
-            placeholder="Enter subject ID (e.g., biology, mathematics)"
-            className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            onClick={handleGenerate}
-            disabled={!subjectId || loading}
-            className="px-6 bg-indigo-600 text-white rounded-xl font-medium text-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-          >
-            {loading ? 'Generating...' : 'Generate'}
-          </button>
-        </div>
-        <p className="text-xs text-gray-400 mt-2">Enter a subject name or ID to generate flashcards from your curriculum.</p>
-      </div>
-
-      {/* Flashcard display */}
-      {flashcards.length > 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8">
-          <div className="flex items-center justify-between mb-6">
-            <span className="text-sm text-gray-500">
-              Card {currentIndex + 1} of {flashcards.length}
-            </span>
-            <div className="flex gap-2">
-              <div className="h-2 w-24 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-indigo-600 rounded-full transition-all"
-                  style={{ width: `${((currentIndex + 1) / flashcards.length) * 100}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div
-            onClick={() => setIsFlipped(!isFlipped)}
-            className="relative w-full h-64 cursor-pointer perspective-1000"
-          >
-            <div className={`relative w-full h-full transition-transform duration-500 ${isFlipped ? '[transform:rotateY(180deg)]' : ''}`} style={{ transformStyle: 'preserve-3d' }}>
-              {/* Front */}
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-blue-100 rounded-2xl border-2 border-indigo-200 flex flex-col items-center justify-center p-6 [backface-visibility:hidden]">
-                <span className="text-xs text-indigo-400 uppercase tracking-wider mb-3">Question</span>
-                <p className="text-lg font-semibold text-gray-900 text-center">{flashcards[currentIndex].front}</p>
-                <p className="text-xs text-gray-400 mt-4">Click to reveal answer</p>
-              </div>
-              {/* Back */}
-              <div className="absolute inset-0 bg-gradient-to-br from-green-50 to-emerald-100 rounded-2xl border-2 border-green-200 flex flex-col items-center justify-center p-6 [backface-visibility:hidden] [transform:rotateY(180deg)]">
-                <span className="text-xs text-green-500 uppercase tracking-wider mb-3">Answer</span>
-                <p className="text-lg text-gray-800 text-center">{flashcards[currentIndex].back}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between mt-6">
-            <button
-              onClick={handlePrev}
-              disabled={currentIndex === 0}
-              className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <div className="flex gap-2">
-              <button onClick={() => handleRate('hard')} className="px-4 py-2 text-sm text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors">
-                Hard
-              </button>
-              <button onClick={() => handleRate('good')} className="px-4 py-2 text-sm text-yellow-600 border border-yellow-200 rounded-xl hover:bg-yellow-50 transition-colors">
-                Good
-              </button>
-              <button onClick={() => handleRate('easy')} className="px-4 py-2 text-sm text-green-600 border border-green-200 rounded-xl hover:bg-green-50 transition-colors">
-                Easy
-              </button>
-            </div>
-            <button
-              onClick={handleNext}
-              disabled={currentIndex === flashcards.length - 1}
-              className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-          <BrainIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-1">No flashcards yet</h3>
-          <p className="text-gray-500 text-sm">Enter a subject above to generate AI flashcards for study.</p>
-        </div>
-      )}
-    </div>
-  );
+      </button>
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3"><button onClick={() => move(-1)} disabled={currentIndex === 0} className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm disabled:opacity-40"><ChevronLeft className="mr-1 inline h-4 w-4"/>Previous</button><div className="flex flex-wrap justify-center gap-2"><button onClick={() => rate('hard')} className="rounded-xl border border-red-200 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50">Hard</button><button onClick={() => rate('good')} className="rounded-xl border border-amber-200 px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50">Good</button><button onClick={() => rate('easy')} className="rounded-xl border border-emerald-200 px-4 py-2.5 text-sm text-emerald-600 hover:bg-emerald-50">Easy</button></div><button onClick={() => move(1)} disabled={currentIndex === flashcards.length - 1} className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm disabled:opacity-40">Next<ChevronRight className="ml-1 inline h-4 w-4"/></button></div>
+      <p className="mt-4 text-center text-xs text-slate-400"><Check className="mr-1 inline h-3 w-3"/>Rate a card to move to the next one.</p>
+    </section> : <section className="rounded-2xl border border-dashed border-stone-300 bg-white p-12 text-center dark:border-slate-700 dark:bg-[#1b2045]"><BrainIcon className="mx-auto mb-4 h-12 w-12 text-stone-300"/><h3 className="font-semibold text-[#151A3A] dark:text-white">No flashcards yet</h3><p className="mt-2 text-sm text-slate-500">Select a subject above and generate your first set.</p></section>}
+  </div>;
 }
