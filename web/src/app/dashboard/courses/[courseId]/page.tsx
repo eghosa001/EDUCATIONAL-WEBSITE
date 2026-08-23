@@ -1,143 +1,17 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { BookOpenIcon, PlayIcon, ClockIcon, CheckCircleIcon } from 'lucide-react';
-import { useAuthStore } from '@/state/auth/authStore';
+import { BookOpenIcon, PlayIcon, ClockIcon, CheckCircleIcon, ArrowLeftIcon } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { fetchCourseByIdOrSlug, enrollInCourse } from '@/services/api/courseService';
-
-export default function CourseDetailPage() {
-  const params = useParams();
-  const { token } = useAuthStore();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const courseId = (params?.courseId as any) || '';
-  const [course, setCourse] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [enrolled, setEnrolled] = useState(false);
-  const [enrolling, setEnrolling] = useState(false);
-
-  useEffect(() => {
-    if (!courseId) return;
-    // @ts-expect-error - courseId may be null in closure
-    fetchCourseByIdOrSlug(courseId, token)
-      .then((res) => setCourse(res.course || null))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [courseId, token]);
-
-  const handleEnroll = async () => {
-    if (!token || !courseId) return;
-    setEnrolling(true);
-    try {
-      await enrollInCourse(courseId, token);
-      setEnrolled(true);
-    } catch {
-      alert('Failed to enroll');
-    } finally {
-      setEnrolling(false);
-    }
-  };
-
-  if (loading) {
-    return <div className="space-y-6 animate-pulse"><div className="h-48 bg-gray-200 rounded-xl" /><div className="h-6 bg-gray-200 rounded w-1/3" /><div className="h-4 bg-gray-100 rounded w-2/3" /></div>;
-  }
-
-  if (!course) {
-    return (
-      <div className="text-center py-16">
-        <BookOpenIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Course not found</h2>
-        <Link href="/dashboard/courses" className="text-blue-600 hover:text-blue-700">Back to courses</Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Hero */}
-      <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white">
-        <div className="flex items-start justify-between">
-          <div>
-            <span className="inline-block px-3 py-1 bg-white/20 rounded-full text-sm font-medium mb-3">{course.difficulty}</span>
-            <h1 className="text-2xl font-bold">{course.title}</h1>
-            <p className="text-blue-100 mt-2 max-w-xl">{course.shortDescription}</p>
-          </div>
-          <button
-            onClick={handleEnroll}
-            disabled={enrolling || enrolled}
-            className={`px-6 py-3 rounded-xl font-semibold transition-colors ${
-              enrolled ? 'bg-green-500 text-white' : 'bg-white text-blue-700 hover:bg-blue-50'
-            } disabled:opacity-50`}
-          >
-            {enrolled ? '✓ Enrolled' : enrolling ? 'Enrolling...' : `Enroll ${course.isFree ? 'Free' : `₦${Number(course.price).toLocaleString()}`}`}
-          </button>
-        </div>
-        <div className="flex gap-6 mt-4 text-sm text-blue-100">
-          <span className="flex items-center gap-1"><ClockIcon className="w-4 h-4" /> {course.totalDurationHours || 0}h content</span>
-          <span className="flex items-center gap-1"><BookOpenIcon className="w-4 h-4" /> {course.lessonCount || 0} lessons</span>
-          <span className="flex items-center gap-1"><CheckCircleIcon className="w-4 h-4" /> {course.enrollmentCount || 0} students</span>
-        </div>
-      </div>
-
-      {/* Curriculum */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-4">Curriculum</h2>
-        {(!course.sections || course.sections.length === 0) ? (
-          <p className="text-gray-500 text-sm">No sections yet.</p>
-        ) : (
-          <div className="space-y-3">
-            {course.sections.map((section: any, i: number) => (
-              <div key={section.id} className="border border-gray-100 rounded-lg overflow-hidden">
-                <div className="flex items-center gap-3 px-4 py-3 bg-gray-50">
-                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold flex items-center justify-center">{i + 1}</span>
-                  <span className="font-medium text-gray-900">{section.title}</span>
-                </div>
-                {section.lessons && section.lessons.length > 0 && (
-                  <div className="divide-y divide-gray-50">
-                    {section.lessons.map((lesson: any) => (
-                      <Link key={lesson.id} href={`/dashboard/lessons/${courseId}/${lesson.slug}`} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
-                        <PlayIcon className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-700 flex-1">{lesson.title}</span>
-                        <span className="text-xs text-gray-400">{lesson.estimatedMinutes} min</span>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Lessons */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-4">Lessons ({course.lessons?.length || 0})</h2>
-        {(course.lessons || []).length === 0 ? (
-          <p className="text-gray-500 text-sm">No lessons available yet.</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {course.lessons.map((lesson: any) => (
-              <Link
-                key={lesson.id}
-                href={`/dashboard/lessons/${courseId}/${lesson.slug}`}
-                className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                  lesson.isPublished ? 'border-gray-200 hover:border-blue-300 hover:bg-blue-50' : 'border-gray-100 opacity-50'
-                }`}
-              >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${lesson.isPublished ? 'bg-blue-100' : 'bg-gray-100'}`}>
-                  {lesson.isPublished ? <PlayIcon className="w-4 h-4 text-blue-600" /> : <ClockIcon className="w-4 h-4 text-gray-400" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{lesson.title}</p>
-                  <p className="text-xs text-gray-500">{lesson.estimatedMinutes} min</p>
-                </div>
-                {!lesson.isPublished && <span className="text-xs text-gray-400">Draft</span>}
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+export default function CourseDetailPage(){
+ const params=useParams();const {token}=useAuth();const courseId=String(params?.courseId||'');const [course,setCourse]=useState<any>(null);const [loading,setLoading]=useState(true);const [enrolled,setEnrolled]=useState(false);const [enrolling,setEnrolling]=useState(false);
+ useEffect(()=>{if(!courseId)return;fetchCourseByIdOrSlug(courseId,token).then(res=>setCourse(res.course||null)).catch(console.error).finally(()=>setLoading(false))},[courseId,token]);
+ const handleEnroll=async()=>{if(!token||!courseId)return;setEnrolling(true);try{await enrollInCourse(courseId,token);setEnrolled(true)}catch{alert('Failed to enroll')}finally{setEnrolling(false)}};
+ if(loading)return <div className="space-y-6 animate-pulse"><div className="h-48 rounded-xl bg-stone-200"/><div className="h-6 w-1/3 rounded bg-stone-200"/></div>;
+ if(!course)return <div className="py-16 text-center"><BookOpenIcon className="mx-auto mb-4 h-12 w-12 text-stone-300"/><h2 className="mb-2 text-xl font-semibold text-[#151A3A]">Course not found</h2><Link href="/dashboard/lessons" className="font-semibold text-[#151A3A]">Back to curriculum</Link></div>;
+ const courseRef=course.slug||course.id;
+ const lessonHref=(lesson:any)=>`/dashboard/lessons/${courseRef}/${lesson.slug||lesson.id}`;
+ return <div className="space-y-6"><Link href="/dashboard/lessons" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500"><ArrowLeftIcon className="h-4 w-4"/>Back to curriculum</Link><div className="rounded-3xl bg-[#151A3A] p-7 text-white shadow-xl"><div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between"><div><span className="inline-block rounded-full bg-white/10 px-3 py-1 text-sm font-medium">{course.difficulty||'Core course'}</span><h1 className="mt-3 text-3xl font-extrabold">{course.title}</h1><p className="mt-2 max-w-2xl text-slate-300">{course.shortDescription||course.description||'Learn this subject through structured teaching, examples and practice questions.'}</p></div><button onClick={handleEnroll} disabled={enrolling||enrolled} className={`rounded-xl px-6 py-3 font-semibold ${enrolled?'bg-emerald-500 text-white':'bg-white text-[#151A3A]'} disabled:opacity-50`}>{enrolled?'✓ Enrolled':enrolling?'Enrolling...':course.isFree?'Start free':'Enroll'}</button></div><div className="mt-5 flex gap-6 text-sm text-slate-300"><span className="flex items-center gap-1"><ClockIcon className="h-4 w-4"/>{course.totalDurationHours||0}h content</span><span className="flex items-center gap-1"><BookOpenIcon className="h-4 w-4"/>{course.lessonCount||course.lessons?.length||0} lessons</span></div></div><div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-[#1b2045]"><h2 className="mb-5 text-xl font-extrabold text-[#151A3A] dark:text-white">Topics & Lessons</h2>{course.sections?.length?course.sections.map((section:any,i:number)=><div key={section.id} className="mb-4 overflow-hidden rounded-xl border border-stone-200 dark:border-slate-700"><div className="flex items-center gap-3 bg-stone-50 px-4 py-3 dark:bg-[#151A3A]"><span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#151A3A] text-xs font-bold text-white">{i+1}</span><span className="font-bold text-[#151A3A] dark:text-white">{section.title}</span></div>{section.lessons?.length?<div className="divide-y divide-stone-100 dark:divide-slate-700">{section.lessons.map((lesson:any)=><Link key={lesson.id} href={lessonHref(lesson)} className="flex items-center gap-3 px-4 py-4 transition hover:bg-stone-50 dark:hover:bg-[#151A3A]"><PlayIcon className="h-4 w-4 shrink-0 text-[#151A3A] dark:text-slate-300"/><span className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-200">{lesson.title}</span><span className="text-xs text-slate-400">{lesson.estimatedMinutes||10} min</span></Link>)}</div>:<p className="px-4 py-3 text-sm text-slate-500">No lessons in this topic yet.</p>}</div>):null}<div className="mt-6"><h3 className="mb-3 font-bold text-[#151A3A] dark:text-white">All lessons</h3>{(course.lessons||[]).length?<div className="grid gap-3 md:grid-cols-2">{course.lessons.map((lesson:any)=><Link key={lesson.id} href={lessonHref(lesson)} className="flex items-center gap-3 rounded-xl border border-stone-200 p-4 transition hover:border-[#151A3A]/30 hover:bg-stone-50 dark:border-slate-700 dark:hover:bg-[#151A3A]"><div className="rounded-lg bg-stone-100 p-2 dark:bg-slate-800"><PlayIcon className="h-4 w-4 text-[#151A3A] dark:text-white"/></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-[#151A3A] dark:text-white">{lesson.title}</p><p className="text-xs text-slate-500">{lesson.estimatedMinutes||10} min</p></div></Link>)}</div>:<p className="text-sm text-slate-500">No lessons available yet.</p>}</div></div></div>;
 }
