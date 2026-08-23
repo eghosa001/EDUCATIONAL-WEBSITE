@@ -1,18 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 150" role="img" aria-labelledby="title desc">
-  <title id="title">THE GUIDE</title>
-  <desc id="desc">THE GUIDE educational platform wordmark.</desc>
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#2563eb"/>
-      <stop offset="1" stop-color="#0f3b82"/>
-    </linearGradient>
-  </defs>
-  <rect x="10" y="10" width="130" height="130" rx="32" fill="url(#g)"/>
-  <circle cx="75" cy="62" r="31" fill="none" stroke="#fff" stroke-width="6"/>
-  <path d="M75 32 83 62 75 91 67 62Z" fill="#fff"/>
-  <path d="M75 42 78.5 62 75 76 71.5 62Z" fill="#2563eb"/>
-  <path d="M40 88c12-7 23-7 35 1 12-8 23-8 35-1v29c-12-7-23-7-35 1-12-8-23-8-35-1Z" fill="#fff"/>
-  <path d="M75 89v29" stroke="#2563eb" stroke-width="4"/>
-  <text x="170" y="83" font-family="Inter, Arial, sans-serif" font-size="64" font-weight="800" letter-spacing="5" fill="#0f172a">THE GUIDE</text>
-  <text x="173" y="116" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="500" letter-spacing="4" fill="#64748b">YOUR PATH TO SMARTER LEARNING</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 220" role="img" aria-labelledby="title desc">
+<title id="title">THE GUIDE</title><desc id="desc">THE GUIDE educational platform wordmark.</desc>
+<defs><linearGradient id="bg" x1="24" y1="20" x2="196" y2="200" gradientUnits="userSpaceOnUse"><stop stop-color="#27348B"/><stop offset="1" stop-color="#151A3A"/></linearGradient></defs>
+<rect x="12" y="12" width="196" height="196" rx="48" fill="url(#bg)"/>
+<circle cx="110" cy="82" r="44" fill="none" stroke="#fff" stroke-width="10"/>
+<path d="M110 37 124 82 110 127 96 82Z" fill="#fff"/><path d="M110 52 117 82 110 106 103 82Z" fill="#27348B"/>
+<path d="M48 116c25-15 44-14 62 2 18-16 37-17 62-2v48c-25-15-44-14-62 2-18-16-37-17-62-2Z" fill="#fff"/>
+<path d="M110 118v48" stroke="#27348B" stroke-width="7" stroke-linecap="round"/>
+<text x="248" y="112" font-family="Arial,Helvetica,sans-serif" font-size="72" font-weight="800" letter-spacing="3" fill="#151A3A">THE GUIDE</text>
+<text x="251" y="151" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="600" letter-spacing="5" fill="#64748B">YOUR PATH TO SMARTER LEARNING</text>
 </svg>
