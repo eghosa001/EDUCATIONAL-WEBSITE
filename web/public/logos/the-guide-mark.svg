@@ -1,17 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
-  <title id="title">THE GUIDE</title>
-  <desc id="desc">A clean compass and open book mark representing guided learning.</desc>
-  <defs>
-    <linearGradient id="g" x1="18" y1="16" x2="110" y2="112" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#2563eb"/>
-      <stop offset="1" stop-color="#0f3b82"/>
-    </linearGradient>
-  </defs>
-  <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#g)"/>
-  <circle cx="64" cy="53" r="30" fill="none" stroke="#fff" stroke-width="6" opacity=".95"/>
-  <path d="M64 25 72 53 64 81 56 53Z" fill="#fff"/>
-  <path d="M64 34 67.5 53 64 67 60.5 53Z" fill="#2563eb"/>
-  <path d="M30 78c12-7 23-7 34 1 11-8 22-8 34-1v24c-12-7-23-7-34 1-11-8-22-8-34-1Z" fill="#fff"/>
-  <path d="M64 79v24" stroke="#2563eb" stroke-width="4"/>
-  <path d="M39 87c8-3 16-2 25 3M89 87c-8-3-16-2-25 3" fill="none" stroke="#93c5fd" stroke-width="3" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+<title id="title">THE GUIDE</title><desc id="desc">THE GUIDE compass and open book education mark.</desc>
+<defs><linearGradient id="bg" x1="64" y1="48" x2="448" y2="464" gradientUnits="userSpaceOnUse"><stop stop-color="#27348B"/><stop offset="1" stop-color="#151A3A"/></linearGradient></defs>
+<rect x="24" y="24" width="464" height="464" rx="112" fill="url(#bg)"/>
+<circle cx="256" cy="205" r="105" fill="none" stroke="#fff" stroke-width="24"/>
+<path d="M256 104 288 205 256 306 224 205Z" fill="#fff"/>
+<path d="M256 139 271 205 256 257 241 205Z" fill="#27348B"/>
+<path d="M96 292c58-34 107-33 160 5 53-38 102-39 160-5v105c-58-34-107-33-160 5-53-38-102-39-160-5Z" fill="#fff"/>
+<path d="M256 297v105" stroke="#27348B" stroke-width="16" stroke-linecap="round"/>
 </svg>
