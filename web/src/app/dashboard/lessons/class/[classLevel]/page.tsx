@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { ArrowLeft, BookOpen, ChevronDown, ChevronRight, GraduationCap, Loader2, Search } from 'lucide-react';
 import { getSupabase } from '@/lib/supabase';
 
