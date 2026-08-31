@@ -15,7 +15,7 @@ export default function LandingPage() {
       <nav className="sticky top-0 z-50 border-b border-stone-200/80 bg-white/95 backdrop-blur-sm dark:border-slate-700/80 dark:bg-[#151A3A]/95">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" aria-label="THE GUIDE home" className="flex items-center">
-            <img src="/logos/the-guide-wordmark.webp" alt="THE GUIDE — Your path to smarter learning" className="h-14 w-auto max-w-[220px] object-contain" />
+            <img src="/logos/the-guide-mark.svg" alt="THE GUIDE" className="h-12 w-12 object-contain sm:h-14 sm:w-14" />
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
             <Link href="/login" className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:text-brand-700 dark:text-slate-300 dark:hover:text-brand-300">Log in</Link>
@@ -27,7 +27,7 @@ export default function LandingPage() {
       <section className="relative overflow-hidden">
         <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
-            <img src="/logos/the-guide-mark.webp" alt="THE GUIDE" className="mx-auto mb-7 h-28 w-28 rounded-[28%] object-cover shadow-brand sm:h-32 sm:w-32" />
+            <img src="/logos/the-guide-mark.svg" alt="THE GUIDE" className="mx-auto mb-7 h-28 w-28 object-contain drop-shadow-xl sm:h-32 sm:w-32" />
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">Learn. Practice. Master.</p>
             <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-[#151A3A] dark:text-white sm:text-5xl lg:text-6xl">
               Your Path to <span className="text-brand-600 dark:text-brand-300">Smarter Learning</span>
@@ -64,9 +64,9 @@ export default function LandingPage() {
       <section className="py-16 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="brand-gradient brand-glow rounded-2xl px-8 py-12 text-center sm:px-16 sm:py-16">
-            <img src="/logos/the-guide-mark.webp" alt="THE GUIDE" className="mx-auto mb-6 h-20 w-20 rounded-2xl object-cover shadow-brand" />
+            <img src="/logos/the-guide-mark.svg" alt="THE GUIDE" className="mx-auto mb-6 h-20 w-20 object-contain drop-shadow-lg" />
             <h2 className="text-3xl font-bold text-white">Ready to start learning?</h2>
-            <p className="mt-3 text-stone-200 text-lg">Build knowledge, confidence, and results with THE GUIDE.</p>
+            <p className="mt-3 text-lg text-stone-200">Build knowledge, confidence, and results with THE GUIDE.</p>
             <Link href="/register" className="mt-8 inline-block rounded-xl bg-white px-8 py-3.5 font-semibold text-[#151A3A] hover:bg-brand-50">Create your account</Link>
           </div>
         </div>
@@ -74,7 +74,7 @@ export default function LandingPage() {
 
       <footer className="border-t border-stone-200 bg-white dark:border-slate-700 dark:bg-[#151A3A]">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-8 sm:flex-row sm:px-6 lg:px-8">
-          <Link href="/" aria-label="THE GUIDE home"><img src="/logos/the-guide-wordmark.webp" alt="THE GUIDE" className="h-12 w-auto max-w-[180px] object-contain" /></Link>
+          <Link href="/" aria-label="THE GUIDE home"><img src="/logos/the-guide-mark.svg" alt="THE GUIDE" className="h-11 w-11 object-contain" /></Link>
           <p className="text-sm text-slate-500 dark:text-slate-400">© {new Date().getFullYear()} THE GUIDE. All rights reserved.</p>
         </div>
       </footer>
