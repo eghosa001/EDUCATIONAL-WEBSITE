@@ -41,12 +41,7 @@ export const fetchCourses = async (filters: CourseFilters = {}, _token?: string)
 
 export const fetchFeaturedCourses = (page = 1, limit = 10, token?: string) => fetchCourses({ page, limit, status: 'published', featured: true }, token);
 
-/**
- * Loads a course as one canonical learning graph.
- * Topics are the preferred unit when lessons have topic_id; legacy course_sections are
- * used only when the course has no topic-linked lessons. This prevents empty duplicate
- * section cards from hiding the real lesson data.
- */
+/** Loads the canonical course -> topic -> lesson learning graph. */
 export const fetchCourseByIdOrSlug = async (idOrSlug: string, _token?: string): Promise<{ course: Course & { classId?: string; termId?: string; sections: CourseSection[]; lessons: any[] } }> => {
   const supabase = getSupabase();
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idOrSlug);
@@ -65,7 +60,7 @@ export const fetchCourseByIdOrSlug = async (idOrSlug: string, _token?: string): 
   const topicIds = [...new Set(mappedLessons.map((l: any) => l.topic_id).filter(Boolean))];
   let topics: any[] = [];
   if (topicIds.length) {
-    const { data, error } = await supabase.from('topics').select('id,title,name,description,order_index,subject_id,term_id').in('id', topicIds).order('order_index');
+    const { data, error } = await supabase.from('topics').select('id,title,name,description,order_index,subject_id,class_id,term_id').in('id', topicIds);
     if (!error) topics = data || [];
   }
   const topicMap = new Map(topics.map((t: any) => [t.id, t]));
@@ -85,15 +80,35 @@ export const fetchCourseByIdOrSlug = async (idOrSlug: string, _token?: string): 
     orderIndex: s.order_index,
     lessons: mappedLessons.filter((l: any) => l.section_id === s.id).sort((a:any,b:any)=>(a.order_index??999)-(b.order_index??999)),
   }));
-
-  // If topic-linked lessons exist, expose the topic hierarchy only. Otherwise preserve
-  // the former section hierarchy so older courses remain usable.
   const learningSections = topicGroups.length ? topicGroups : legacySections;
   return { course: { ...mapCourse(row), sections: learningSections, lessons: mappedLessons } };
 };
 
-export const createCourse = async (courseData: Partial<Course>, _token: string) => { const { data, error } = await getSupabase().from('courses').insert({ title: courseData.title, slug: courseData.slug, short_description: courseData.shortDescription, full_description: courseData.description, subject_id: courseData.subjectId, teacher_id: courseData.teacherId, status: courseData.status || 'draft', difficulty: courseData.difficulty, is_free: courseData.isFree ?? true, price: courseData.price || 0, currency: courseData.currency || 'NGN', thumbnail_url: courseData.thumbnailUrl }).select().single(); if (error) throw new Error(error.message); return { course: mapCourse(data) }; };
-export const updateCourse = async (courseId: string, courseData: Partial<Course>, _token: string) => { const patch: any = {}; if (courseData.title !== undefined) patch.title = courseData.title; if (courseData.slug !== undefined) patch.slug = courseData.slug; if (courseData.shortDescription !== undefined) patch.short_description = courseData.shortDescription; if (courseData.description !== undefined) patch.full_description = courseData.description; if (courseData.status !== undefined) patch.status = courseData.status; if (courseData.difficulty !== undefined) patch.difficulty = courseData.difficulty; if (courseData.isFree !== undefined) patch.is_free = courseData.isFree; if (courseData.price !== undefined) patch.price = courseData.price; if (courseData.thumbnailUrl !== undefined) patch.thumbnail_url = courseData.thumbnailUrl; const { data, error } = await getSupabase().from('courses').update(patch).eq('id', courseId).select().single(); if (error) throw new Error(error.message); return { course: mapCourse(data) }; };
+export const createCourse = async (courseData: Partial<Course>, _token: string) => {
+  const { data, error } = await getSupabase().from('courses').insert({
+    title: courseData.title, slug: courseData.slug, short_description: courseData.shortDescription,
+    full_description: courseData.description, subject_id: courseData.subjectId, class_id: courseData.classId,
+    term_id: courseData.termId, teacher_id: courseData.teacherId, status: courseData.status || 'draft',
+    difficulty: courseData.difficulty, is_free: courseData.isFree ?? true, price: courseData.price || 0,
+    currency: courseData.currency || 'NGN', thumbnail_url: courseData.thumbnailUrl,
+  }).select().single();
+  if (error) throw new Error(error.message); return { course: mapCourse(data) };
+};
+
+export const updateCourse = async (courseId: string, courseData: Partial<Course>, _token: string) => {
+  const patch: any = {};
+  if (courseData.title !== undefined) patch.title = courseData.title; if (courseData.slug !== undefined) patch.slug = courseData.slug;
+  if (courseData.shortDescription !== undefined) patch.short_description = courseData.shortDescription;
+  if (courseData.description !== undefined) patch.full_description = courseData.description;
+  if (courseData.subjectId !== undefined) patch.subject_id = courseData.subjectId; if (courseData.classId !== undefined) patch.class_id = courseData.classId;
+  if (courseData.termId !== undefined) patch.term_id = courseData.termId; if (courseData.teacherId !== undefined) patch.teacher_id = courseData.teacherId;
+  if (courseData.status !== undefined) patch.status = courseData.status; if (courseData.difficulty !== undefined) patch.difficulty = courseData.difficulty;
+  if (courseData.isFree !== undefined) patch.is_free = courseData.isFree; if (courseData.price !== undefined) patch.price = courseData.price;
+  if (courseData.thumbnailUrl !== undefined) patch.thumbnail_url = courseData.thumbnailUrl;
+  const { data, error } = await getSupabase().from('courses').update(patch).eq('id', courseId).select().single();
+  if (error) throw new Error(error.message); return { course: mapCourse(data) };
+};
+
 export const publishCourse = async (courseId: string, _token: string) => updateCourse(courseId, { status: 'published' }, _token);
 export const deleteCourse = async (courseId: string, _token: string) => { const { error } = await getSupabase().from('courses').delete().eq('id', courseId); if (error) throw new Error(error.message); return { success: true }; };
 export const fetchCourseStats = async (courseId: string, _token: string): Promise<CourseStats> => { const supabase = getSupabase(); const [{ count: enrollmentCount }, { count: lessonCount }] = await Promise.all([supabase.from('student_courses').select('*', { count: 'exact', head: true }).eq('course_id', courseId), supabase.from('lessons').select('*', { count: 'exact', head: true }).eq('course_id', courseId)]); return { enrollmentCount: enrollmentCount || 0, lessonCount: lessonCount || 0 }; };
