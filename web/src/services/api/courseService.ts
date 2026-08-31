@@ -28,21 +28,57 @@ export const fetchCourses = async (filters: CourseFilters = {}, _token?: string)
 
 export const fetchFeaturedCourses = (page = 1, limit = 10, token?: string) => fetchCourses({ page, limit, status: 'published', featured: true }, token);
 
+/** Loads a course as a complete learning graph. Lessons are the source of truth; legacy section links are retained when present. */
 export const fetchCourseByIdOrSlug = async (idOrSlug: string, _token?: string): Promise<{ course: Course & { classId?: string; termId?: string; sections: CourseSection[]; lessons: any[] } }> => {
   const supabase = getSupabase();
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idOrSlug);
-  let row: any = null; let error: any = null;
-  if (isUuid) { const result = await supabase.from('courses').select('*').eq('id', idOrSlug).maybeSingle(); row = result.data; error = result.error; }
-  else { const result = await supabase.from('courses').select('*').eq('slug', idOrSlug).maybeSingle(); row = result.data; error = result.error; }
-  if (error) throw new Error(error.message); if (!row) throw new Error('Course not found');
+  const courseQuery = supabase.from('courses').select('*').limit(1);
+  const result = isUuid ? await courseQuery.eq('id', idOrSlug).maybeSingle() : await courseQuery.eq('slug', idOrSlug).maybeSingle();
+  if (result.error) throw new Error(result.error.message); if (!result.data) throw new Error('Course not found');
+  const row: any = result.data;
+
   const [{ data: sections, error: sectionsError }, { data: lessons, error: lessonsError }] = await Promise.all([
     supabase.from('course_sections').select('*').eq('course_id', row.id).eq('is_active', true).order('order_index'),
     supabase.from('lessons').select('*').eq('course_id', row.id).eq('is_published', true).order('order_index'),
   ]);
   if (sectionsError) throw new Error(sectionsError.message); if (lessonsError) throw new Error(lessonsError.message);
-  const mappedLessons = (lessons || []).map((l: any) => ({ ...l, estimatedMinutes: l.estimated_minutes, isPublished: l.is_published }));
-  const mappedSections = (sections || []).map((s: any) => ({ ...s, courseId: s.course_id, orderIndex: s.order_index, lessons: mappedLessons.filter((l: any) => l.section_id === s.id) }));
-  return { course: { ...mapCourse(row), sections: mappedSections, lessons: mappedLessons } };
+
+  const mappedLessons = (lessons || []).map((l: any) => ({
+    ...l,
+    estimatedMinutes: l.estimated_minutes,
+    isPublished: l.is_published,
+    // Preserve whichever generation/import produced the content; the UI can fall back to older fields.
+    content: l.written_content || l.description || l.content || l.body || '',
+    legacyContent: l.original_content || l.previous_content || l.legacy_content || null,
+  }));
+
+  const topicIds = [...new Set(mappedLessons.map((l: any) => l.topic_id).filter(Boolean))];
+  let topics: any[] = [];
+  if (topicIds.length) {
+    const { data, error } = await supabase.from('topics').select('id,title,name,description,order_index,subject_id,term_id').in('id', topicIds).order('order_index');
+    if (!error) topics = data || [];
+  }
+  const topicMap = new Map(topics.map((t: any) => [t.id, t]));
+
+  const mappedSections = (sections || []).map((s: any) => ({
+    ...s,
+    courseId: s.course_id,
+    orderIndex: s.order_index,
+    lessons: mappedLessons.filter((l: any) => l.section_id === s.id),
+  }));
+
+  // Add topic groups without discarding the former course_sections structure.
+  const topicGroups = topicIds.map(topicId => ({
+    id: `topic-${topicId}`,
+    title: topicMap.get(topicId)?.title || topicMap.get(topicId)?.name || 'Topic',
+    description: topicMap.get(topicId)?.description || '',
+    order_index: topicMap.get(topicId)?.order_index ?? 999,
+    is_active: true,
+    course_id: row.id,
+    lessons: mappedLessons.filter((l: any) => l.topic_id === topicId),
+  })).sort((a: any, b: any) => a.order_index - b.order_index);
+
+  return { course: { ...mapCourse(row), sections: [...mappedSections, ...topicGroups], lessons: mappedLessons } };
 };
 
 export const createCourse = async (courseData: Partial<Course>, _token: string) => { const { data, error } = await getSupabase().from('courses').insert({ title: courseData.title, slug: courseData.slug, short_description: courseData.shortDescription, full_description: courseData.description, subject_id: courseData.subjectId, teacher_id: courseData.teacherId, status: courseData.status || 'draft', difficulty: courseData.difficulty, is_free: courseData.isFree ?? true, price: courseData.price || 0, currency: courseData.currency || 'NGN', thumbnail_url: courseData.thumbnailUrl }).select().single(); if (error) throw new Error(error.message); return { course: mapCourse(data) }; };
@@ -58,4 +94,4 @@ export interface CourseSectionData { title: string; description?: string; orderI
 export const createCourseSection = async (courseId: string, sectionData: CourseSectionData, _token: string) => { const { data, error } = await getSupabase().from('course_sections').insert({ course_id: courseId, title: sectionData.title, description: sectionData.description, order_index: sectionData.orderIndex }).select().single(); if (error) throw new Error(error.message); return { section: data }; };
 export const updateCourseSection = async (courseId: string, sectionId: string, sectionData: Partial<CourseSectionData>, _token: string) => { const { data, error } = await getSupabase().from('course_sections').update({ title: sectionData.title, description: sectionData.description, order_index: sectionData.orderIndex }).eq('id', sectionId).eq('course_id', courseId).select().single(); if (error) throw new Error(error.message); return { section: data }; };
 export const deleteCourseSection = async (courseId: string, sectionId: string, _token: string) => { const { error } = await getSupabase().from('course_sections').delete().eq('id', sectionId).eq('course_id', courseId); if (error) throw new Error(error.message); return { success: true }; };
-export const fetchCourseLessons = async (courseId: string, _token?: string) => { const { data, error } = await getSupabase().from('lessons').select('*').eq('course_id', courseId).eq('is_published', true).order('order_index'); if (error) throw new Error(error.message); return { lessons: (data || []).map((l: any) => ({ ...l, estimatedMinutes: l.estimated_minutes, isPublished: l.is_published })) }; };
+export const fetchCourseLessons = async (courseId: string, _token?: string) => { const { data, error } = await getSupabase().from('lessons').select('*').eq('course_id', courseId).eq('is_published', true).order('order_index'); if (error) throw new Error(error.message); return { lessons: (data || []).map((l: any) => ({ ...l, estimatedMinutes: l.estimated_minutes, isPublished: l.is_published, content: l.written_content || l.description || l.content || l.body || '', legacyContent: l.original_content || l.previous_content || l.legacy_content || null })) }; };
