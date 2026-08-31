@@ -5,9 +5,9 @@ import type { PaginatedResponse } from '@/types/api/api';
 export interface CourseFilters { page?: number; limit?: number; status?: string; subjectId?: string; classId?: string; teacherId?: string; search?: string; featured?: boolean; }
 export interface CourseStats { enrollmentCount: number; lessonCount: number; }
 
-const mapCourse = (row: any): Course => ({
+const mapCourse = (row: any): Course & { classId?: string; termId?: string } => ({
   id: row.id, title: row.title, slug: row.slug, description: row.full_description, shortDescription: row.short_description,
-  subjectId: row.subject_id, teacherId: row.teacher_id, coverImage: row.thumbnail_url, thumbnailUrl: row.thumbnail_url,
+  subjectId: row.subject_id, classId: row.class_id, termId: row.term_id, teacherId: row.teacher_id, coverImage: row.thumbnail_url, thumbnailUrl: row.thumbnail_url,
   status: row.status, lessonCount: row.lesson_count, enrollmentCount: row.enrollment_count, totalDurationHours: row.total_duration_hours,
   estimatedDuration: row.total_duration_hours, difficulty: row.difficulty, isFree: row.is_free, price: row.price,
   currency: row.currency, rating: row.rating, createdAt: row.created_at, updatedAt: row.updated_at,
@@ -28,19 +28,13 @@ export const fetchCourses = async (filters: CourseFilters = {}, _token?: string)
 
 export const fetchFeaturedCourses = (page = 1, limit = 10, token?: string) => fetchCourses({ page, limit, status: 'published', featured: true }, token);
 
-export const fetchCourseByIdOrSlug = async (idOrSlug: string, _token?: string): Promise<{ course: Course & { sections: CourseSection[]; lessons: any[] } }> => {
+export const fetchCourseByIdOrSlug = async (idOrSlug: string, _token?: string): Promise<{ course: Course & { classId?: string; termId?: string; sections: CourseSection[]; lessons: any[] } }> => {
   const supabase = getSupabase();
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idOrSlug);
-  let row: any = null;
-  let error: any = null;
-  if (isUuid) {
-    const result = await supabase.from('courses').select('*').eq('id', idOrSlug).maybeSingle(); row = result.data; error = result.error;
-  } else {
-    const result = await supabase.from('courses').select('*').eq('slug', idOrSlug).maybeSingle(); row = result.data; error = result.error;
-  }
-  if (error) throw new Error(error.message);
-  if (!row) throw new Error('Course not found');
-
+  let row: any = null; let error: any = null;
+  if (isUuid) { const result = await supabase.from('courses').select('*').eq('id', idOrSlug).maybeSingle(); row = result.data; error = result.error; }
+  else { const result = await supabase.from('courses').select('*').eq('slug', idOrSlug).maybeSingle(); row = result.data; error = result.error; }
+  if (error) throw new Error(error.message); if (!row) throw new Error('Course not found');
   const [{ data: sections, error: sectionsError }, { data: lessons, error: lessonsError }] = await Promise.all([
     supabase.from('course_sections').select('*').eq('course_id', row.id).eq('is_active', true).order('order_index'),
     supabase.from('lessons').select('*').eq('course_id', row.id).eq('is_published', true).order('order_index'),
