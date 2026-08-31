@@ -1,0 +1,7 @@
+file	bytes	lines
+primary-1.txt	989	10
+primary-2.txt	962	10
+primary-3.txt	979	10
+primary-4.txt	1226	14
+primary-5.txt	1244	13
+primary-6.txt	1264	14
