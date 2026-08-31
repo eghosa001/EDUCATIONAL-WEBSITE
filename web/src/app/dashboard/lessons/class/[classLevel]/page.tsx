@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, BookOpen, ChevronDown, ChevronRight, GraduationCap, Loader2, Search } from 'lucide-react';
 import { getSupabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
 type Course = { id: string; title: string; slug: string; subject_id: string | null; term_id: string | null; short_description: string | null; lesson_count: number | null; };
 type Subject = { id: string; name: string; code: string | null; order_index: number; icon: string | null; };
@@ -40,6 +41,7 @@ function termName(course: Course, terms: Term[]) {
 
 export default function ClassCurriculumPage() {
   const { classLevel } = useParams();
+  const { isLoading: authLoading, isAuthenticated } = useAuth();
   const key = String(classLevel || '').toLowerCase();
   const meta = classMeta[key];
   const [groups, setGroups] = useState<SubjectGroup[]>([]);
@@ -50,7 +52,8 @@ export default function ClassCurriculumPage() {
   const [openSubject, setOpenSubject] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!meta) return;
+    if (!meta || authLoading) return;
+    if (!isAuthenticated) { setLoading(false); setError('Please sign in to access the curriculum.'); return; }
     let cancelled = false;
     (async () => {
       setLoading(true); setError('');
@@ -86,7 +89,7 @@ export default function ClassCurriculumPage() {
       } finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [key, meta]);
+  }, [key, meta, authLoading, isAuthenticated]);
 
   const filteredGroups = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -95,7 +98,8 @@ export default function ClassCurriculumPage() {
   }, [groups, search]);
 
   if (!meta) return <div className="p-10 text-center">Class not found.</div>;
-  if (loading) return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#151A3A]" /></div>;
+  if (authLoading || loading) return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#151A3A]" /></div>;
+  if (!isAuthenticated) return <div className="mx-auto max-w-2xl py-16 text-center"><h1 className="text-xl font-bold text-[#151A3A] dark:text-white">Sign in to continue</h1><p className="mt-2 text-slate-500">Please sign in to access your curriculum.</p><Link href="/login" className="mt-6 inline-flex rounded-xl bg-[#151A3A] px-5 py-2.5 font-semibold text-white">Sign in</Link></div>;
 
   const courseCount = filteredGroups.reduce((n, g) => n + g.courses.length, 0);
   return (
