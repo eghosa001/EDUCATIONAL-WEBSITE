@@ -5,6 +5,8 @@ export interface Course {
   description?: string;
   shortDescription?: string;
   subjectId?: string;
+  classId?: string;
+  termId?: string;
   teacherId?: string;
   coverImage?: string;
   thumbnailUrl?: string;
