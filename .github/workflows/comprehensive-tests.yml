@@ -7,10 +7,16 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Never cancel a test run just because another commit was pushed.
+# A full run should finish so its result is useful for diagnosis.
+concurrency:
+  group: comprehensive-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   web-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,14 +25,24 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: web/package.json
 
       - name: Install web dependencies
         working-directory: web
-        run: npm install
+        run: npm install --no-audit --no-fund --progress=false
 
       - name: Install Chromium
         working-directory: web
         run: npx --yes playwright@1.55.0 install --with-deps chromium
+
+      - name: Typecheck web app
+        working-directory: web
+        run: npm run typecheck
+
+      - name: Run unit tests
+        working-directory: web
+        run: npm test
 
       - name: Build web app
         working-directory: web
@@ -49,6 +65,17 @@ jobs:
           BASE_URL: http://127.0.0.1:3000
         run: npm run test:e2e
 
+      - name: Run Supabase Edge Function smoke tests
+        if: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_ANON_KEY != '' }}
+        working-directory: web
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          TEST_ACCESS_TOKEN: ${{ secrets.TEST_ACCESS_TOKEN }}
+        run: npm run test:edge
+
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
@@ -63,4 +90,12 @@ jobs:
         with:
           name: playwright-test-artifacts
           path: web/test-results/
+          if-no-files-found: ignore
+
+      - name: Upload web server log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-server-log
+          path: /tmp/the-guide-web.log
           if-no-files-found: ignore
