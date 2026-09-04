@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'login_page.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../shared/widgets/index.dart';
+import '../../../shared/blocs/index.dart';
+import '../../../core/constants/app_enums.dart';
+import '../../../core/utils/validators.dart';
 
-class RegisterPage extends StatefulWidget {
+class RegisterPage extends ConsumerStatefulWidget {
   const RegisterPage({super.key});
 
   @override
-  State<RegisterPage> createState() => _RegisterPageState();
+  ConsumerState<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _RegisterPageState extends State<RegisterPage> {
+class _RegisterPageState extends ConsumerState<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -17,9 +21,23 @@ class _RegisterPageState extends State<RegisterPage> {
   final _lastNameController = TextEditingController();
   String _selectedRole = 'student';
 
+  UserRole _parseRole(String role) {
+    switch (role) {
+      case 'parent':
+        return UserRole.parent;
+      case 'teacher':
+        return UserRole.teacher;
+      case 'student':
+      default:
+        return UserRole.student;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final authState = ref.watch(authNotifierProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Create Account')),
       body: SingleChildScrollView(
@@ -52,11 +70,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 hintText: 'Enter your email',
                 prefixIcon: Icons.email,
                 keyboardType: TextInputType.emailAddress,
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Email is required';
-                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) return 'Invalid email';
-                  return null;
-                },
+                validator: StringValidators.emailValidator,
                 initialValue: _emailController.text,
                 onChanged: (v) => _emailController.text = v,
               ),
@@ -66,7 +80,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 hintText: 'Create a password',
                 prefixIcon: Icons.lock,
                 obscureText: true,
-                validator: (v) => v == null || v.length < 8 ? 'Password must be 8+ characters' : null,
+                validator: StringValidators.passwordValidator,
                 initialValue: _passwordController.text,
                 onChanged: (v) => _passwordController.text = v,
               ),
@@ -75,11 +89,30 @@ class _RegisterPageState extends State<RegisterPage> {
               const SizedBox(height: 8),
               _RoleSelector(selected: _selectedRole, onChanged: (v) => setState(() => _selectedRole = v)),
               const SizedBox(height: 24),
+              if (authState.error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    authState.error!,
+                    style: TextStyle(color: theme.colorScheme.error, fontSize: 14),
+                  ),
+                ),
               EduButton(
                 label: 'Create Account',
-                onPressed: () {
+                isLoading: authState.isLoading,
+                onPressed: () async {
                   if (_formKey.currentState!.validate()) {
-                    context.go('/home');
+                    await ref.read(authNotifierProvider.notifier).register(
+                      email: _emailController.text.trim(),
+                      password: _passwordController.text,
+                      firstName: _firstNameController.text.trim(),
+                      lastName: _lastNameController.text.trim(),
+                      role: _parseRole(_selectedRole),
+                    );
+                    final state = ref.read(authNotifierProvider);
+                    if (state.isAuthenticated && mounted) {
+                      context.go('/verify-email');
+                    }
                   }
                 },
               ),
@@ -112,7 +145,7 @@ class _RoleSelector extends StatelessWidget {
     final roles = [
       {'value': 'student', 'label': 'Student', 'icon': Icons.school},
       {'value': 'parent', 'label': 'Parent', 'icon': Icons.family_restroom},
-      {'value': 'teacher', 'label': 'Teacher', 'icon': Icons.person'},
+      {'value': 'teacher', 'label': 'Teacher', 'icon': Icons.person},
     ];
 
     return Wrap(

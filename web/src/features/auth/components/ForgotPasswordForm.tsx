@@ -56,7 +56,7 @@ export default function ForgotPasswordForm() {
           </div>
           <div className="flex justify-center space-x-4">
             <button
-              onClick={() => router.push('/auth/login')}
+              onClick={() => router.push('/login')}
               className="text-sm text-blue-600 hover:text-blue-500"
             >
               Back to login
@@ -124,7 +124,7 @@ export default function ForgotPasswordForm() {
           </div>
 
           <div className="text-center">
-            <a href="/auth/login" className="text-sm text-blue-600 hover:text-blue-500">
+            <a href="/login" className="text-sm text-blue-600 hover:text-blue-500">
               Back to login
             </a>
           </div>

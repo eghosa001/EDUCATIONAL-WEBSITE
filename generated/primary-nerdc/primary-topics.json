@@ -1,0 +1,1836 @@
+{
+  "PRIMARY 1": {
+    "English Language": {
+      "first": [
+        "Pre-Reading Skills: Phonemic Awareness (Identifying Sounds)",
+        "Phonemic Awareness (Identifying Sounds) - Continued",
+        "Phonemic Awareness (Songs and Rhymes)",
+        "Phonemic Awareness (Songs and Rhymes) - Continued",
+        "Phonological Awareness: Sounds of Animals",
+        "Phonological Awareness: Sounds of Things",
+        "Sound Clusters",
+        "Sound Clusters - Continued"
+      ],
+      "second": [
+        "Phonological Awareness (General)",
+        "Phonological Awareness: Word Structure",
+        "Phonological Awareness: Syllable and Word Structure",
+        "Concept of Print (Part 1)",
+        "Concept of Print (Part 2)",
+        "Concept of Print (Part 3)",
+        "Listening and Speaking: Songs and Rhymes",
+        "Listening and Speaking: Simple Commands"
+      ],
+      "third": [
+        "Reading: Guided Reading",
+        "Reading: Comprehension",
+        "Reading: Comprehension – Continued",
+        "Reading: Identification of Common Objects",
+        "Reading: Identification of Common Objects – Continued & Common Signs and Symbols",
+        "Reading: Common Signs and Symbols – Continued",
+        "Listening and Speaking: Making Polite Requests, Introduction of Self and Others",
+        "Listening and Speaking: Common Greetings & Retelling Stories"
+      ]
+    },
+    "Mathematics": {
+      "first": [
+        "Whole Numbers 1–5",
+        "Whole Number 0 (Zero)",
+        "Whole Numbers 6–9",
+        "Whole Number 10",
+        "Addition (Introduction)",
+        "Addition (Continued)",
+        "Subtraction (Introduction)",
+        "Subtraction (Continued)"
+      ],
+      "second": [
+        "Whole Numbers 1–99 (Part 1: 11–20)",
+        "Whole Numbers 1–99 (Part 2: 21–50)",
+        "Whole Numbers 1–99 (Part 3: 51–99)",
+        "Whole Numbers: Quantitative Aptitude on Ordering of Numbers",
+        "Whole Numbers: Quantitative Aptitude on Addition and Subtraction",
+        "Open Sentences (1)",
+        "Open Sentences (2)",
+        "Money (Introduction)"
+      ],
+      "third": [
+        "Fractions (Introduction)",
+        "Length (Measurement)",
+        "Weight",
+        "Time",
+        "Three Dimensional Shapes",
+        "Two Dimensional Shapes",
+        "Two Dimensional Shapes (Continued) & Patterns",
+        "Data Collection (Introduction)"
+      ]
+    },
+    "Basic Science": {
+      "first": [
+        "Exploring Our Environment (Part 1)",
+        "Exploring Our Environment (Part 2)",
+        "Exploring Other Parts of the Surrounding: Roads",
+        "Colour Identification",
+        "Shapes (Part 1)",
+        "Shapes (Part 2)",
+        "Living Things (Part 1)",
+        "Living Things (Part 2)"
+      ],
+      "second": [
+        "Non-Living Things (Part 1)",
+        "Non-Living Things (Part 2)",
+        "Exploring Other Parts of the Surroundings: Air",
+        "Exploring Other Parts of the Surroundings: Soil",
+        "Exploring Other Parts of the Surroundings: Water",
+        "Water (Continued) & Water Safety",
+        "Energy (Part 1)",
+        "Energy (Part 2)"
+      ],
+      "third": [
+        "Technology (Part 1: Understanding Technology)",
+        "Technology (Part 2: Technology Around Us)",
+        "Measuring Things (Part 1: Length and Size)",
+        "Measuring Things (Part 2: Weight and Capacity)",
+        "Measuring Things (Part 3: Time and Temperature)",
+        "Simple Machines (Part 1: Introduction)",
+        "Simple Machines (Part 2: Types)",
+        "Simple Machines (Part 3: More Types and Uses)"
+      ]
+    },
+    "Physical and Health Education": {
+      "first": [
+        "Motor Skills Development: Moving Our Body Parts 1",
+        "Motor Skills Development: Moving Our Body Parts 2",
+        "Motor Skills Development: Daily Activities Movements",
+        "Athletics: Running (Introduction)",
+        "Athletics: Running – 50m Dash",
+        "Athletics: Running – Shuttle Run",
+        "Sports Games: Local Games 1",
+        "Sports Games: Local Games 2"
+      ],
+      "second": [
+        "Health and Wellness: Toilet Hygiene 1",
+        "Health and Wellness: Toilet Hygiene 2",
+        "Health and Wellness: Health and Hygiene 1 (Personal Hygiene)",
+        "Health and Wellness: Health and Hygiene 2 (Body Care)",
+        "Health and Wellness: Health and Hygiene 3 (Environmental Hygiene)",
+        "Safety and Emergency Preparedness: First Aid (Introduction)",
+        "Safety and Emergency Preparedness: First Aid Box Contents",
+        "Safety and Emergency Preparedness: Basic First Aid Skills"
+      ],
+      "third": [
+        "Safety and Emergency Preparedness: Road Signs and Symbols 1",
+        "Safety and Emergency Preparedness: Road Signs and Symbols 2",
+        "Safety and Emergency Preparedness: Road Safety Rules",
+        "Safety and Emergency Preparedness: Road Safety Continued",
+        "Aquatics: Swimming (Introduction to Water)",
+        "Aquatics: Water Familiarization",
+        "Aquatics: Floating on Water",
+        "Aquatics: Basic Swimming Movements & Water Safety"
+      ]
+    },
+    "Christian Religious Studies": {
+      "first": [
+        "God the Creator (Part 1)",
+        "God the Creator (Part 2)",
+        "God the Creator (Part 3)",
+        "God, the Giver of Good Things (Part 1)",
+        "God, the Giver of Good Things (Part 2)",
+        "God, the Giver of Good Things (Part 3)",
+        "God's Gift of His Son (Part 1)",
+        "God's Gift of His Son (Part 2)"
+      ],
+      "second": [
+        "God is Our Father (Part 1)",
+        "God is Our Father (Part 2)",
+        "God is Our Father (Part 3)",
+        "Things We Must Do as Children of God (Part 1)",
+        "Things We Must Do as Children of God (Part 2)",
+        "Things We Must Do as Children of God (Part 3)",
+        "Things We Must Do as Children of God (Part 4)",
+        "Things We Must Do as Children of God (Part 5)"
+      ],
+      "third": [
+        "Discovering God Through Jesus Christ (Part 1)",
+        "Discovering God Through Jesus Christ (Part 2)",
+        "Jesus Christ Our Saviour (Part 1)",
+        "Jesus Christ Our Saviour (Part 2)",
+        "Jesus Christ Calls Us Brothers, Sisters and Friends",
+        "Jesus Commands Us to Love (Part 1)",
+        "Jesus Commands Us to Love (Part 2)"
+      ]
+    },
+    "Islamic Studies": {
+      "first": [
+        "Arabic Alphabet (Part 1)",
+        "Arabic Alphabet (Part 2)",
+        "Arabic Alphabet (Part 3)",
+        "Arabic Alphabet (Part 4)",
+        "Surat Al-Fatihah (Part 1)",
+        "Surat Al-Fatihah (Part 2)",
+        "Iman (Faith) - Part 1",
+        "Iman (Faith) - Part 2"
+      ],
+      "second": [
+        "Surat An-Nas",
+        "Surat Al-Falaq",
+        "Surat Al-Ikhlas",
+        "Review of Qur'anic Surahs",
+        "Al-Wudu' (Ablution) - Part 1",
+        "Al-Wudu' (Ablution) - Part 2",
+        "Prophets of Allah (SWT) - Part 1",
+        "Prophets of Allah (SWT) - Part 2"
+      ],
+      "third": [
+        "Moral Conduct - Obedience to Allah (Part 1)",
+        "Moral Conduct - Obedience to Allah (Part 2)",
+        "Islamic Moral Values - Part 1",
+        "Islamic Moral Values - Part 2",
+        "Comprehensive Review - Qur'an and Tajwid",
+        "Comprehensive Review - Tauhid and Fiqh",
+        "Comprehensive Review - Sirah",
+        "Comprehensive Review - Tahdhib"
+      ]
+    },
+    "Nigerian History": {
+      "first": [
+        "Meaning and Importance of History - Part 1",
+        "Meaning and Importance of History - Part 2",
+        "Peoples and Places in the Community - Part 1",
+        "Peoples and Places in the Community - Part 2",
+        "Places in the Community - Part 1",
+        "Places in the Community - Part 2",
+        "Living Together in Peace",
+        "National Unity and Diversity"
+      ],
+      "second": [
+        "Heroes and Heroines in the Community - Part 1",
+        "Heroes and Heroines in the Community - Part 2",
+        "Nigerian National Heroes - Part 1",
+        "Nigerian National Heroes - Part 2",
+        "Nigerian National Heroines - Part 1",
+        "Nigerian National Heroines - Part 2",
+        "Developing the Attitude of Selfless Service - Part 1",
+        "Developing the Attitude of Selfless Service - Part 2"
+      ],
+      "third": [
+        "Traditional Rulers - Part 1",
+        "Traditional Rulers - Part 2",
+        "Traditional Title Holders - Part 1",
+        "Traditional Title Holders - Part 2",
+        "The Local Government Chairperson - Part 1",
+        "The Local Government Chairperson - Part 2",
+        "Leadership Qualities - Part 1",
+        "Leadership Qualities - Part 2"
+      ]
+    },
+    "Social and Citizenship Studies": {
+      "first": [
+        "Leadership",
+        "Leadership at Home",
+        "Community Mobilization (Part 1)",
+        "Community Mobilization (Part 2)",
+        "Civic Responsibilities (Part 1)",
+        "Civic Responsibilities (Part 2)",
+        "National Identity and Symbols (Part 1)",
+        "National Identity and Symbols (Part 2)"
+      ],
+      "second": [
+        "People, Places and Objects to Respect (Part 1)",
+        "People, Places and Objects to Respect (Part 2)",
+        "Marriage",
+        "Responsible Parenting",
+        "Roles of Members of the Family",
+        "Culture (Part 1)",
+        "Culture (Part 2)",
+        "Introduction to Nigeria"
+      ],
+      "third": [
+        "Attitudes and Values",
+        "Finding Help in Danger (Part 1)",
+        "Finding Help in Danger (Part 2)",
+        "Secure Environment (Part 1)",
+        "Secure Environment (Part 2) & Climate Change and the Environment",
+        "Local Wildlife and Conservation",
+        "Money (Part 1)",
+        "Money (Part 2)"
+      ]
+    },
+    "Cultural and Creative Arts": {
+      "first": [
+        "Art: Introduction to Art",
+        "Scribbling and Drawing",
+        "Letters and Numbers (Artistic Writing)",
+        "Colours (Part 1)",
+        "Colours (Part 2)",
+        "Crafts (Part 1)",
+        "Crafts (Part 2): Paper Crafts",
+        "Decorative Artwork"
+      ],
+      "second": [
+        "Lines (Part 1)",
+        "Lines (Part 2)",
+        "Shapes and Texture (Part 1)",
+        "Shapes and Texture (Part 2)",
+        "Art Materials and Tools",
+        "Culture: Introduction to Nigerian Culture",
+        "Ceremonies in Nigeria (Part 1)",
+        "Ceremonies in Nigeria (Part 2): Body Beautification"
+      ],
+      "third": [
+        "Performing Arts: Introduction",
+        "Cultural Rhymes (Part 1)",
+        "Cultural Rhymes (Part 2)",
+        "Folktales (Part 1)",
+        "Folktales (Part 2)",
+        "Songs (Part 1): Traditional Nigerian Songs",
+        "Songs (Part 2): Action Songs and Movement",
+        "Creative Performance: Putting It All Together"
+      ]
+    }
+  },
+  "PRIMARY 2": {
+    "English Language": {
+      "first": [
+        "Revision and Review of Year One's Work",
+        "Phonemic Awareness I (Identifying and Producing Sounds)",
+        "Using Sounds and Combinations of Sounds to Spell and Pronounce Words",
+        "Comprehension I (Short Stories and Rhymes)",
+        "Adjectives: Describing Words",
+        "Phonics II (Consonant Blends and Digraphs)",
+        "Listening and Speaking: Asking and Answering Questions",
+        "Simple Present and Past Tense of Common Verbs"
+      ],
+      "second": [
+        "Phonemic Awareness II (Sound Patterns and Word Families)",
+        "Listening to and Telling Stories",
+        "Phonics Practice (Consonant Clusters and Word Building)",
+        "Comprehension II (Short Passages and Rhymes)",
+        "Using Plurals of Nouns (Regular and Irregular Forms)",
+        "Fluency and Reading Aloud (Short Paragraphs)",
+        "Songs, Rhymes and Simple Oral Games",
+        "Introducing Adverbs (Action Describers)"
+      ],
+      "third": [
+        "Phonics (Consonant Digraphs: ch, sh, th, wh, ph)",
+        "Comprehension III (Short Stories and Poems)",
+        "Asking and Answering Questions on Past and Future Actions",
+        "Use of Adjectives in Sentences",
+        "Listening Comprehension (Short Paragraphs)",
+        "Comprehension IV (Everyday Situations)",
+        "Using the Present Continuous Tense",
+        "Vocabulary Building and Spelling Practice"
+      ]
+    },
+    "Mathematics": {
+      "first": [
+        "Whole Numbers (1–100)",
+        "Whole Numbers (101–200)",
+        "Fractions (Part 1)",
+        "Fractions (Part 2)",
+        "Addition (Part 1)",
+        "Addition (Part 2)",
+        "Subtraction (Part 1)",
+        "Subtraction (Part 2)"
+      ],
+      "second": [
+        "Multiplication (Part 1)",
+        "Multiplication (Part 2)",
+        "Open Sentences (Algebraic Expressions)",
+        "Money (Part 1)",
+        "Money (Part 2)",
+        "Length",
+        "Time (Part 1)",
+        "Time (Part 2)"
+      ],
+      "third": [
+        "Weight",
+        "Capacity",
+        "Area (Introduction)",
+        "2-Dimensional Shapes",
+        "3-Dimensional Shapes",
+        "Data Collection (Everyday Statistics)",
+        "Review of Geometry Concepts",
+        "Applied Problem Solving (All Concepts)"
+      ]
+    },
+    "Basic Science": {
+      "first": [
+        "The Senses (Part 1): Sense of Sight",
+        "The Senses (Part 2): Sense of Hearing and Touch",
+        "The Senses (Part 3): Sense of Smell and Taste",
+        "Soil Types (Part 1)",
+        "Soil Types (Part 2)",
+        "Air (Part 1)",
+        "Air (Part 2)",
+        "Water (Part 1)"
+      ],
+      "second": [
+        "Water (Part 2)",
+        "Colours (Part 1)",
+        "Colours (Part 2)",
+        "Plants (Part 1): Parts of a Plant",
+        "Plants (Part 2): Types and Uses of Plants",
+        "Plants (Part 3): How Plants Grow",
+        "Animals (Part 1): Types of Animals",
+        "Animals (Part 2): Body Parts and Uses of Animals"
+      ],
+      "third": [
+        "Clay (Part 1): What is Clay?",
+        "Clay (Part 2): Uses of Clay",
+        "Clay (Part 3): Working with Clay",
+        "Clay (Part 4): Clay Art and Projects",
+        "Forms of Energy: Sound (Part 1)",
+        "Forms of Energy: Sound (Part 2)",
+        "Forms of Energy: Sound (Part 3)",
+        "Forms of Energy: Sound (Part 4) - Musical Instruments and Sound Safety"
+      ]
+    },
+    "Physical and Health Education": {
+      "first": [
+        "Moving Our Body Parts (Part 1): Head and Upper Body",
+        "Moving Our Body Parts (Part 2): Lower Body",
+        "Moving Our Body Parts (Part 3): Whole Body Movements",
+        "Moving Our Body Parts (Part 4): Movement Patterns and Coordination",
+        "Athletics: Running (Part 1)",
+        "Athletics: Running (Part 2) and Jumping",
+        "Games: Traditional/Local Games (Part 1)",
+        "Games: Traditional/Local Games (Part 2)"
+      ],
+      "second": [
+        "Swimming: Water Safety and Introduction (Part 1)",
+        "Swimming: Water Familiarization (Part 2)",
+        "Swimming: Basic Water Skills (Part 3)",
+        "Swimming: Swimming Safety Review and Fun (Part 4)",
+        "Health and Hygiene (Part 1): Personal Cleanliness",
+        "Health and Hygiene (Part 2): Body Care",
+        "Health and Hygiene (Part 3): Food and Environmental Hygiene",
+        "Health and Hygiene (Part 4): Toilet Hygiene and Healthy Habits"
+      ],
+      "third": [
+        "First Aid: Understanding First Aid",
+        "First Aid: The First Aid Box",
+        "First Aid: Treating Minor Injuries (Part 1)",
+        "First Aid: Treating Minor Injuries (Part 2)",
+        "Safety Education: Home Safety",
+        "Safety Education: School Safety",
+        "Safety Education: Road Safety",
+        "Safety Education: Personal Safety"
+      ]
+    },
+    "Christian Religious Studies": {
+      "first": [
+        "God Creates the World (Part 1)",
+        "God Creates the World (Part 2)",
+        "God Provides for His Creation (Part 1)",
+        "God Provides for His Creation (Part 2)",
+        "God Makes a Promise to Abraham (Part 1)",
+        "God Makes a Promise to Abraham (Part 2)",
+        "God Helps His People (Part 1)",
+        "God Helps His People (Part 2)"
+      ],
+      "second": [
+        "The Birth of Jesus (Part 1)",
+        "The Birth of Jesus (Part 2)",
+        "The Childhood of Jesus (Part 1)",
+        "The Childhood of Jesus (Part 2)",
+        "Jesus Teaches About God's Love (Part 1)",
+        "Jesus Teaches About God's Love (Part 2)",
+        "Jesus Performs Miracles (Part 1)",
+        "Jesus Performs Miracles (Part 2)"
+      ],
+      "third": [
+        "Jesus Dies and Rises Again (Part 1)",
+        "Jesus Dies and Rises Again (Part 2)",
+        "The Holy Spirit Comes (Part 1)",
+        "The Holy Spirit Comes (Part 2)",
+        "The Early Church (Part 1)",
+        "The Early Church (Part 2)",
+        "Christian Living (Part 1)",
+        "Christian Living (Part 2)"
+      ]
+    },
+    "Islamic Studies": {
+      "first": [
+        "Wudu (Ablution) - Part 1",
+        "Wudu (Ablution) - Part 2",
+        "Suratul-Falaq - Part 1",
+        "Suratul-Falaq - Part 2",
+        "The Five Pillars of Islam - Part 1",
+        "The Five Pillars of Islam - Part 2",
+        "Prophet Muhammad's Life - Part 1",
+        "Prophet Muhammad's Life - Part 2"
+      ],
+      "second": [
+        "Suratun-Nasr",
+        "Brief History of Prophet Musa (AS)",
+        "Brief History of Prophet Musa (AS)",
+        "Brief History of Prophet Musa (AS)",
+        "Brief History of Prophet Isa (AS)",
+        "Brief History of Prophet Isa (AS)",
+        "Brief History of Prophet Muhammad (SAW) - Birth"
+      ],
+      "third": [
+        "Brief History of Prophet Muhammad (SAW) - Childhood",
+        "Brief History of Prophet Muhammad (SAW) - Youth to Marriage",
+        "Suratul-Kafirun",
+        "Suratul-Kafirun",
+        "Moral Teachings of Islam",
+        "Moral Teachings of Islam",
+        "Moral Teachings of Islam",
+        "Moral Teachings of Islam"
+      ]
+    },
+    "Nigerian History": {
+      "first": [
+        "What is History?",
+        "Sources of History",
+        "Our Personal History",
+        "Early People in Nigeria",
+        "How People Came to Nigeria",
+        "Major Ethnic Groups in Nigeria",
+        "Early Kingdoms and Empires",
+        "Traditional Occupations"
+      ],
+      "second": [
+        "Heroes and Heroines in Nigeria: What is a Hero/Heroine?",
+        "Heroes and Heroines in Nigeria: Queen Amina of Zazzau",
+        "Heroes and Heroines in Nigeria: Moremi of Ile-Ife",
+        "Heroes and Heroines in Nigeria: Oba Ewuare of Benin",
+        "Heroes and Heroines in Nigeria: Usman dan Fodio",
+        "Heroes and Heroines in Nigeria: Nana of Itsekiri",
+        "Heroes and Heroines in Nigeria: Funmilayo Ransome-Kuti",
+        "Heroes and Heroines in Nigeria: Herbert Macaulay"
+      ],
+      "third": [
+        "Political Developments: Colonial Period in Nigeria",
+        "Political Developments: Nigerian Leaders Who Fought for Freedom",
+        "Political Developments: Nigeria's Independence",
+        "Political Developments: First Leaders of Independent Nigeria",
+        "Political Developments: Nigerian Symbols and Identity",
+        "Political Developments: Unity in Nigeria",
+        "Political Developments: Important Places in Nigerian History",
+        "Political Developments: Being a Good Nigerian Citizen"
+      ]
+    },
+    "Social and Citizenship Studies": {
+      "first": [
+        "Being a Good Citizen",
+        "Our Community",
+        "Leaders in our Community",
+        "Understanding Our World",
+        "Our Physical Environment",
+        "Foods We Eat in our Culture",
+        "Importance of Good Nutrition",
+        "Greetings and Respect in our Culture"
+      ],
+      "second": [
+        "Keeping our Environment Clean",
+        "Environmental Health and Protection",
+        "Safety at Home and School",
+        "Accident Prevention and Response",
+        "Understanding Medicines",
+        "Drug Abuse and Making Good Choices",
+        "Identifying Harmful Substances",
+        "Avoiding Harmful Substances"
+      ],
+      "third": [
+        "Understanding Danger and Security",
+        "Personal Safety Strategies",
+        "People Who Protect Us - Police",
+        "People Who Protect Us - Armed Forces",
+        "People Who Protect Us - Safety Services",
+        "People Who Protect Us - Emergency Services",
+        "Understanding Money",
+        "Using Money Wisely"
+      ]
+    },
+    "Cultural and Creative Arts": {
+      "first": [
+        "Shapes and Sizes",
+        "Shapes and Sizes (Continued)",
+        "Colouring Functional Art Works",
+        "Colouring Functional Art Works (Continued)",
+        "Introduction to Craft Making",
+        "Introduction to Craft Making (Continued)",
+        "Designing Patterns of Basic Shapes",
+        "Designing Patterns of Basic Shapes (Continued)"
+      ],
+      "second": [
+        "Paper Craft Making and Decorations",
+        "Paper Craft Making and Decorations (Continued)",
+        "Pattern Making using Motifs and Colours",
+        "Pattern Making using Motifs and Colours (Continued)",
+        "Traditional Songs/Folk Songs",
+        "Traditional Songs/Folk Songs (Continued)",
+        "Melodic Patterns of Traditional Songs",
+        "Melodic Patterns of Traditional Songs (Continued)"
+      ],
+      "third": [
+        "Traditional Dances",
+        "Traditional Dances (Continued)",
+        "Traditional Dances (Continued)",
+        "Dramatization of Story Telling",
+        "Dramatization of Story Telling (Continued)",
+        "Dramatization of Story Telling (Continued)",
+        "Traditional Festivals",
+        "Traditional Festivals (Continued)"
+      ]
+    }
+  },
+  "PRIMARY 3": {
+    "English Language": {
+      "first": [
+        "Phonemic Awareness & Listening",
+        "Phonics & Writing",
+        "Reading & Grammar",
+        "Speaking & Grammar",
+        "Reading Comprehension & Writing",
+        "Listening & Grammar",
+        "Speaking & Writing",
+        "Reading & Grammar",
+        "Writing & Handwriting"
+      ],
+      "second": [
+        "Reading & Phonics",
+        "Listening & Grammar",
+        "Writing & Speaking",
+        "Reading & Comprehension",
+        "Speaking & Grammar",
+        "Reading & Vocabulary",
+        "Writing & Grammar",
+        "Listening & Speaking",
+        "Reading & Handwriting"
+      ],
+      "third": [
+        "Reading & Grammar",
+        "Speaking & Listening",
+        "Writing & Grammar",
+        "Reading & Comprehension",
+        "Grammar & Speaking",
+        "Grammar & Writing",
+        "Reading & Listening",
+        "Writing & Grammar",
+        "Reading & Concepts of Print"
+      ]
+    },
+    "Mathematics": {
+      "first": [
+        "Whole Numbers up to 999",
+        "Whole Numbers up to 999",
+        "Whole Numbers up to 999",
+        "Fractions",
+        "Fractions",
+        "Fractions",
+        "Fractions"
+      ],
+      "second": [
+        "Addition",
+        "Addition",
+        "Subtraction",
+        "Subtraction",
+        "Multiplication",
+        "Multiplication",
+        "Division",
+        "Division"
+      ],
+      "third": [
+        "Open Sentences",
+        "Money",
+        "Length I",
+        "Length II",
+        "Time",
+        "Weight",
+        "Capacity",
+        "Symmetry",
+        "Pictograms"
+      ]
+    },
+    "Basic Science": {
+      "first": [
+        "Measurement of Length I",
+        "Measurement of Length II",
+        "Measurement of Mass I",
+        "Measurement of Mass II",
+        "Measurement of Time I",
+        "Measurement of Time II",
+        "Measurement of Time III",
+        "Soil I"
+      ],
+      "second": [
+        "Soil II",
+        "Soil III",
+        "Air in Motion I",
+        "Air in Motion II",
+        "Quality of Water I",
+        "Quality of Water II",
+        "Uses of Water",
+        "Plants I"
+      ],
+      "third": [
+        "Plants II",
+        "Plants III",
+        "Animals I",
+        "Animals II",
+        "Animals III",
+        "Forms of Technology I",
+        "Forms of Technology II",
+        "Forms of Energy - Light I"
+      ]
+    },
+    "Physical and Health Education": {
+      "first": [
+        "Introduction to Physical Education",
+        "Moving Our Body Parts I",
+        "Moving Our Body Parts II",
+        "Moving Our Body Parts III",
+        "Moving Our Body Parts IV",
+        "Athletics I - Running",
+        "Athletics II - Jumping",
+        "Ball Games I - Introduction"
+      ],
+      "second": [
+        "Health and Hygiene I",
+        "Health and Hygiene II",
+        "Athletics III - Throwing",
+        "Athletics IV - Relay Races",
+        "Ball Games II - Football Basics",
+        "Ball Games III - Basketball Basics",
+        "Ball Games IV - Volleyball Basics",
+        "Swimming I - Water Safety"
+      ],
+      "third": [
+        "Swimming II - Basic Skills",
+        "First Aid and Safety I",
+        "First Aid and Safety II",
+        "Advanced Body Movements",
+        "Ball Games V - Team Games",
+        "Athletics V - Combined Activities",
+        "Health Education I - Nutrition",
+        "Safety Education - Road Safety"
+      ]
+    },
+    "Christian Religious Studies": {
+      "first": [
+        "Introduction to the New Testament",
+        "The Promise of the Saviour I",
+        "The Promise of the Saviour II",
+        "The Promise of the Saviour III",
+        "The Promise of the Comforter I",
+        "The Promise of the Comforter II",
+        "The Promise of the Comforter III",
+        "The Second Coming of Jesus I"
+      ],
+      "second": [
+        "Jesus the Way to the Father I",
+        "Jesus the Way to the Father II",
+        "Jesus the Way to the Father III",
+        "Jesus the True Good Shepherd I",
+        "Jesus the True Good Shepherd II",
+        "Jesus the True Good Shepherd III",
+        "Jesus the Bread of Life I",
+        "Jesus the Bread of Life II"
+      ],
+      "third": [
+        "Showing Hospitality I",
+        "Showing Hospitality II",
+        "Showing Love I",
+        "Showing Love and Unselfishness II",
+        "Showing Unselfishness III",
+        "Showing Desire for Peaceful Co-existence I",
+        "Showing Desire for Peaceful Co-existence II",
+        "Showing Desire for Peaceful Co-existence III"
+      ]
+    },
+    "Islamic Studies": {
+      "first": [
+        "Introduction to Arabic Alphabet",
+        "Introduction of Tanwin I",
+        "Introduction of Tanwin II",
+        "Introduction of Tanwin III",
+        "Suratul-Kawthar I",
+        "Suratul-Kawthar II",
+        "Suratul-Ma'un I",
+        "Suratul-Ma'un II"
+      ],
+      "second": [
+        "Suratul-Quraysh I",
+        "Suratul-Quraysh II",
+        "Belief in Angels I",
+        "Belief in Angels II",
+        "Jinn and Shaytan I",
+        "Jinn and Shaytan II",
+        "Things that Spoil Salat I",
+        "Things that Spoil Salat II"
+      ],
+      "third": [
+        "Tayammum I",
+        "Tayammum II",
+        "Prophet Muhammad's Call to Prophethood I",
+        "Prophet Muhammad's Call to Prophethood II",
+        "Significance of Prophet Muhammad I",
+        "Significance of Prophet Muhammad II",
+        "Human Relations in Islam I",
+        "Mutual Cooperation in Islam II"
+      ]
+    },
+    "Nigerian History": {
+      "first": [
+        "Meaning of History",
+        "Importance of History I",
+        "Importance of History II",
+        "Introduction to Nigerian Peoples",
+        "Peoples and Places in the Community I",
+        "Peoples and Places in the Community II",
+        "Peoples and Places in the Community III",
+        "Tolerance and National Unity"
+      ],
+      "second": [
+        "Introduction to Heroes and Heroines",
+        "Heroes and Heroines in the Community I",
+        "Heroes and Heroines in the Community II",
+        "National Heroes and Heroines I",
+        "National Heroes and Heroines II",
+        "National Heroes and Heroines III",
+        "Contributions of Heroes to Development",
+        "Developing Attitude of Selfless Service"
+      ],
+      "third": [
+        "Introduction to Traditional Authority",
+        "Traditional Rulers I",
+        "Traditional Rulers II",
+        "Traditional Title Holders I",
+        "Traditional Title Holders II",
+        "The Local Government Chairperson I",
+        "The Local Government Chairperson II",
+        "Leadership Qualities"
+      ]
+    },
+    "Social and Citizenship Studies": {
+      "first": [
+        "Introduction to Leadership",
+        "Leadership at Home I",
+        "Leadership at Home II",
+        "Community Mobilization I",
+        "Community Mobilization II",
+        "Civic Responsibilities I",
+        "Civic Responsibilities II",
+        "Civic Responsibilities III"
+      ],
+      "second": [
+        "National Identity I",
+        "National Identity and Symbols II",
+        "People, Places and Objects to Respect I",
+        "People, Places and Objects to Respect II",
+        "Marriage",
+        "Responsible Parenting",
+        "Roles of Members of the Family",
+        "Culture I"
+      ],
+      "third": [
+        "Culture II",
+        "Introduction to Nigeria",
+        "Attitudes and Values",
+        "Finding Help in Danger I",
+        "Finding Help in Danger II",
+        "Secure Environment (Part 1)",
+        "Secure Environment (Part 2)",
+        "Local Wildlife and Conservation"
+      ]
+    },
+    "Cultural and Creative Arts": {
+      "first": [
+        "Shapes and Sizes",
+        "Shapes and Sizes (Continued)",
+        "Colouring Functional Art Works",
+        "Colouring Functional Art Works (Continued)",
+        "Introduction to Craft Making",
+        "Introduction to Craft Making (Continued)",
+        "Designing Patterns of Basic Shapes",
+        "Designing Patterns of Basic Shapes (Continued)"
+      ],
+      "second": [
+        "Paper Craft Making and Decorations",
+        "Paper Craft Making and Decorations (Continued)",
+        "Pattern Making using Motifs and Colours",
+        "Pattern Making using Motifs and Colours (Continued)",
+        "Traditional Songs/Folk Songs",
+        "Traditional Songs/Folk Songs (Continued)",
+        "Melodic Patterns of Traditional Songs",
+        "Melodic Patterns of Traditional Songs (Continued)"
+      ],
+      "third": [
+        "Traditional Dances",
+        "Traditional Dances (Continued)",
+        "Traditional Dances (Continued)",
+        "Dramatization of Story Telling",
+        "Dramatization of Story Telling (Continued)",
+        "Dramatization of Story Telling (Continued)",
+        "Traditional Festivals",
+        "Traditional Festivals (Continued)"
+      ]
+    }
+  },
+  "PRIMARY 4": {
+    "English Language": {
+      "first": [
+        "Phonemic Awareness and Phonics",
+        "Comprehension and Reading Skills",
+        "Grammar: Nouns and Pronouns",
+        "Writing and Handwriting",
+        "Listening and Speaking Skills",
+        "Reading and Vocabulary",
+        "Grammar: Verbs and Adjectives",
+        "Writing and Composition"
+      ],
+      "second": [
+        "Reading and Phonics",
+        "Grammar: Tenses",
+        "Comprehension Skills",
+        "Writing and Handwriting",
+        "Listening and Speaking",
+        "Grammar: Prepositions and Conjunctions",
+        "Reading and Vocabulary",
+        "Writing and Composition"
+      ],
+      "third": [
+        "Reading and Phonics",
+        "Grammar: Adverbs and Articles",
+        "Comprehension and Summary",
+        "Writing and Composition",
+        "Listening and Speaking",
+        "Grammar: Sentences and Punctuation",
+        "Reading and Literature",
+        "Writing and Handwriting"
+      ]
+    },
+    "Mathematics": {
+      "first": [
+        "Whole Numbers up to 9999",
+        "Whole Numbers: Place Value",
+        "Addition and Subtraction",
+        "Multiplication",
+        "Division",
+        "Fractions",
+        "Measurement: Length",
+        "Measurement: Weight"
+      ],
+      "second": [
+        "Measurement: Capacity",
+        "Measurement: Time",
+        "Money",
+        "Patterns and Sequences",
+        "Geometry: 2D Shapes",
+        "Geometry: 3D Shapes",
+        "Data Handling",
+        "Problem Solving"
+      ],
+      "third": [
+        "Whole Numbers: Large Numbers",
+        "Fractions and Decimals",
+        "Measurement: Area and Perimeter",
+        "Measurement: Volume",
+        "Angles and Shapes",
+        "Data Handling and Statistics",
+        "Problem Solving",
+        "Revision and Examination"
+      ]
+    },
+    "Basic Science and Technology": {
+      "first": [
+        "Living Things",
+        "Plants and Animals",
+        "The Solar System",
+        "Matter and Its Properties",
+        "Energy",
+        "Simple Machines",
+        "Basic Digital Literacy",
+        "Prevocational Studies"
+      ],
+      "second": [
+        "Matter and Its Properties",
+        "Energy and Its Forms",
+        "Simple Machines",
+        "Basic Digital Literacy",
+        "Prevocational Studies",
+        "Environmental Science",
+        "Health and Safety",
+        "Technology and Society"
+      ],
+      "third": [
+        "Ecosystems and Biodiversity",
+        "Natural Resources",
+        "Environmental Conservation",
+        "Basic Digital Literacy",
+        "Prevocational Studies",
+        "Science and Technology",
+        "Health and Wellness",
+        "Review and Examination"
+      ]
+    },
+    "Physical and Health Education": {
+      "first": [
+        "Physical Fitness",
+        "Athletics: Running Events",
+        "Ball Games",
+        "Swimming",
+        "Health Education",
+        "Safety Education",
+        "Nutrition",
+        "Personal Hygiene"
+      ],
+      "second": [
+        "Athletics: Jumping Events",
+        "Ball Games",
+        "Gymnastics",
+        "Swimming",
+        "Health Education",
+        "Safety Education",
+        "First Aid",
+        "Community Health"
+      ],
+      "third": [
+        "Athletics: Throwing Events",
+        "Ball Games",
+        "Martial Arts",
+        "Swimming",
+        "Health Education",
+        "Safety Education",
+        "Disease Prevention",
+        "Review and Examination"
+      ]
+    },
+    "Christian Religious Studies": {
+      "first": [
+        "God's Creation",
+        "The Fall of Man",
+        "God's Promises",
+        "Jesus Christ",
+        "The Holy Spirit",
+        "Christian Living",
+        "Prayer",
+        "Worship"
+      ],
+      "second": [
+        "Jesus Christ's Ministry",
+        "Parables of Jesus",
+        "Miracles of Jesus",
+        "The Death of Jesus",
+        "The Resurrection",
+        "The Early Church",
+        "Christian Living",
+        "Prayer and Worship"
+      ],
+      "third": [
+        "The Holy Spirit",
+        "The Early Church",
+        "Christian Living",
+        "Moral Values",
+        "Social Responsibilities",
+        "Prayer and Worship",
+        "Review and Examination",
+        "Closing"
+      ]
+    },
+    "Islamic Religious Studies": {
+      "first": [
+        "Qur'anic Studies",
+        "Hadith and Sunnah",
+        "Islamic History",
+        "Aqeedah",
+        "Fiqh",
+        "Tahdhib",
+        "Sirah",
+        "Review and Examination"
+      ],
+      "second": [
+        "Qur'anic Studies",
+        "Hadith and Sunnah",
+        "Islamic History",
+        "Aqeedah",
+        "Fiqh",
+        "Tahdhib",
+        "Sirah",
+        "Review and Examination"
+      ],
+      "third": [
+        "Qur'anic Studies",
+        "Hadith and Sunnah",
+        "Islamic History",
+        "Aqeedah",
+        "Fiqh",
+        "Tahdhib",
+        "Sirah",
+        "Review and Examination"
+      ]
+    },
+    "Nigerian History": {
+      "first": [
+        "Pre-Colonial Nigeria",
+        "Early Nigerian Kingdoms",
+        "Trade and Commerce",
+        "Religious Beliefs",
+        "Social Organization",
+        "Cultural Practices",
+        "Review and Examination",
+        "Closing"
+      ],
+      "second": [
+        "Colonial Period",
+        "British Administration",
+        "Indirect Rule",
+        "Resistance to Colonial Rule",
+        "Nationalism",
+        "Independence Movement",
+        "Review and Examination",
+        "Closing"
+      ],
+      "third": [
+        "Independence and After",
+        "First Republic",
+        "Military Rule",
+        "Democratic Governance",
+        "Nigerian Constitution",
+        "Citizenship Rights",
+        "Review and Examination",
+        "Closing"
+      ]
+    },
+    "Social and Citizenship Studies": {
+      "first": [
+        "Our Community",
+        "Government and Leadership",
+        "Civic Responsibilities",
+        "National Symbols",
+        "Cultural Diversity",
+        "Social Values",
+        "Review and Examination",
+        "Closing"
+      ],
+      "second": [
+        "Nigerian Economy",
+        "Agriculture and Industry",
+        "Trade and Commerce",
+        "Transportation",
+        "Communication",
+        "Technology and Development",
+        "Review and Examination",
+        "Closing"
+      ],
+      "third": [
+        "Environmental Issues",
+        "Conservation",
+        "Population",
+        "Health and Sanitation",
+        "Social Welfare",
+        "Citizenship Education",
+        "Review and Examination",
+        "Closing"
+      ]
+    },
+    "Cultural and Creative Arts": {
+      "first": [
+        "Art and Design",
+        "Drawing and Painting",
+        "Crafts and Textiles",
+        "Music",
+        "Drama",
+        "Dance",
+        "Nigerian Culture",
+        "Review and Examination"
+      ],
+      "second": [
+        "Sculpture",
+        "Printmaking",
+        "Photography",
+        "Film and Video",
+        "Architecture",
+        "Fashion Design",
+        "Nigerian Arts",
+        "Review and Examination"
+      ],
+      "third": [
+        "Performance Arts",
+        "Cultural Festivals",
+        "Traditional Attire",
+        "Nigerian Cuisine",
+        "Language and Literature",
+        "Heritage Preservation",
+        "Review and Examination",
+        "Closing"
+      ]
+    },
+    "French Language": {
+      "first": [
+        "Greetings and Introductions",
+        "Numbers and Counting",
+        "Colors and Shapes",
+        "Family Members",
+        "Animals and Plants",
+        "Daily Activities",
+        "Review and Examination",
+        "Closing"
+      ],
+      "second": [
+        "Food and Drinks",
+        "Clothing",
+        "Weather",
+        "Seasons",
+        "Holidays and Celebrations",
+        "School Life",
+        "Review and Examination",
+        "Closing"
+      ],
+      "third": [
+        "Health and Body",
+        "Sports and Games",
+        "Arts and Culture",
+        "Technology",
+        "Environment",
+        "Review and Examination",
+        "Closing"
+      ]
+    }
+  },
+  "PRIMARY 5": {
+    "English Language": {
+      "first": [
+        "Phonics and Word Recognition",
+        "Reading Comprehension",
+        "Grammar: Parts of Speech",
+        "Writing Skills",
+        "Listening and Speaking",
+        "Literature",
+        "Composition Writing",
+        "Review and Examination"
+      ],
+      "second": [
+        "Reading and Phonics",
+        "Grammar: Tenses and Agreement",
+        "Comprehension Skills",
+        "Writing and Handwriting",
+        "Listening and Speaking",
+        "Grammar: Sentence Structure",
+        "Reading and Vocabulary",
+        "Writing and Composition"
+      ],
+      "third": [
+        "Reading and Phonics",
+        "Grammar: Advanced Structures",
+        "Comprehension and Summary",
+        "Writing and Composition",
+        "Listening and Speaking",
+        "Literature and Poetry",
+        "Review and Examination",
+        "Closing"
+      ]
+    },
+    "Mathematics": {
+      "first": [
+        "Whole Numbers and Place Value",
+        "Addition and Subtraction",
+        "Multiplication and Division",
+        "Fractions",
+        "Decimals",
+        "Measurement: Length and Weight",
+        "Geometry: Angles",
+        "Data Handling"
+      ],
+      "second": [
+        "Measurement: Capacity and Time",
+        "Money and Finance",
+        "Patterns and Sequences",
+        "Geometry: 2D and 3D Shapes",
+        "Area and Perimeter",
+        "Volume",
+        "Data Handling",
+        "Problem Solving"
+      ],
+      "third": [
+        "Fractions and Decimals",
+        "Ratio and Proportion",
+        "Percentage",
+        "Measurement: Area and Volume",
+        "Angles and Shapes",
+        "Data and Statistics",
+        "Problem Solving",
+        "Review and Examination"
+      ]
+    },
+    "Basic Science and Technology": {
+      "first": [
+        "Living Things and Their Environment",
+        "Plants and Animals",
+        "Human Body Systems",
+        "Matter and Its Properties",
+        "Energy and Forces",
+        "Simple Machines",
+        "Basic Digital Literacy",
+        "Prevocational Studies"
+      ],
+      "second": [
+        "Matter and Its Changes",
+        "Energy and Its Forms",
+        "Forces and Motion",
+        "Basic Digital Literacy",
+        "Prevocational Studies",
+        "Earth Science",
+        "Environmental Science",
+        "Technology and Innovation"
+      ],
+      "third": [
+        "Ecosystems and Biodiversity",
+        "Natural Resources",
+        "Environmental Conservation",
+        "Basic Digital Literacy",
+        "Prevocational Studies",
+        "Science and Society",
+        "Health and Wellness",
+        "Review and Examination"
+      ]
+    },
+    "Physical and Health Education": {
+      "first": [
+        "Physical Fitness and Wellness",
+        "Athletics: Track Events",
+        "Ball Games",
+        "Swimming",
+        "Health Education",
+        "Safety Education",
+        "Nutrition",
+        "Personal Hygiene"
+      ],
+      "second": [
+        "Athletics: Field Events",
+        "Ball Games",
+        "Gymnastics",
+        "Martial Arts",
+        "Health Education",
+        "Safety Education",
+        "First Aid",
+        "Community Health"
+      ],
+      "third": [
+        "Athletics: Combined Events",
+        "Ball Games",
+        "Outdoor Activities",
+        "Health Education",
+        "Safety Education",
+        "Disease Prevention",
+        "Environmental Health",
+        "Review and Examination"
+      ]
+    },
+    "Christian Religious Studies": {
+      "first": [
+        "Creation and the Fall",
+        "The Patriarchs",
+        "The Exodus",
+        "The Law",
+        "The Prophets",
+        "The Promised Land",
+        "Christian Living",
+        "Prayer and Worship"
+      ],
+      "second": [
+        "The Life of Jesus",
+        "Teachings of Jesus",
+        "Miracles of Jesus",
+        "The Passion",
+        "The Resurrection",
+        "The Ascension",
+        "Christian Living",
+        "Prayer and Worship"
+      ],
+      "third": [
+        "The Holy Spirit",
+        "The Early Church",
+        "The Apostle Paul",
+        "Christian Doctrine",
+        "Moral Values",
+        "Social Responsibilities",
+        "Prayer and Worship",
+        "Review and Examination"
+      ]
+    },
+    "Islamic Religious Studies": {
+      "first": [
+        "Qur'anic Studies",
+        "Hadith and Sunnah",
+        "Islamic History",
+        "Aqeedah",
+        "Fiqh",
+        "Tahdhib",
+        "Sirah",
+        "Review and Examination"
+      ],
+      "second": [
+        "Qur'anic Studies",
+        "Hadith and Sunnah",
+        "Islamic History",
+        "Aqeedah",
+        "Fiqh",
+        "Tahdhib",
+        "Sirah",
+        "Review and Examination"
+      ],
+      "third": [
+        "Qur'anic Studies",
+        "Hadith and Sunnah",
+        "Islamic History",
+        "Aqeedah",
+        "Fiqh",
+        "Tahdhib",
+        "Sirah",
+        "Review and Examination"
+      ]
+    },
+    "Nigerian History": {
+      "first": [
+        "Nigeria Before Independence",
+        "Pre-Colonial Kingdoms",
+        "Trans-Saharan Trade",
+        "Trans-Atlantic Trade",
+        "Early European Contact",
+        "Missionary Activities",
+        "Review and Examination",
+        "Closing"
+      ],
+      "second": [
+        "Colonial Rule in Nigeria",
+        "Indirect Rule System",
+        "Southern and Northern Protectorates",
+        "Amalgamation of 1914",
+        "Nationalism",
+        "Independence Movement",
+        "Review and Examination",
+        "Closing"
+      ],
+      "third": [
+        "Independence and Beyond",
+        "First Republic",
+        "Military Interventions",
+        "Democratic Governance",
+        "Nigerian Constitution",
+        "Citizenship and Rights",
+        "Review and Examination",
+        "Closing"
+      ]
+    },
+    "Social and Citizenship Studies": {
+      "first": [
+        "Nigerian Society",
+        "Government Structure",
+        "Democratic Governance",
+        "Human Rights",
+        "Cultural Diversity",
+        "Social Justice",
+        "Review and Examination",
+        "Closing"
+      ],
+      "second": [
+        "Economic Activities",
+        "Agriculture",
+        "Industry and Manufacturing",
+        "Trade and Commerce",
+        "Transportation and Communication",
+        "Technology and Development",
+        "Review and Examination",
+        "Closing"
+      ],
+      "third": [
+        "Environmental Issues",
+        "Conservation",
+        "Population and Development",
+        "Health and Sanitation",
+        "Social Welfare",
+        "Citizenship Education",
+        "Review and Examination",
+        "Closing"
+      ]
+    },
+    "Cultural and Creative Arts": {
+      "first": [
+        "Art History",
+        "Drawing and Painting",
+        "Sculpture and Ceramics",
+        "Music",
+        "Drama",
+        "Dance",
+        "Nigerian Arts and Culture",
+        "Review and Examination"
+      ],
+      "second": [
+        "Printmaking",
+        "Photography",
+        "Film and Video",
+        "Architecture",
+        "Fashion Design",
+        "Textile Arts",
+        "Review and Examination",
+        "Closing"
+      ],
+      "third": [
+        "Performance Arts",
+        "Cultural Heritage",
+        "Traditional Crafts",
+        "Nigerian Cuisine",
+        "Language and Literature",
+        "Heritage Preservation",
+        "Review and Examination",
+        "Closing"
+      ]
+    },
+    "French Language": {
+      "first": [
+        "Greetings and Introductions",
+        "Numbers and Counting",
+        "Colors and Shapes",
+        "Family Members",
+        "Animals and Plants",
+        "Daily Activities",
+        "Review and Examination",
+        "Closing"
+      ],
+      "second": [
+        "Food and Drinks",
+        "Clothing",
+        "Weather",
+        "Seasons",
+        "Holidays and Celebrations",
+        "School Life",
+        "Review and Examination",
+        "Closing"
+      ],
+      "third": [
+        "Health and Body",
+        "Sports and Games",
+        "Arts and Culture",
+        "Technology",
+        "Environment",
+        "Review and Examination",
+        "Closing"
+      ]
+    }
+  },
+  "PRIMARY 6": {
+    "English Language": {
+      "first": [
+        "Phonics and Word Recognition",
+        "Reading Comprehension",
+        "Grammar: Advanced Parts of Speech",
+        "Writing Skills",
+        "Listening and Speaking",
+        "Literature",
+        "Composition Writing",
+        "Review and Examination"
+      ],
+      "second": [
+        "Reading and Phonics",
+        "Grammar: Complex Sentences",
+        "Comprehension Skills",
+        "Writing and Handwriting",
+        "Listening and Speaking",
+        "Grammar: Reported Speech",
+        "Reading and Vocabulary",
+        "Writing and Composition"
+      ],
+      "third": [
+        "Reading and Phonics",
+        "Grammar: Advanced Grammar",
+        "Comprehension and Summary",
+        "Writing and Composition",
+        "Listening and Speaking",
+        "Literature and Poetry",
+        "Review and Examination",
+        "Closing"
+      ]
+    },
+    "Mathematics": {
+      "first": [
+        "Whole Numbers and Place Value",
+        "Addition and Subtraction",
+        "Multiplication and Division",
+        "Fractions",
+        "Decimals",
+        "Measurement: Length and Weight",
+        "Geometry: Angles and Lines",
+        "Data Handling"
+      ],
+      "second": [
+        "Measurement: Capacity and Time",
+        "Money and Finance",
+        "Patterns and Sequences",
+        "Geometry: 2D and 3D Shapes",
+        "Area and Perimeter",
+        "Volume and Capacity",
+        "Data Handling",
+        "Problem Solving"
+      ],
+      "third": [
+        "Fractions and Decimals",
+        "Ratio and Proportion",
+        "Percentage",
+        "Measurement: Advanced Topics",
+        "Angles and Shapes",
+        "Data and Statistics",
+        "Problem Solving",
+        "Review and Examination"
+      ]
+    },
+    "Basic Science and Technology": {
+      "first": [
+        "Living Things and Their Environment",
+        "Human Body Systems",
+        "Plants and Their Functions",
+        "Matter and Its Properties",
+        "Energy and Forces",
+        "Simple Machines",
+        "Basic Digital Literacy",
+        "Prevocational Studies"
+      ],
+      "second": [
+        "Matter and Its Changes",
+        "Energy and Its Forms",
+        "Forces and Motion",
+        "Basic Digital Literacy",
+        "Prevocational Studies",
+        "Earth Science",
+        "Environmental Science",
+        "Technology and Innovation"
+      ],
+      "third": [
+        "Ecosystems and Biodiversity",
+        "Natural Resources",
+        "Environmental Conservation",
+        "Basic Digital Literacy",
+        "Prevocational Studies",
+        "Science and Society",
+        "Health and Wellness",
+        "Review and Examination"
+      ]
+    },
+    "Physical and Health Education": {
+      "first": [
+        "Physical Fitness and Wellness",
+        "Athletics: Track Events",
+        "Ball Games",
+        "Swimming",
+        "Health Education",
+        "Safety Education",
+        "Nutrition",
+        "Personal Hygiene"
+      ],
+      "second": [
+        "Athletics: Field Events",
+        "Ball Games",
+        "Gymnastics",
+        "Martial Arts",
+        "Health Education",
+        "Safety Education",
+        "First Aid",
+        "Community Health"
+      ],
+      "third": [
+        "Athletics: Combined Events",
+        "Ball Games",
+        "Outdoor Activities",
+        "Health Education",
+        "Safety Education",
+        "Disease Prevention",
+        "Environmental Health",
+        "Review and Examination"
+      ]
+    },
+    "Christian Religious Studies": {
+      "first": [
+        "Creation and the Fall",
+        "The Patriarchs",
+        "The Exodus",
+        "The Law",
+        "The Prophets",
+        "The Promised Land",
+        "Christian Living",
+        "Prayer and Worship"
+      ],
+      "second": [
+        "The Life of Jesus",
+        "Teachings of Jesus",
+        "Miracles of Jesus",
+        "The Passion",
+        "The Resurrection",
+        "The Ascension",
+        "Christian Living",
+        "Prayer and Worship"
+      ],
+      "third": [
+        "The Holy Spirit",
+        "The Early Church",
+        "The Apostle Paul",
+        "Christian Doctrine",
+        "Moral Values",
+        "Social Responsibilities",
+        "Prayer and Worship",
+        "Review and Examination"
+      ]
+    },
+    "Islamic Religious Studies": {
+      "first": [
+        "Qur'anic Studies",
+        "Hadith and Sunnah",
+        "Islamic History",
+        "Aqeedah",
+        "Fiqh",
+        "Tahdhib",
+        "Sirah",
+        "Review and Examination"
+      ],
+      "second": [
+        "Qur'anic Studies",
+        "Hadith and Sunnah",
+        "Islamic History",
+        "Aqeedah",
+        "Fiqh",
+        "Tahdhib",
+        "Sirah",
+        "Review and Examination"
+      ],
+      "third": [
+        "Qur'onic Studies",
+        "Hadith and Sunnah",
+        "Islamic History",
+        "Aqeedah",
+        "Fiqh",
+        "Tahdhib",
+        "Sirah",
+        "Review and Examination"
+      ]
+    },
+    "Nigerian History": {
+      "first": [
+        "Nigeria Before Independence",
+        "Pre-Colonial Kingdoms",
+        "Trans-Saharan Trade",
+        "Trans-Atlantic Trade",
+        "Early European Contact",
+        "Missionary Activities",
+        "Review and Examination",
+        "Closing"
+      ],
+      "second": [
+        "Colonial Rule in Nigeria",
+        "Indirect Rule System",
+        "Southern and Northern Protectorates",
+        "Amalgamation of 1914",
+        "Nationalism",
+        "Independence Movement",
+        "Review and Examination",
+        "Closing"
+      ],
+      "third": [
+        "Independence and Beyond",
+        "First Republic",
+        "Military Interventions",
+        "Democratic Governance",
+        "Nigerian Constitution",
+        "Citizenship and Rights",
+        "Review and Examination",
+        "Closing"
+      ]
+    },
+    "Social and Citizenship Studies": {
+      "first": [
+        "Nigerian Society",
+        "Government Structure",
+        "Democratic Governance",
+        "Human Rights",
+        "Cultural Diversity",
+        "Social Justice",
+        "Review and Examination",
+        "Closing"
+      ],
+      "second": [
+        "Economic Activities",
+        "Agriculture",
+        "Industry and Manufacturing",
+        "Trade and Commerce",
+        "Transportation and Communication",
+        "Technology and Development",
+        "Review and Examination",
+        "Closing"
+      ],
+      "third": [
+        "Environmental Issues",
+        "Conservation",
+        "Population and Development",
+        "Health and Sanitation",
+        "Social Welfare",
+        "Citizenship Education",
+        "Review and Examination",
+        "Closing"
+      ]
+    },
+    "Cultural and Creative Arts": {
+      "first": [
+        "Art History",
+        "Drawing and Painting",
+        "Sculpture and Ceramics",
+        "Music",
+        "Drama",
+        "Dance",
+        "Nigerian Arts and Culture",
+        "Review and Examination"
+      ],
+      "second": [
+        "Printmaking",
+        "Photography",
+        "Film and Video",
+        "Architecture",
+        "Fashion Design",
+        "Textile Arts",
+        "Review and Examination",
+        "Closing"
+      ],
+      "third": [
+        "Performance Arts",
+        "Cultural Heritage",
+        "Traditional Crafts",
+        "Nigerian Cuisine",
+        "Language and Literature",
+        "Heritage Preservation",
+        "Review and Examination",
+        "Closing"
+      ]
+    },
+    "French Language": {
+      "first": [
+        "Greetings and Introductions",
+        "Numbers and Counting",
+        "Colors and Shapes",
+        "Family Members",
+        "Animals and Plants",
+        "Daily Activities",
+        "Review and Examination",
+        "Closing"
+      ],
+      "second": [
+        "Food and Drinks",
+        "Clothing",
+        "Weather",
+        "Seasons",
+        "Holidays and Celebrations",
+        "School Life",
+        "Review and Examination",
+        "Closing"
+      ],
+      "third": [
+        "Health and Body",
+        "Sports and Games",
+        "Arts and Culture",
+        "Technology",
+        "Environment",
+        "Review and Examination",
+        "Closing"
+      ]
+    }
+  }
+}

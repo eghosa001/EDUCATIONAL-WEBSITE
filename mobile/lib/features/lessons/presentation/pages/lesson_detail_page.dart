@@ -1,8 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../shared/widgets/index.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../shared/widgets/index.dart';
+import '../../../shared/repositories/lesson_repository.dart';
+import '../../../shared/models/course/course_model.dart';
 
-class LessonDetailPage extends StatelessWidget {
+final _lessonDetailFutureProvider = FutureProvider.family<Lesson, ({String courseId, String lessonId})>((ref, params) async {
+  final repo = ref.read(lessonRepositoryProvider);
+  return repo.getLesson(params.lessonId);
+});
+
+final _lessonProgressFutureProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, lessonId) async {
+  final repo = ref.read(lessonRepositoryProvider);
+  return repo.getLessonProgress(lessonId);
+});
+
+class LessonDetailPage extends ConsumerWidget {
   final String courseId;
   final String lessonId;
 
@@ -13,198 +26,180 @@ class LessonDetailPage extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final lessonAsync = ref.watch(_lessonDetailFutureProvider((courseId: courseId, lessonId: lessonId)));
+    final progressAsync = ref.watch(_lessonProgressFutureProvider(lessonId));
+
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          // App bar
-          SliverAppBar(
-            expandedHeight: 220,
-            floating: false,
-            pinned: true,
-            backgroundColor: theme.colorScheme.primary,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => context.pop(),
-            ),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                color: theme.colorScheme.primary,
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.play_circle_filled, size: 64, color: Colors.white54),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Video Lesson',
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.bookmark_border, color: Colors.white),
-                onPressed: () {},
-              ),
-              IconButton(
-                icon: const Icon(Icons.share, color: Colors.white),
-                onPressed: () {},
-              ),
+      body: lessonAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Failed to load lesson', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 8),
+              EduButton(label: 'Retry', onPressed: () => ref.invalidate(_lessonDetailFutureProvider)),
             ],
           ),
-
-          // Lesson content
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title
-                  Text(
-                    'Cell Structure & Function',
-                    style: theme.textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'SS2 Biology - Module 1',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Progress indicator
-                  Row(
-                    children: [
-                      Expanded(
-                        child: EduProgressBar(progress: 0.25),
-                      ),
-                      const SizedBox(width: 8),
-                      Text('25%', style: theme.textTheme.labelLarge),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Learning objectives
-                  Text(
-                    'Learning Objectives',
-                    style: theme.textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  _ObjectiveItem(text: 'Identify the main parts of a cell'),
-                  _ObjectiveItem(text: 'Describe the function of each organelle'),
-                  _ObjectiveItem(text: 'Differentiate between plant and animal cells'),
-                  _ObjectiveItem(text: 'Understand cell membrane transport'),
-                  const SizedBox(height: 24),
-
-                  // Lesson notes
-                  Text(
-                    'Lesson Notes',
-                    style: theme.textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  EduCard(
-                    child: const Text(
-                      'Cells are the basic building blocks of all living things. They perform all the functions necessary for life. There are two main types of cells: prokaryotic and eukaryotic...',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Resources
-                  Text(
-                    'Resources',
-                    style: theme.textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  _ResourceItem(icon: Icons.picture_as_pdf, title: 'Cell Diagram PDF', size: '2.4 MB'),
-                  _ResourceItem(icon: Icons.image, title: 'Cell Structure Image', size: '1.1 MB'),
-                  _ResourceItem(icon: Icons.note, title: 'Study Notes', size: '540 KB'),
-                  const SizedBox(height: 24),
-
-                  // Quiz
-                  Text(
-                    'Quiz',
-                    style: theme.textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  EduCard(
-                    child: Row(
-                      children: [
-                        const Icon(Icons.quiz, color: Colors.blue),
-                        const SizedBox(width: 12),
-                        Expanded(
+        ),
+        data: (lesson) => CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              expandedHeight: 220,
+              floating: false,
+              pinned: true,
+              backgroundColor: theme.colorScheme.primary,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => context.pop(),
+              ),
+              flexibleSpace: FlexibleSpaceBar(
+                background: Container(
+                  color: theme.colorScheme.primary,
+                  child: lesson.videoUrl != null
+                      ? Center(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text('5 Questions', style: TextStyle(fontSize: 14)),
-                              Text('10 minutes', style: theme.textTheme.labelSmall),
+                              const Icon(Icons.play_circle_filled, size: 64, color: Colors.white54),
+                              const SizedBox(height: 8),
+                              const Text('Video Lesson', style: TextStyle(color: Colors.white70)),
+                            ],
+                          ),
+                        )
+                      : Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.article, size: 64, color: Colors.white.withOpacity(0.5)),
+                              const SizedBox(height: 8),
+                              const Text('Text Lesson', style: TextStyle(color: Colors.white70)),
                             ],
                           ),
                         ),
-                        EduButton(
-                          label: 'Start',
-                          width: 80,
-                          height: 36,
-                          onPressed: () => context.push('/quizzes/1'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Navigation buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: EduButton(
-                          label: 'Previous Lesson',
-                          isOutlined: true,
-                          onPressed: () {},
-                          textColor: theme.colorScheme.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: EduButton(
-                          label: 'Next Lesson',
-                          onPressed: () {},
+                ),
+              ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.bookmark_border, color: Colors.white),
+                  onPressed: () {},
+                ),
+                IconButton(
+                  icon: const Icon(Icons.share, color: Colors.white),
+                  onPressed: () {},
+                ),
+              ],
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(lesson.title, style: theme.textTheme.titleLarge),
+                    if (lesson.description != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        lesson.description!,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 32),
-                ],
+                    const SizedBox(height: 16),
+                    progressAsync.when(
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
+                      data: (progress) {
+                        final completed = progress['isCompleted'] ?? lesson.isCompleted;
+                        final pct = completed ? 1.0 : 0.0;
+                        return Row(
+                          children: [
+                            Expanded(child: EduProgressBar(progress: pct)),
+                            const SizedBox(width: 8),
+                            Text(completed ? 'Completed' : '0%', style: theme.textTheme.labelLarge),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+
+                    if (lesson.durationMinutes > 0) ...[
+                      Row(
+                        children: [
+                          const Icon(Icons.timer, size: 18, color: Colors.grey),
+                          const SizedBox(width: 8),
+                          Text('Duration: ${lesson.formattedDuration}', style: theme.textTheme.bodyMedium),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    if (lesson.resources != null && lesson.resources!.isNotEmpty) ...[
+                      Text('Resources', style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      ...lesson.resources!.map((r) => _ResourceItem(
+                        icon: r.type == 'pdf'
+                            ? Icons.picture_as_pdf
+                            : r.type == 'image'
+                                ? Icons.image
+                                : Icons.note,
+                        title: r.fileName ?? r.description ?? 'Resource',
+                        size: r.fileSize != null ? '${(r.fileSize! / 1024).toStringAsFixed(1)} KB' : '',
+                      )),
+                      const SizedBox(height: 24),
+                    ],
+
+                    if (lesson.quizzes != null && lesson.quizzes!.isNotEmpty) ...[
+                      Text('Quiz', style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      ...lesson.quizzes!.map((quiz) => EduCard(
+                        child: Row(
+                          children: [
+                            const Icon(Icons.quiz, color: Colors.blue),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(quiz.title, style: const TextStyle(fontSize: 14)),
+                                  Text('${quiz.timeLimitMinutes} minutes', style: theme.textTheme.labelSmall),
+                                ],
+                              ),
+                            ),
+                            EduButton(
+                              label: 'Start',
+                              width: 80,
+                              height: 36,
+                              onPressed: () => context.push('/quizzes/${quiz.id}'),
+                            ),
+                          ],
+                        ),
+                      )),
+                      const SizedBox(height: 24),
+                    ],
+
+                    if (!lesson.isCompleted)
+                      EduButton(
+                        label: 'Mark as Complete',
+                        onPressed: () async {
+                          try {
+                            await ref.read(lessonRepositoryProvider).completeLesson(lessonId);
+                            ref.invalidate(_lessonProgressFutureProvider(lessonId));
+                          } catch (_) {}
+                        },
+                      ),
+                    const SizedBox(height: 32),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ObjectiveItem extends StatelessWidget {
-  final String text;
-
-  const _ObjectiveItem({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          const Icon(Icons.check_circle, size: 18, color: Colors.green),
-          const SizedBox(width: 8),
-          Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyMedium)),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -236,7 +231,7 @@ class _ResourceItem extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title, style: theme.textTheme.titleSmall),
-                  Text(size, style: theme.textTheme.labelSmall),
+                  if (size.isNotEmpty) Text(size, style: theme.textTheme.labelSmall),
                 ],
               ),
             ),

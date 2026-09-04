@@ -106,7 +106,12 @@ class LiveVideoState {
   }
 }
 
-final liveVideoProvider =
-    StateNotifierProvider<LiveVideoProvider, LiveVideoState>((ref) {
-  throw UnimplementedError();
-});
+final liveVideoProvider = StateNotifierProvider.family<LiveVideoProvider, LiveVideoState, ({String classId, String meetingUrl, String? displayName})>(
+  (ref, params) {
+    return LiveVideoProvider(
+      classId: params.classId,
+      meetingUrl: params.meetingUrl,
+      displayName: params.displayName,
+    );
+  },
+);

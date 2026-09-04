@@ -74,7 +74,8 @@ export const verifyPayment = async (reference: string, token: string) => {
   const response = await fetch(`${baseUrl}/payments/verify`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify({ reference, credentials: 'include' }),
+    body: JSON.stringify({ reference }),
+    credentials: 'include',
   });
   return handleApiError(response);
 };
@@ -143,7 +144,8 @@ export const fundWallet = async (amount: number, paymentMethodId: string, token:
   const response = await fetch(`${baseUrl}/payments/wallet/fund`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify({ amount, paymentMethodId, credentials: 'include' }),
+    body: JSON.stringify({ amount, paymentMethodId }),
+    credentials: 'include',
   });
   return handleApiError(response);
 };

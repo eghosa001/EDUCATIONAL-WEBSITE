@@ -62,7 +62,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const getClient = () => getSupabase();
 
   const clearLocalAuth = () => {
-    if (typeof window !== 'undefined') localStorage.removeItem('edu_user');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('edu_user');
+      localStorage.removeItem('edu_token');
+    }
     // Supabase owns persistence and refresh-token storage. Do not duplicate
     // access/refresh tokens in application-managed localStorage keys.
     storeLogout();
@@ -78,7 +81,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(userData);
     setToken(session.access_token);
     setRefreshToken(session.refresh_token || null);
-    if (typeof window !== 'undefined') localStorage.setItem('edu_user', JSON.stringify(userData));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('edu_user', JSON.stringify(userData));
+      localStorage.setItem('edu_token', session.access_token);
+    }
   };
 
   const restoreSession = async () => {

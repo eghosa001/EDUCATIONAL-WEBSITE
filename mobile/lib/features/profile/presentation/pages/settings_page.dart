@@ -1,41 +1,64 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../shared/widgets/index.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../shared/widgets/index.dart';
+import '../../../di/providers.dart';
+import '../../../shared/repositories/authentication_repository.dart';
 
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
+    final language = ref.watch(languageProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Profile section
           _SettingsSection(
             title: 'Profile',
             items: [
-              _SettingsItem(icon: Icons.person, label: 'Edit Profile', onTap: () {}),
-              _SettingsItem(icon: Icons.lock, label: 'Change Password', onTap: () {}),
-              _SettingsItem(icon: Icons.security, label: 'Security', onTap: () {}),
+              _SettingsItem(icon: Icons.person, label: 'Edit Profile', onTap: () => context.push('/profile')),
+              _SettingsItem(icon: Icons.lock, label: 'Change Password', onTap: () => context.push('/forgot-password')),
             ],
           ),
           const SizedBox(height: 16),
 
-          // Preferences section
           _SettingsSection(
             title: 'Preferences',
             items: [
-              _SettingsItem(icon: Icons.language, label: 'Language', onTap: () {}, trailing: const Text('English')),
-              _SettingsItem(icon: Icons.dark_mode, label: 'Dark Mode', onTap: () {}, trailing: const ToggleSwitch()),
-              _SettingsItem(icon: Icons.notifications, label: 'Notifications', onTap: () {}, trailing: const ToggleSwitch(isOn: true)),
+              _SettingsItem(
+                icon: Icons.language,
+                label: 'Language',
+                onTap: () => _showLanguageDialog(context, ref, language),
+                trailing: Text(_languageLabel(language)),
+              ),
+              _SettingsItem(
+                icon: Icons.dark_mode,
+                label: 'Dark Mode',
+                trailing: Switch(
+                  value: themeMode == ThemeMode.dark,
+                  onChanged: (value) {
+                    ref.read(themeModeProvider.notifier).state =
+                        value ? ThemeMode.dark : ThemeMode.light;
+                  },
+                ),
+              ),
+              _SettingsItem(
+                icon: Icons.notifications,
+                label: 'Notifications',
+                trailing: Switch(
+                  value: true,
+                  onChanged: (value) {},
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
 
-          // Support section
           _SettingsSection(
             title: 'Support',
             items: [
@@ -47,12 +70,21 @@ class SettingsPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Account section
           _SettingsSection(
             title: 'Account',
             items: [
-              _SettingsItem(icon: Icons.logout, label: 'Logout', onTap: () => _showLogoutDialog(context), isDestructive: true),
-              _SettingsItem(icon: Icons.delete, label: 'Delete Account', onTap: () => _showDeleteDialog(context), isDestructive: true),
+              _SettingsItem(
+                icon: Icons.logout,
+                label: 'Logout',
+                onTap: () => _showLogoutDialog(context, ref),
+                isDestructive: true,
+              ),
+              _SettingsItem(
+                icon: Icons.delete,
+                label: 'Delete Account',
+                onTap: () => _showDeleteDialog(context),
+                isDestructive: true,
+              ),
             ],
           ),
 
@@ -60,7 +92,7 @@ class SettingsPage extends StatelessWidget {
           Center(
             child: Text(
               'Version 1.0.0',
-              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: theme.of(context).textTheme.labelSmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ),
         ],
@@ -68,7 +100,48 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  void _showLogoutDialog(BuildContext context) {
+  String _languageLabel(String lang) {
+    switch (lang) {
+      case 'ha':
+        return 'Hausa';
+      case 'yo':
+        return 'Yoruba';
+      case 'ig':
+        return 'Igbo';
+      default:
+        return 'English';
+    }
+  }
+
+  void _showLanguageDialog(BuildContext context, WidgetRef ref, String current) {
+    final languages = [
+      {'code': 'en', 'label': 'English'},
+      {'code': 'ha', 'label': 'Hausa'},
+      {'code': 'yo', 'label': 'Yoruba'},
+    ];
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Language'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: languages.map((lang) => RadioListTile<String>(
+            title: Text(lang['label']!),
+            value: lang['code']!,
+            groupValue: current,
+            onChanged: (value) {
+              if (value != null) {
+                ref.read(languageProvider.notifier).state = value;
+              }
+              Navigator.pop(context);
+            },
+          )).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -79,9 +152,14 @@ class SettingsPage extends StatelessWidget {
           EduButton(
             label: 'Logout',
             width: 100,
-            onPressed: () {
+            onPressed: () async {
               context.pop();
-              context.go('/login');
+              await ref.read(authenticationRepositoryProvider).logout();
+              if (context.mounted) {
+                ref.read(authStateProvider.notifier).state = false;
+                ref.read(userProvider.notifier).state = null;
+                context.go('/login');
+              }
             },
           ),
         ],
@@ -126,9 +204,7 @@ class _SettingsSection extends StatelessWidget {
         Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         const SizedBox(height: 8),
         EduCard(
-          child: Column(
-            children: items,
-          ),
+          child: Column(children: items),
         ),
       ],
     );
@@ -158,35 +234,6 @@ class _SettingsItem extends StatelessWidget {
       title: Text(label, style: theme.textTheme.titleSmall?.copyWith(color: isDestructive ? theme.colorScheme.error : null)),
       trailing: trailing ?? Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
       onTap: onTap,
-    );
-  }
-}
-
-class ToggleSwitch extends StatefulWidget {
-  final bool isOn;
-
-  const ToggleSwitch({super.key, this.isOn = false});
-
-  @override
-  State<ToggleSwitch> createState() => _ToggleSwitchState();
-}
-
-class _ToggleSwitchState extends State<ToggleSwitch> {
-  late bool _isOn;
-
-  @override
-  void initState() {
-    super.initState();
-    _isOn = widget.isOn;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Switch(
-      value: _isOn,
-      onChanged: (value) {
-        setState(() => _isOn = value);
-      },
     );
   }
 }

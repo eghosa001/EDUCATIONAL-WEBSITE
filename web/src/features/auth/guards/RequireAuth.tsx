@@ -16,7 +16,7 @@ export function RequireAuth({ children, allowedRoles }: RequireAuthProps) {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace('/auth/login');
+      router.replace('/login');
     }
   }, [isAuthenticated, isLoading, router]);
 
@@ -54,7 +54,7 @@ export function useRequireAuth() {
 
   const checkAccess = useCallback(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace('/auth/login');
+      router.replace('/login');
       return false;
     }
     return true;

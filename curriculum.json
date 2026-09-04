@@ -1,0 +1,3410 @@
+{
+  "JSS1": {
+    "English Studies": {
+      "first": [
+        "Vowel Sounds /a:/, /e/, /i/, /o/, /u/",
+        "Adjectives and Opposites",
+        "Simple Tenses – Simple Present, Simple Past",
+        "Greetings and Polite Expressions (Good morning, Good afternoon, Good evening)",
+        "Reading Comprehension – Short Passages about My Family, My School",
+        "Composition – Myself (Personal Introduction)",
+        "Literature in English – Oral Narratives and Folktales"
+      ],
+      "second": [
+        "Vowel Sounds /u/ and /u:/, /u:/, /ɑ:/, /ɜ:/, /ə/",
+        "Adverbials – Frequency, Manner, Features, Types, Functions",
+        "Tenses – Simple Present, Simple Past, Present Continuous, Past Continuous, Future (will, shall)",
+        "Formal Letter – Writing to the School Authority (Application for Leave, etc.)",
+        "Reading to Understand Author's Mood and Vocabulary Development",
+        "Narrative, Argumentative, and Expository Essays",
+        "Folktales – African Tales (Didactic, Entertainment, Magical Features)",
+        "Poetry – Definition, Features, Types (Epic, Lyric, etc.), Oral vs Written",
+        "Drama – Features (Theme, Costumes, Audience), Identifying Features of Drama",
+        "Myths and Legends – Comparing Myths and Legends, Features"
+      ],
+      "third": [
+        "Diphthongs: /eɪ/, /oʊ/, /aʊ/, /ɪə/, /eə/, /ɔɪ/, /aɪ/, /ʊə/",
+        "Identification of Diphthongs in Words",
+        "Introduction to Consonant Sounds",
+        "Syllables – Words of Two, Three, Four Syllables",
+        "Active and Passive Voice",
+        "Tag Questions",
+        "Reading Comprehension – Spatial Descriptions",
+        "Vocabulary Development – Transport, Kitchen, Fishing, Teaching, Cooking, Sick Bay, Spelling Drills",
+        "Expository, Argumentative, and Descriptive Essays",
+        "Recommended Prose Text – Themes, Characters, Setting, Plot",
+        "Poetry – Language in Poetry, Figures of Speech (Simile, Metaphor, Irony, Euphemism, Pun)",
+        "Drama – Dramatization of Scenes"
+      ]
+    },
+    "Mathematics": {
+      "first": [
+        "Whole Numbers – Place Value, Ordering, Properties",
+        "LCM (Least Common Multiple)",
+        "HCF (Highest Common Factor)",
+        "Counting in Base 2",
+        "Conversion of Numbers – Base 10 to Binary",
+        "Fractions I – Types (Proper, Improper, Mixed), Simplification",
+        "Fractions II – Equivalent Fractions, Comparison",
+        "Basic Operations on Whole Numbers"
+      ],
+      "second": [
+        "Addition and Subtraction of Fractions",
+        "Multiplication and Division of Fractions",
+        "Estimation and Approximation",
+        "Numbers in Base 2 – Addition",
+        "Numbers in Base 2 – Subtraction",
+        "Numbers in Base 2 – Multiplication",
+        "Algebraic Processes I – Use of Symbols, Coefficients, Expressions",
+        "Simplification of Algebraic Expressions"
+      ],
+      "third": [
+        "Simple Equations",
+        "Plane Shapes – Triangles, Quadrilaterals, Circles",
+        "Three-Dimensional Figures – Cubes, Cuboids, Cylinders, Spheres, Cones",
+        "Constructions – Basic Geometric Constructions",
+        "Angles – Types, Angle Sum Properties",
+        "Everyday Statistics I – Need for Statistics",
+        "Everyday Statistics II – Methods of Data Collection",
+        "Everyday Statistics III – Data Presentation (Tables, Bar Charts, Pie Charts)"
+      ]
+    },
+    "Physical and Health Education": {
+      "first": [
+        "Meaning of Physical Fitness",
+        "Components of Physical Fitness",
+        "Characteristics of a Physically Fit Person",
+        "Importance of Physical Fitness",
+        "Exercises to Develop Strength, Endurance and Flexibility",
+        "Safety Precautions while Performing Exercises",
+        "Meaning of Recreation, Leisure and Dance",
+        "Differences between Dance, Leisure and Recreation"
+      ],
+      "second": [
+        "Benefits of Recreation and Dance",
+        "Athletics – Shot-Put (Basic Skills and Techniques)",
+        "Execution of Shot-Put Techniques",
+        "Athletics – Discus Throw (Basic Skills and Techniques)",
+        "Execution of Discus Throw Techniques",
+        "Rules Governing Shot-Put and Discus Throw",
+        "Safety Measures in Track and Field Events",
+        "Football – Basic Rules, Skills, Team Play"
+      ],
+      "third": [
+        "Volleyball – Basic Rules, Skills, Team Play",
+        "Contact and Non-Contact Sports – Meaning and Types",
+        "Benefits of Contact and Non-Contact Sports",
+        "Basic Skills and Techniques in Contact and Non-Contact Sports",
+        "Safety Measures in Contact and Non-Contact Sports",
+        "Personal, School and Community Health – Determinants of Health",
+        "Characteristics of a Healthy Person"
+      ]
+    },
+    "Christian Religious Studies": {
+      "first": [
+        "God and His Creation",
+        "The Creation Story",
+        "The Creation of Man and Woman",
+        "Purpose of Creation",
+        "Marriage",
+        "Marriage II – Types and Importance",
+        "Disobedience I – Adam and Eve's Disobedience",
+        "Disobedience II – Consequences"
+      ],
+      "second": [
+        "Call to Repentance I – King David's Repentance",
+        "Call to Repentance II – People of Nineveh",
+        "Call to Repentance III – John the Baptist",
+        "Call to Repentance IV – Jesus Commends Zacchaeus",
+        "Call to Obedience I – Abraham's Call",
+        "Call to Obedience II – Abraham's Blessings and Sacrifice",
+        "Call to Service I – Joseph and Ruth",
+        "Call to Service II – Lessons from Joseph and Ruth"
+      ],
+      "third": [
+        "Relationship in the Family I – Types of Family",
+        "Relationship in the Family II – Roles of Family Members",
+        "Relationship in the Family III – Good Family Name",
+        "Relationship in the School I – Choosing Friends",
+        "Relationship in the School II – Biblical Friendship Examples",
+        "Relationship in the School III – Importance and Consequences of Friends",
+        "Relationship in the Community I – Community Leaders",
+        "Relationship in the Church – Fellowship and Unity"
+      ]
+    },
+    "Islamic Religious Studies": {
+      "first": [
+        "Introduction to the Qur'an",
+        "Qur'anic Recitation: Suratul Tariq (Q86:1–17)",
+        "Qur'anic Recitation: Suratul Buruj (Q85:1–22)",
+        "Qur'anic Recitation: Suratul Inshiqaq (Q84:1–25)",
+        "Introduction to Tajwid",
+        "Rules of Nun Sakinah and Tanwin – Idgham, Ikhfa, Izhar, Iqlab",
+        "Rules of Mim Sakinah – Idgham Shafawi, Ikhfa Shafawi, Izhar Shafawi",
+        "Importance of Tajwid"
+      ],
+      "second": [
+        "Introduction to Hadith",
+        "Hadith No. 11 (An-Nawawi Collection)",
+        "Hadith Nos. 12–13",
+        "Hadith Nos. 14–15",
+        "Healthy Social Relationships in Islam",
+        "Corruption in Islam",
+        "Spirituality and Essence of Man's Creation",
+        "Application of Islamic Ethics"
+      ],
+      "third": [
+        "Introduction to Fiqh",
+        "Supererogatory Prayers (Nawafil)",
+        "Prohibited Prayer Times",
+        "Fundamental Principles of Iman",
+        "Faith and Good Deeds",
+        "Application of Faith",
+        "Review of Qur'an and Hadith",
+        "Ethical Conduct in Islam"
+      ]
+    },
+    "Nigerian History": {
+      "first": [
+        "Introduction to History",
+        "Nigerian Peoples and Languages",
+        "Early Settlements in Nigeria – Nok, Igbo-Ukwu, Ife, Benin",
+        "Origins of Nigerian Societies",
+        "Traditional Political Systems I – Yoruba Kingdoms, Igbo Village Democracy",
+        "Traditional Political Systems II – Hausa/Fulani Emirate, Kanem-Bornu",
+        "Nigerian Art and Culture",
+        "Early Trade and Exchange – Local, Trans-Saharan"
+      ],
+      "second": [
+        "Islam in Nigeria",
+        "Christianity in Nigeria",
+        "European Contact with Nigeria",
+        "Trans-Atlantic Slave Trade",
+        "Abolition of Slave Trade",
+        "Legitimate Trade – Palm Oil Trade",
+        "British Conquest of Nigerian Territories",
+        "Amalgamation of 1914"
+      ],
+      "third": [
+        "Colonial Administration – Indirect and Direct Rule",
+        "Reactions to Colonialism I – Benin, Ekumeku, Satiru",
+        "Reactions to Colonialism II – Sokoto Caliphate, Tiv, Igbo",
+        "Education in Colonial Nigeria",
+        "Nationalism in Nigeria I – Herbert Macaulay, Nnamdi Azikiwe",
+        "Nationalism in Nigeria II – Awolowo, Ahmadu Bello, Enahoro",
+        "Nigerian Newspapers and Nationalism",
+        "Road to Independence"
+      ]
+    },
+    "Social and Citizenship Studies": {
+      "first": [
+        "Citizenship – Meaning, Ways of Becoming a Citizen",
+        "Rights and Duties of Citizens",
+        "Family as a Primary Social Group",
+        "Culture and Identity",
+        "Socialization – Agents, Importance",
+        "Social Conflict – Causes, Effects, Resolution",
+        "Peace Education",
+        "Conflict Prevention and Resolution"
+      ],
+      "second": [
+        "Environment and Sustainability",
+        "Climate Change",
+        "Disaster Risk Reduction",
+        "Disaster Forecasting and Early Warning Signs",
+        "Environmental Protection",
+        "Response to Epidemics",
+        "Promoting Safety in Our Community",
+        "Harmful Traditional Practices"
+      ],
+      "third": [
+        "Digital Technologies",
+        "Cyber and Digital Security",
+        "Benefits and Ideals of Money",
+        "Financial Risks and Rewards",
+        "Migration",
+        "Smuggling of Migrants and Irregular Migration",
+        "Human Trafficking",
+        "International Relations"
+      ]
+    },
+    "Cultural and Creative Arts": {
+      "first": [
+        "Introduction to Arts",
+        "Introduction to Arts (continued) – How Arts Started in Nigeria",
+        "Crafts – Meaning, Types, Materials, Tools",
+        "Crafts (continued) – Uses in Nigeria",
+        "Tie and Dye",
+        "Paper Craft",
+        "Paper Craft (continued) – Production, Uses"
+      ],
+      "second": [
+        "Collage",
+        "Collage (continued) – Production, Uses",
+        "Mosaic",
+        "Modelling with Papier-mâché",
+        "Modelling with Papier-mâché (continued) – Preparation, Safety",
+        "Bead Work",
+        "Bead Work (continued) – Uses as Creative Objects"
+      ],
+      "third": [
+        "Music Theory – Fundamentals, Notes on Keyboard",
+        "Ear Training and Harmony",
+        "Rudiments of Music and Playing Instruments",
+        "Recorder and Uses of Music",
+        "Drama and Theatre",
+        "Elements and Playwriting",
+        "The Director"
+      ]
+    },
+    "French": {
+      "first": [
+        "Words Used in the Classroom",
+        "Saluer (Greeting)",
+        "Se présenter (Introducing Oneself)",
+        "Épeler un mot / Écrire un mot épelé",
+        "Présenter quelqu'un",
+        "Décrire quelqu'un",
+        "Parler de ses loisirs",
+        "Exprimer ses goûts et préférences"
+      ],
+      "second": [
+        "Exprimer les propriétés des objets",
+        "Demander quelque chose à quelqu'un",
+        "Décrire les professions",
+        "Demander et donner l'heure",
+        "Expliquer ce que l'on fait à certaines heures de la journée",
+        "Dire les dates",
+        "Situer un événement par rapport à un autre",
+        "Demander et expliquer ce que l'on fait tous les jours de la semaine"
+      ],
+      "third": [
+        "Demander et indiquer le temps qu'il fait",
+        "Exprimer la fréquence d'une activité",
+        "Inviter quelqu'un",
+        "Donner un ordre, interdire, autoriser",
+        "Demander la permission, conseiller",
+        "Expliquer une démarche à quelqu'un",
+        "Révision des Fonctions Communicatives",
+        "Pratique de l'Écrit/Oral"
+      ]
+    },
+    "Intermediate Science": {
+      "first": [
+        "Introduction to Intermediate Science",
+        "Environmental Degradation: Erosion",
+        "Environmental Degradation: Flooding",
+        "Environmental Degradation: Bush Burning",
+        "Climate and Weather",
+        "Environmental Protection",
+        "Sanitation and Waste Management",
+        "Review on Environmental Degradation"
+      ],
+      "second": [
+        "Review of JSS 1 Science Concepts",
+        "Components of the Environment",
+        "Soil Formation and Conservation",
+        "Environmental Pollution",
+        "Waste and Its Management",
+        "Air and Water Pollution",
+        "Conservation of Natural Resources",
+        "Climate and Environmental Changes"
+      ],
+      "third": [
+        "Elements, Compounds and Mixtures",
+        "Acids, Bases and Salts",
+        "The Human Body",
+        "Reproduction in Plants and Animals",
+        "Classification of Living Things",
+        "Cells as the Basic Units of Life",
+        "Growth and Development",
+        "Microorganisms"
+      ]
+    },
+    "Digital Technologies": {
+      "first": [
+        "Introduction to Digital Technology",
+        "Historical Development of Digital Devices",
+        "Career Opportunities in Information Technology",
+        "Basic Computer Hardware Components I",
+        "Basic Computer Hardware Components II: Storage Units",
+        "Basic Software Concepts",
+        "Computer Booting and Shutdown Processes",
+        "MS Word (Introduction)"
+      ],
+      "second": [
+        "MS PowerPoint (Introduction)",
+        "3D Modelling with Paint 3D",
+        "Data Processing",
+        "Basic Computer Communication",
+        "Introduction to Computer Networks",
+        "Basic Internet Concepts",
+        "Online Safety Rules",
+        "Online Privacy and Security"
+      ],
+      "third": [
+        "Internet Communication Practices",
+        "Spam and Online Threats",
+        "Intellectual Property",
+        "Safety and Security Features on Digital Devices",
+        "Introduction to Graphic Design",
+        "Introduction to Canva",
+        "Digital Media",
+        "Computer Waste Management"
+      ]
+    },
+    "Business Studies": {
+      "first": [
+        "Overview of Business Studies",
+        "Effective Office Practice I",
+        "Effective Office Practice II",
+        "Right Attitude to Work",
+        "Departments in an Office/Organisation",
+        "Commerce – The Heart of Business I",
+        "Commerce – The Heart of Business II",
+        "Production I"
+      ],
+      "second": [
+        "Production II – Factors of Production",
+        "Types of Occupation",
+        "Honesty in Business",
+        "Fairplay and Ethics of Business",
+        "Entrepreneurship",
+        "Forms of Business Organisation I – Sole Proprietorship, Partnership",
+        "Forms of Business Organisation II – Limited Liability Companies, Co-operatives",
+        "Consumer, Market and Society"
+      ],
+      "third": [
+        "Book-keeping as a Tool in Business I",
+        "Source Documents and Special Journals I",
+        "Source Documents and Special Journals II",
+        "Double Entry Book-keeping",
+        "Keyboarding as a Communication Tool I",
+        "Keyboarding as a Communication Tool II",
+        "Keyboarding as a Communication Tool III",
+        "Keyboarding as a Communication Tool IV"
+      ]
+    },
+    "Fashion Design and Garment Making": {
+      "first": [
+        "Introduction to Fashion Design",
+        "Tools, Equipment and Materials",
+        "Basic Sewing Stitches",
+        "Simple Pattern Drafting",
+        "Garment Construction Basics",
+        "Fabric Types and Properties",
+        "Fashion Illustration Basics"
+      ],
+      "second": [
+        "Review of First Term Work",
+        "Pattern Drafting – Skirts",
+        "Pattern Drafting – Simple Tops",
+        "Garment Assembly",
+        "Introduction to Tie and Dye",
+        "Fabric Embellishment"
+      ],
+      "third": [
+        "Entrepreneurship in Fashion",
+        "Costing and Pricing",
+        "Fashion Business Management",
+        "Digital Fashion Design Tools",
+        "Fashion Show and Exhibition",
+        "Revision and Examination"
+      ]
+    },
+    "Livestock Farming": {
+      "first": [
+        "Introduction to Livestock Farming",
+        "Poultry Production I",
+        "Poultry Production II",
+        "Rabbit Production I",
+        "Rabbit Production II",
+        "Record Keeping in Rabbitry",
+        "Handling and Management Practices"
+      ],
+      "second": [
+        "Poultry Breeds",
+        "Housing and Equipment",
+        "Feeds and Feeding",
+        "Egg Production Management",
+        "Disease Prevention and Control",
+        "Marketing of Poultry Products"
+      ],
+      "third": [
+        "Concept of Sheep and Goat Production",
+        "Breeds of Sheep and Goats",
+        "Housing and Equipment for Sheep and Goats",
+        "Feeds for Sheep and Goats",
+        "Health Management in Sheep and Goats",
+        "Sick Sheep or Goat in a Herd",
+        "Breeding in Sheep and Goats",
+        "Practical: Identifying Feeds and Breeds"
+      ]
+    },
+    "Beauty and Cosmetology": {
+      "first": [
+        "Introduction to Beauty and Cosmetology",
+        "Tools and Equipment",
+        "Personal Hygiene and Grooming",
+        "Safety Precautions in the Salon",
+        "Basic Hair Care Practices",
+        "Skin Care and Cleansing",
+        "Nail Care",
+        "Introduction to Makeup",
+        "Simple Makeup Techniques"
+      ],
+      "second": [
+        "Review of First Term's Work",
+        "Hair Structure and Function",
+        "Hair Types",
+        "Hair Treatment",
+        "Simple Hair Styling",
+        "Introduction to Skin Care Products",
+        "Facial Treatment",
+        "Nail Care Tools and Safety",
+        "Customer Care in Beauty Services"
+      ],
+      "third": [
+        "Review of Second Term Work",
+        "Advanced Hair Styling",
+        "Introduction to Beauty Products",
+        "Daily Skin Care Routine",
+        "Nail Art",
+        "Salon Hygiene and Sanitation",
+        "Professional Conduct",
+        "Entrepreneurship in Beauty Care"
+      ]
+    },
+    "Computer Hardware and GSM Repairs": {
+      "first": [
+        "Introduction to Computer Hardware and GSM Repairs",
+        "History of Computers and GSM",
+        "Basic Computer Hardware Components",
+        "Identification of GSM Components",
+        "Safety Precautions in Workshop",
+        "Tools for Computer and GSM Repairs",
+        "Peripheral Devices",
+        "Basic Care and Maintenance"
+      ],
+      "second": [
+        "Classification of Computers",
+        "Types of Mobile Phones",
+        "System Unit Parts",
+        "SIM Cards and Memory Cards",
+        "Introduction to Software",
+        "Power Supply in Computers and Phones",
+        "Basic Troubleshooting",
+        "Practical: Disassembling a Phone"
+      ],
+      "third": [
+        "Advanced GSM Repairs",
+        "Soldering and Desoldering Techniques",
+        "Replacing Phone Components",
+        "Troubleshooting Advanced Faults",
+        "Flashing and Unlocking Complex Devices",
+        "Practical: Complex Fault Repair"
+      ]
+    },
+    "Horticulture and Crop Production": {
+      "first": [
+        "Introduction to Horticulture",
+        "Tools and Equipment",
+        "Soil Types and Properties",
+        "Seed Selection and Planting",
+        "Watering and Irrigation Methods",
+        "Crop Maintenance Practices",
+        "Harvesting and Post-Harvest Handling"
+      ],
+      "second": [
+        "Review of First Term Work",
+        "Types of Horticulture",
+        "Garden Design and Layout",
+        "Vegetable Production",
+        "Fruit Production",
+        "Ornamental Plant Production",
+        "Pest and Disease Management"
+      ],
+      "third": [
+        "Soil Management",
+        "Crop Planting Techniques",
+        "Fertilizer Management",
+        "Crop Irrigation",
+        "Pest and Disease Control",
+        "Crop Harvesting and Yield Improvement",
+        "Post-Harvest Technology"
+      ]
+    },
+    "Solar Photovoltaic Installation and Maintenance": {
+      "first": [
+        "Introduction to Solar Energy",
+        "Components of a Solar PV System",
+        "Types of Solar Panels",
+        "Solar Cell Working Principle",
+        "Basic Solar PV System Design",
+        "Safety Precautions in Solar Installation"
+      ],
+      "second": [
+        "Review of First Term",
+        "Solar Charge Controllers",
+        "Solar Inverters",
+        "Solar Battery Systems",
+        "Solar PV System Sizing",
+        "Mounting Structures"
+      ],
+      "third": [
+        "Wiring and Connections",
+        "Installation Procedures",
+        "Testing and Commissioning",
+        "Maintenance Practices",
+        "Troubleshooting Solar Systems"
+      ]
+    }
+  },
+  "JSS2": {
+    "English Studies": {
+      "first": [
+        "Consonant Sounds /p/, /b/, /t/, /d/, /k/, /ɡ/",
+        "Consonant Sounds /f/, /v/, /s/, /z/, /ʃ/, /ʒ/, /h/",
+        "Tenses – Present Continuous, Past Continuous",
+        "Reading Comprehension – Main Idea and Supporting Details",
+        "Vocabulary Development – Synonyms, Antonyms, Homophones",
+        "Narrative Composition – An Unforgettable Experience",
+        "Prose – Character, Setting, Plot, Theme",
+        "Drama – Identification of Dramatic Elements",
+        "Poetry – Rhythm, Rhyme, Imagery"
+      ],
+      "second": [
+        "Consonant Sounds /m/, /n/, /ŋ/, /l/, /r/",
+        "Tenses – Future Perfect, Future Continuous",
+        "Conjunctions – Coordinating, Subordinating",
+        "Reading Comprehension – Inference and Critical Thinking",
+        "Guided Composition – Letter to a Pen-pal",
+        "Formal Letter – Features and Writing",
+        "Prose – Language Use and Style",
+        "Poetry – Types and Features"
+      ],
+      "third": [
+        "Consonant Clusters",
+        "Word Formation – Prefixes, Suffixes",
+        "Reading to Interpret Diagrams and Maps",
+        "Vocabulary – Word Formation",
+        "Argumentative Essay – Arranging Ideas in Logical Sequence",
+        "Dramatization of Scenes from Recommended Drama Text",
+        "Review of Recommended Texts"
+      ]
+    },
+    "Mathematics": {
+      "first": [
+        "Whole Numbers – Addition, Subtraction, Multiplication",
+        "Whole Numbers – Division",
+        "Fractions – Addition and Subtraction",
+        "Fractions – Multiplication and Division",
+        "Decimals – Addition, Subtraction",
+        "Decimals – Multiplication and Division",
+        "Approximation and Estimation",
+        "Ratio and Proportion"
+      ],
+      "second": [
+        "Percentage",
+        "Profit and Loss",
+        "Simple Interest",
+        "Algebraic Expressions",
+        "Simple Linear Equations",
+        "Angles and Parallel Lines",
+        "Plane Figures – Perimeter and Area"
+      ],
+      "third": [
+        "Volume of Three-Dimensional Figures",
+        "Data Collection and Presentation",
+        "Probability",
+        "Statistics – Mean, Median, Mode",
+        "Graphs and Coordinates",
+        "Construction of Angles"
+      ]
+    },
+    "Physical and Health Education": {
+      "first": [
+        "Meaning and Types of Physical Fitness",
+        "Factors Affecting Physical Fitness",
+        "Benefits of Physical Fitness",
+        "Athletics – Sprint Events",
+        "Athletics – Long Distance Running",
+        "Field Events – Long Jump, High Jump",
+        "Safety in Sports"
+      ],
+      "second": [
+        "Ball Games – Basketball",
+        "Ball Games – Handball",
+        "Gymnastics – Floor Exercises",
+        "Health Education – Personal Hygiene",
+        "Community Health – Sanitation",
+        "Drug Education"
+      ],
+      "third": [
+        "Swimming – Basic Skills",
+        "Martial Arts – Introduction",
+        "Health Education – Communicable Diseases",
+        "Family Health – Growth and Development",
+        "First Aid Basics",
+        "Sexuality Education"
+      ]
+    },
+    "Christian Religious Studies": {
+      "first": [
+        "The Parables of Jesus I – Sower, Mustard Seed",
+        "The Parables of Jesus II – Good Samaritan, Prodigal Son",
+        "Miracles of Jesus I – Healing the Sick",
+        "Miracles of Jesus II – Nature Miracles",
+        "The Sermon on the Mount I",
+        "The Sermon on the Mount II"
+      ],
+      "second": [
+        "The Last Supper",
+        "Gethsemane and Arrest of Jesus",
+        "Trial and Crucifixion of Jesus",
+        "Death and Burial of Jesus",
+        "Resurrection of Jesus",
+        "Ascension of Jesus"
+      ],
+      "third": [
+        "The Early Church – Pentecost",
+        "Missionary Journey of Paul I",
+        "Missionary Journey of Paul II",
+        "The Epistles – Teachings of Paul",
+        "Christian Living – Faith, Hope, Love",
+        "Church Organisation and Worship"
+      ]
+    },
+    "Islamic Religious Studies": {
+      "first": [
+        "The Six Articles of Faith",
+        "The Five Pillars of Islam",
+        "Sources of Islamic Law",
+        "Purification (Taharah)",
+        "Prayer (Salah) – Conditions, Pillars",
+        "Zakat and Sadaqah"
+      ],
+      "second": [
+        "Fasting (Sawm)",
+        "Hajj – Pillars and Rituals",
+        "Islamic Calendar and Festivals",
+        "Family Life in Islam",
+        "Ethics and Morality in Islam",
+        "Social Justice in Islam"
+      ],
+      "third": [
+        "Islamic Art and Architecture",
+        "Contributions of Muslims to Civilization",
+        "Contemporary Issues in Islam",
+        "Interfaith Relations",
+        "Review of Key Concepts"
+      ]
+    },
+    "Nigerian History": {
+      "first": [
+        "Independence of Nigeria",
+        "First Republic (1963–1966)",
+        "Military Rule in Nigeria I – January 1966 Coup",
+        "Military Rule in Nigeria II – Counter-coup of July 1966",
+        "Nigerian Civil War I – Causes",
+        "Nigerian Civil War II – Major Events, End of War",
+        "Post-Civil War Nigeria",
+        "Oil Boom of the 1970s"
+      ],
+      "second": [
+        "Second Republic (1979–1983)",
+        "Military Rule in the 1980s",
+        "Military Rule in the 1990s",
+        "Return to Democracy",
+        "Democratic Governance",
+        "Challenges of Democracy",
+        "Human Rights in Nigeria",
+        "Nigerian Foreign Policy"
+      ],
+      "third": [
+        "Women in Nigerian History",
+        "Youths in Nigerian History",
+        "Workers in Nigerian History",
+        "Education and Development",
+        "Nigerian Economy",
+        "Science and Technology in Nigeria",
+        "Sports and National Unity",
+        "Culture and Tourism"
+      ]
+    },
+    "Social and Citizenship Studies": {
+      "first": [
+        "Citizenship – Meaning, Acquisition",
+        "Rights and Responsibilities",
+        "Constitution – Meaning, Features, Importance",
+        "Government Institutions – Executive, Legislature, Judiciary",
+        "Civic Virtues",
+        "Public Service",
+        "Democracy in Practice",
+        "Human Trafficking"
+      ],
+      "second": [
+        "Population and Society",
+        "Social Problems",
+        "Crime and National Security",
+        "Human Rights Abuse",
+        "Electoral Malpractices",
+        "Media and Society",
+        "International Organisations",
+        "Global Citizenship"
+      ],
+      "third": [
+        "Economic Values",
+        "Taxation and Civic Duty",
+        "Environmental Citizenship",
+        "Human Rights Institutions",
+        "Corruption and Accountability",
+        "National Development",
+        "Social Institutions",
+        "Civic Challenges in Nigeria"
+      ]
+    },
+    "Cultural and Creative Arts": {
+      "first": [
+        "Elements of Design/Art",
+        "Principles of Design/Art",
+        "Crafts: Materials, Tools and Equipment",
+        "The Study of Colours (Part 1)",
+        "The Study of Colours (Part 2) – Local Colours",
+        "The Study of Colours (Part 3) – Colour Wheel",
+        "Colour Application in Crafts",
+        "Drawing"
+      ],
+      "second": [
+        "Painting (Part 1)",
+        "Painting (Part 2) – Types of Paint",
+        "Production of Patterns/Design (Part 1)",
+        "Production of Patterns/Design (Part 2)",
+        "Bead Work",
+        "History of Music",
+        "Musical Practices: Listening (Part 1)",
+        "Musical Practices: Listening (Part 2)"
+      ],
+      "third": [
+        "Singing (Part 1) – Scale, Pitch",
+        "Singing (Part 2) – Voice Types, Breathing",
+        "Singing (Part 3) – Solfa Notes of National Anthem",
+        "Design in the Theatre",
+        "Rehearsal",
+        "Types of Dance",
+        "Dance as a Career",
+        "Self-Control"
+      ]
+    },
+    "French": {
+      "first": [
+        "Unité 1: Demander et expliquer la position",
+        "Unité 2: Situer les lieux",
+        "Unité 3: Accueillir et guider quelqu'un",
+        "Unité 4: Demander/indiquer le chemin",
+        "Unité 5: Les moyens de transport",
+        "Unité 6: Expliquer un trajet",
+        "Unité 7: Demander/indiquer des horaires",
+        "Unité 8: Réagir à un problème de transport"
+      ],
+      "second": [
+        "Unité 9: Établir des listes/inventaires",
+        "Unité 10: Les commerçants et marchandises",
+        "Unité 11: Acheter et marchander",
+        "Unité 12: Exprimer un besoin et son utilité",
+        "Unité 13: À la pharmacie",
+        "Unité 14: Les vêtements, chaussures et accessoires",
+        "Unité 15: Apprécier, comparer, choisir",
+        "Unité 16: Quantité et qualité des produits"
+      ],
+      "third": [
+        "Unité 17: Opérations de calcul simple",
+        "Unité 18: Nourriture et boissons",
+        "Unité 19: Recettes de cuisine",
+        "Unité 20: Au restaurant/café",
+        "Projet oral et écrit",
+        "Révision générale des unités 17–20",
+        "Évaluation orale/pratique",
+        "Préparation aux examens"
+      ]
+    },
+    "Intermediate Science": {
+      "first": [
+        "Review of JSS 1 Science Concepts",
+        "Components of the Environment",
+        "Soil Formation and Conservation",
+        "Environmental Pollution",
+        "Waste and Its Management",
+        "Air and Water Pollution",
+        "Conservation of Natural Resources",
+        "Climate and Environmental Changes"
+      ],
+      "second": [
+        "Elements, Compounds and Mixtures",
+        "Acids, Bases and Salts",
+        "The Human Body",
+        "Reproduction in Plants and Animals",
+        "Classification of Living Things",
+        "Cells as the Basic Units of Life",
+        "Growth and Development",
+        "Microorganisms"
+      ],
+      "third": [
+        "Forms and Sources of Energy",
+        "Forms and Sources of Energy (continued)",
+        "Matter and Its Properties",
+        "Matter – States and Changes",
+        "Living and Non-Living Things",
+        "Energy Change Experiments",
+        "Review on Matter and Energy"
+      ]
+    },
+    "Digital Technologies": {
+      "first": [
+        "Review of JSS1 Work",
+        "Introduction to Algorithms",
+        "Flowcharts and Pseudocode",
+        "Basic Programming Concepts",
+        "HTML Basics",
+        "Creating Simple Web Pages"
+      ],
+      "second": [
+        "CSS Introduction",
+        "Web Design Principles",
+        "Database Concepts",
+        "Introduction to Spreadsheets",
+        "Advanced Internet Skills",
+        "Digital Citizenship"
+      ],
+      "third": [
+        "Advanced Programming Concepts",
+        "Web Design Project",
+        "Database Management",
+        "Cybersecurity Awareness",
+        "Digital Literacy Review"
+      ]
+    },
+    "Business Studies": {
+      "first": [
+        "Review of JSS1 Work",
+        "Commerce – Aids to Trade",
+        "Commerce – Division of Commerce",
+        "Transport and Communication",
+        "Warehousing",
+        "Insurance",
+        "Advertising and Salesmanship"
+      ],
+      "second": [
+        "Office Equipment and Machines",
+        "Filing Systems",
+        "Business Letters",
+        "Office Procedure",
+        "Communication in Business",
+        "Ethics in Business"
+      ],
+      "third": [
+        "Financial Records",
+        "Introduction to Marketing",
+        "Stock Taking",
+        "Business Organisations",
+        "Entrepreneurship Skills"
+      ]
+    },
+    "Fashion Design and Garment Making": {
+      "first": [
+        "Review of JSS1 Work",
+        "Pattern Drafting – Trousers",
+        "Pattern Drafting – Dresses",
+        "Garment Construction – Dresses",
+        "Introduction to Embroidery",
+        "Fabric Care and Maintenance"
+      ],
+      "second": [
+        "Advanced Sewing Techniques",
+        "Lining and Interfacing",
+        "Introduction to Knitting",
+        "Tie and Dye Techniques",
+        "Fashion Illustration"
+      ],
+      "third": [
+        "Entrepreneurship in Fashion",
+        "Costing and Pricing Garments",
+        "Customer Relations",
+        "Fashion Business Management",
+        "Digital Fashion Tools"
+      ]
+    },
+    "Livestock Farming": {
+      "first": [
+        "Review of JSS1 Work",
+        "Advanced Poultry Production",
+        "Poultry Diseases and Control",
+        "Marketing of Poultry Products",
+        "Poultry Record Keeping",
+        "Practical: Poultry Farm Management"
+      ],
+      "second": [
+        "Rabbit Production – Breeds",
+        "Rabbit Housing and Equipment",
+        "Rabbit Feeds and Feeding",
+        "Rabbit Health Management",
+        "Rabbit Breeding",
+        "Marketing of Rabbit Products"
+      ],
+      "third": [
+        "Sheep and Goat Production – Review",
+        "Feed Formulation",
+        "Livestock Record Keeping",
+        "Marketing and Sales",
+        "Value Addition in Livestock Products"
+      ]
+    },
+    "Beauty and Cosmetology": {
+      "first": [
+        "Review of JSS1 Work",
+        "Advanced Hair Styling",
+        "Hair Cutting Techniques",
+        "Hair Braiding and Weaving",
+        "Facial Makeup – Advanced",
+        "Nail Technology"
+      ],
+      "second": [
+        "Advanced Skin Care",
+        "Body Massage Techniques",
+        "Waxing and Hair Removal",
+        "Makeup for Special Occasions",
+        "Salon Management"
+      ],
+      "third": [
+        "Entrepreneurship in Beauty",
+        "Marketing Beauty Services",
+        "Customer Relations",
+        "Professional Ethics",
+        "Product Knowledge"
+      ]
+    },
+    "Computer Hardware and GSM Repairs": {
+      "first": [
+        "Review of JSS1 Work",
+        "Computer Motherboard Components",
+        "RAM and ROM",
+        "Hard Disk and Storage Devices",
+        "Power Supply Unit",
+        "Computer Assembly"
+      ],
+      "second": [
+        "GSM Phone Components",
+        "Basic Circuit Concepts",
+        "Phone Disassembly and Assembly",
+        "Basic Fault Finding",
+        "Software Installation",
+        "Introduction to Programming"
+      ],
+      "third": [
+        "Entrepreneurship in GSM Repairs",
+        "Business Registration",
+        "Financial Record Keeping",
+        "Marketing Repair Services",
+        "Customer Relations"
+      ]
+    },
+    "Horticulture and Crop Production": {
+      "first": [
+        "Review of JSS1 Work",
+        "Types of Crops",
+        "Crop Planting Calendar",
+        "Composting and Organic Fertilizers",
+        "Irrigation Methods",
+        "Crop Pest Identification"
+      ],
+      "second": [
+        "Disease Control Methods",
+        "Post-Harvest Handling",
+        "Storage Techniques",
+        "Marketing of Horticultural Products",
+        "Garden Maintenance",
+        "Introduction to Landscaping"
+      ],
+      "third": [
+        "Greenhouse Technology",
+        "Hydroponics Introduction",
+        "Seed Selection and Treatment",
+        "Advanced Irrigation Systems",
+        "Agribusiness in Horticulture"
+      ]
+    },
+    "Solar Photovoltaic Installation and Maintenance": {
+      "first": [
+        "Review of JSS1 Work",
+        "Advanced Solar Panel Technology",
+        "Solar Battery Technology",
+        "Charge Controller Types and Functions",
+        "Inverter Technology"
+      ],
+      "second": [
+        "Solar PV System Design",
+        "Load Calculation",
+        "Panel Array Sizing",
+        "Battery Bank Sizing",
+        "Mounting and Installation"
+      ],
+      "third": [
+        "Wiring and Connections",
+        "System Testing",
+        "Maintenance Schedules",
+        "Troubleshooting Procedures",
+        "Safety Standards"
+      ]
+    }
+  },
+  "JSS3": {
+    "English Studies": {
+      "first": [
+        "Revision of Parts of Speech",
+        "The Schwa /ə/ Sound",
+        "Stress and Intonation",
+        "Consonants /ʒ/ and /dʒ/",
+        "Adverbs of Frequency",
+        "Reading – Scanning, Skimming",
+        "Writing – Informal Letter, Story Writing",
+        "Prose – Study of Recommended Text (Characterization, Theme, Plot)",
+        "Drama – Recommended Text, Rhyme Schemes, Costumes, Props"
+      ],
+      "second": [
+        "Consonants /t/ and /θ/",
+        "Consonant contrast /t/ and /s/",
+        "Contrast consonants /ʃ/ and /ʒ/",
+        "Contrast vowels /ʌ/ and /ɑ:/",
+        "Nasal sounds /m/, /n/, /ŋ/",
+        "Vowels /æ/ and /ɜ:/, /ɔ:/ and /ɒ/, /u/ and /u:/",
+        "Schwa /ə/",
+        "Prepositions, Pronouns, Punctuation Marks",
+        "Reading – Critical Evaluation, Listening Comprehension",
+        "Writing – Informal Letters, Story Writing, Article Writing",
+        "Literature – Folktales, Poetry, Prose Features, Drama"
+      ],
+      "third": [
+        "Revision of Monotones, Diphthongs, Consonant Sounds",
+        "Review of Nouns, Pronouns, Verbs, Adverbs, Adjectives, Conjunctions, Prepositions, Interjections",
+        "General Revision of Comprehension, Vocabulary",
+        "General Revision of Essay Types",
+        "Review of Literary Terms (Metaphor, Simile, Alliteration, Irony)"
+      ]
+    },
+    "Mathematics": {
+      "first": [
+        "Whole Numbers I – Binary Number System",
+        "Whole Numbers II – Expressions, Direct and Inverse Proportion, Compound Interest",
+        "Addition and Subtraction of Numbers in Base 2",
+        "Multiplication and Division of Numbers in Base 2",
+        "Rational and Non-Rational Numbers",
+        "Variations – Direct, Indirect, Joint, Partial",
+        "Factorization",
+        "Simple Equations Involving Fractions",
+        "Change of Subject of Formulae"
+      ],
+      "second": [
+        "Simultaneous Linear Equations I",
+        "Simultaneous Linear Equations II",
+        "Geometry I – Similar Shapes",
+        "Geometry II – Areas and Volumes",
+        "Area of Plane Figures I",
+        "Area of Plane Figures II – Sectors",
+        "Trigonometry – Sine, Cosine, Tangent",
+        "Angles of Elevation and Depression"
+      ],
+      "third": [
+        "Construction – Angles, Plane Shapes",
+        "Measures of Central Tendency",
+        "Application of Measures of Central Tendency",
+        "Data Presentation – Pie Charts",
+        "Revision of JSS3 Work"
+      ]
+    },
+    "Physical and Health Education": {
+      "first": [
+        "Physical Fitness and Body Conditioning",
+        "Recreation, Leisure and Dance Activities (Part 1) – Traditional Dances",
+        "Recreation, Leisure and Dance Activities (Part 2) – Computer Games",
+        "Track and Field Events – Pole Vault, Javelin",
+        "Ball Games (Hockey) – Part 1: Skills and Techniques",
+        "Ball Games (Hockey) – Part 2: Officials, Positions, Values",
+        "Group/Combined Events – Part 1: Classification",
+        "Group/Combined Events – Part 2: Scoring, Rules"
+      ],
+      "second": [
+        "Nigerian Sports Heroes – Part 1",
+        "Nigerian Sports Heroes – Part 2",
+        "Contact Games – Taekwondo",
+        "Contact Games – Boxing",
+        "Non-contact Games – Swimming",
+        "Non-contact Games – Gymnastics",
+        "Personal, School and Community Health I – Part 1",
+        "Personal, School and Community Health I – Part 2"
+      ],
+      "third": [
+        "Personal, School and Community Health II – Part 1: Ageing, Death",
+        "Personal, School and Community Health II – Part 2: Drug Use, Misuse, Abuse",
+        "Pathogens, Diseases and Prevention – Part 1",
+        "Pathogens, Diseases and Prevention – Part 2",
+        "Family Health – Part 1: Types of Diseases",
+        "Family Health – Part 2: STIs",
+        "Family Health – Part 3: Prevention",
+        "General Health Education Review"
+      ]
+    },
+    "Christian Religious Studies": {
+      "first": [
+        "The Promise of the Holy Spirit",
+        "The Coming of the Holy Spirit – Pentecost",
+        "Peter's First Speech and its Effects",
+        "Fellowship in the Early Church I",
+        "Fellowship in the Early Church II",
+        "Selection of Deacons",
+        "Persecution of Early Believers I",
+        "Persecution of Early Believers II"
+      ],
+      "second": [
+        "The Ministry of Peter I",
+        "The Ministry of Peter II",
+        "The Ministry of Peter III",
+        "The Ministry of Peter IV",
+        "The Ministry of Apostle Paul I",
+        "The Ministry of Apostle Paul II",
+        "The Ministry of Apostle Paul III",
+        "Paul's Missionary Journeys"
+      ],
+      "third": [
+        "General Review of Acts",
+        "Christian Ethics",
+        "Social Issues and Christianity",
+        "The Church Today",
+        "Review for BECE"
+      ]
+    },
+    "Islamic Religious Studies": {
+      "first": [
+        "Review of JSS2 Work",
+        "Hadith Studies",
+        "Islamic Jurisprudence",
+        "Prayer Times and Conditions",
+        "Zakat and Sadaqah",
+        "Hajj and Umrah"
+      ],
+      "second": [
+        "Islamic Festivals",
+        "Family Life in Islam",
+        "Islamic Finance",
+        "Current Issues in Islam",
+        "Review for BECE"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "Mock Examinations",
+        "BECE Preparation",
+        "Practical Application"
+      ]
+    },
+    "Nigerian History": {
+      "first": [
+        "Review of JSS2 Work",
+        "The First Republic – Detailed Study",
+        "The Nigerian Civil War – Detailed Study",
+        "Post-Civil War Developments",
+        "Nigerian Economy Since Independence",
+        "Political Developments 1999–Present"
+      ],
+      "second": [
+        "Nigerian Foreign Policy",
+        "Nigeria and International Organisations",
+        "Cultural Heritage of Nigeria",
+        "Historical Sites in Nigeria",
+        "Women in Nigerian History",
+        "Youths and National Development"
+      ],
+      "third": [
+        "Review of Key Themes",
+        "Nigeria's Role in West Africa",
+        "Contemporary Issues in Nigerian History",
+        "Review for BECE"
+      ]
+    },
+    "Social and Citizenship Studies": {
+      "first": [
+        "Review of JSS2 Work",
+        "The Nigerian Constitution",
+        "Fundamental Rights",
+        "Citizenship Rights and Responsibilities",
+        "Nigerian Government Structure",
+        "Electoral Process",
+        "Political Parties",
+        "Human Rights and Justice"
+      ],
+      "second": [
+        "Population and Development",
+        "Social Problems in Nigeria",
+        "Crime Prevention",
+        "Drug Education",
+        "Peace Education",
+        "Environmental Education",
+        "Global Issues",
+        "Review for BECE"
+      ],
+      "third": [
+        "National Development",
+        "Civic Responsibilities",
+        "The Rule of Law",
+        "Constitutionalism",
+        "Review for BECE"
+      ]
+    },
+    "Cultural and Creative Arts": {
+      "first": [
+        "Review of JSS2 Work",
+        "Drama – Advanced Concepts",
+        "Music – Advanced Theory",
+        "Visual Arts – Painting Techniques",
+        "Crafts – Advanced Skills",
+        "Nigerian Art Movements"
+      ],
+      "second": [
+        "Theatre Production",
+        "Musical Performance",
+        "Cultural Festivals in Nigeria",
+        "Art Appreciation",
+        "Creative Expression"
+      ],
+      "third": [
+        "Portfolio Development",
+        "Art Exhibition",
+        "Review for BECE",
+        "Practical Projects"
+      ]
+    },
+    "French": {
+      "first": [
+        "Review of JSS2 Work",
+        "Advanced Conversations",
+        "Written French – Composition",
+        "Listening Comprehension",
+        "Reading Comprehension",
+        "Grammar Review"
+      ],
+      "second": [
+        "Cultural Studies – France and French-speaking Countries",
+        "Advanced Grammar",
+        "Oral Presentation",
+        "Project Work",
+        "Review for BECE"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "Mock Examinations",
+        "BECE Preparation"
+      ]
+    },
+    "Intermediate Science": {
+      "first": [
+        "Review of JSS2 Work",
+        "Physics Concepts – Force, Motion",
+        "Chemistry Concepts – Atoms, Elements",
+        "Biology – Human Body Systems",
+        "Environmental Science",
+        "Science and Technology"
+      ],
+      "second": [
+        "Electricity and Magnetism",
+        "Chemical Reactions",
+        "Genetics Introduction",
+        "Ecology",
+        "Space Science",
+        "Review"
+      ],
+      "third": [
+        "Comprehensive Science Review",
+        "Practical Activities",
+        "BECE Preparation",
+        "Mock Examinations"
+      ]
+    },
+    "Digital Technologies": {
+      "first": [
+        "Review of JSS2 Work",
+        "Advanced Web Design",
+        "Database Management",
+        "Programming Concepts",
+        "Cybersecurity",
+        "Project Management"
+      ],
+      "second": [
+        "Advanced Programming",
+        "Network Administration",
+        "Cloud Computing Basics",
+        "Digital Literacy",
+        "Review for BECE"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "Practical Projects",
+        "BECE Preparation"
+      ]
+    },
+    "Business Studies": {
+      "first": [
+        "Review of JSS2 Work",
+        "Advanced Book-keeping",
+        "Introduction to Banking",
+        "Business Finance",
+        "Entrepreneurship Skills",
+        "Marketing Basics"
+      ],
+      "second": [
+        "Advanced Marketing",
+        "Consumer Education",
+        "Business Ethics",
+        "Project Management",
+        "Review for BECE"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "Practical Projects",
+        "BECE Preparation"
+      ]
+    },
+    "Fashion Design and Garment Making": {
+      "first": [
+        "Review of JSS2 Work",
+        "Advanced Pattern Drafting",
+        "Garment Assembly Techniques",
+        "Finishing High-Quality Garments",
+        "Fashion Accessories",
+        "Fabric Decoration",
+        "Digital Fashion Design",
+        "Creating Digital Collections"
+      ],
+      "second": [
+        "Entrepreneurship in Fashion",
+        "Record Keeping and Bookkeeping",
+        "Costing and Pricing of Garments",
+        "Branding and Marketing",
+        "Digital Marketing",
+        "Customer Relationship",
+        "Fashion Business Ethics",
+        "Project: Mini Fashion Business Plan"
+      ],
+      "third": [
+        "Fashion Portfolio Development",
+        "Presentation Skills",
+        "Fashion Exhibition Preparation",
+        "Fashion Show Project",
+        "Portfolio Evaluation",
+        "BECE Preparation"
+      ]
+    },
+    "Livestock Farming": {
+      "first": [
+        "Review of JSS2 Work",
+        "Advanced Poultry Management",
+        "Livestock Breeding Techniques",
+        "Health and Safety in Livestock Farming",
+        "Waste Management",
+        "Farm Layout Planning",
+        "Livestock Record Analysis",
+        "Practical: Livestock Farm Design"
+      ],
+      "second": [
+        "Advanced Entrepreneurship in Livestock",
+        "Financial Management in Livestock Business",
+        "Marketing Strategies",
+        "Cooperative Farming",
+        "Farm Record Keeping (Advanced)",
+        "Value Addition in Livestock Products",
+        "Export of Livestock Products",
+        "Practical Project"
+      ],
+      "third": [
+        "Agribusiness Project Development",
+        "Marketing and Distribution Channels",
+        "Pricing and Cost Control",
+        "Livestock Exhibition and Demonstration",
+        "BECE Preparation"
+      ]
+    },
+    "Beauty and Cosmetology": {
+      "first": [
+        "Review of JSS2 Work",
+        "Advanced Hair Styling – Braiding, Fixing, Extensions",
+        "Hair Coloring and Relaxing",
+        "Hair Treatment – Deep Conditioning, Scalp Care",
+        "Skin Care Routine",
+        "Makeup Application Techniques",
+        "Nail Extension and Maintenance",
+        "Salon Hygiene"
+      ],
+      "second": [
+        "Review of First Term",
+        "Advanced Skin Treatment",
+        "Makeup Products and Their Functions",
+        "Hairdressing Tools",
+        "Customer Care",
+        "Professional Ethics",
+        "Entrepreneurship in Beauty",
+        "Record Keeping and Financial Management"
+      ],
+      "third": [
+        "Review of Second Term",
+        "Product Knowledge",
+        "Branding and Packaging",
+        "Marketing Strategies",
+        "Setting Up a Beauty Business",
+        "Health and Safety in the Salon",
+        "Beauty Career Opportunities",
+        "Project Work"
+      ]
+    },
+    "Computer Hardware and GSM Repairs": {
+      "first": [
+        "Review of JSS2 Work",
+        "Introduction to Advanced GSM Repairs",
+        "Soldering and Desoldering Techniques",
+        "Replacing Phone Components",
+        "Troubleshooting Advanced Faults",
+        "Flashing and Unlocking Complex Devices",
+        "Practical: Complex Fault Repair"
+      ],
+      "second": [
+        "Entrepreneurship in GSM Repairs",
+        "Concept of Money and Investment",
+        "Business Start-up Procedures",
+        "Bookkeeping and Financial Records",
+        "Marketing of GSM Repair Services",
+        "Rights and Duties of Citizens",
+        "Practical: Setting up a Mini GSM Shop"
+      ],
+      "third": [
+        "Final Business Project",
+        "Exhibition and Product Display",
+        "Entrepreneurship Fair Preparation",
+        "Revision and BECE Preparation",
+        "BECE Examination"
+      ]
+    },
+    "Horticulture and Crop Production": {
+      "first": [
+        "Review of JSS2 Work",
+        "Soil Management",
+        "Crop Planting Techniques",
+        "Fertilizer Management",
+        "Crop Irrigation",
+        "Pest and Disease Control",
+        "Crop Harvesting and Yield Improvement",
+        "Post-Harvest Technology"
+      ],
+      "second": [
+        "Crop Improvement",
+        "Seed Production and Certification",
+        "Organic Farming",
+        "Greenhouse Technology",
+        "Enterprise Skills in Agriculture",
+        "Business Plan Development",
+        "Marketing and Branding",
+        "Agribusiness Project"
+      ],
+      "third": [
+        "Introduction to Agripreneurship",
+        "Enterprise Development",
+        "Record-Keeping and Bookkeeping",
+        "Financial Literacy",
+        "Business Management",
+        "Marketing and Distribution",
+        "Sustainable Agriculture",
+        "Project Presentation"
+      ]
+    },
+    "Solar Photovoltaic Installation and Maintenance": {
+      "first": [
+        "Review of JSS2 Work",
+        "Advanced Solar PV System Design",
+        "Energy Storage Solutions",
+        "System Integration",
+        "Advanced Troubleshooting",
+        "Installation Best Practices"
+      ],
+      "second": [
+        "Solar Energy Economics",
+        "Project Planning",
+        "Client Relations",
+        "Maintenance Contracts",
+        "Business Development",
+        "Review for BECE"
+      ],
+      "third": [
+        "Comprehensive Revision",
+        "Practical Projects",
+        "BECE Preparation",
+        "Mock Examinations"
+      ]
+    }
+  },
+  "SSS1": {
+    "English Language": {
+      "first": [
+        "Spoken English: Oral Composition Skills I (Narrative)",
+        "Vocabulary Development: Home, Family Life",
+        "Grammar: Nouns – Numbers, Gender",
+        "Reading Comprehension: Word Meanings through Context",
+        "Listening Comprehension",
+        "Continuous Writing: Narrative Composition"
+      ],
+      "second": [
+        "Spoken English: Consonant Sounds",
+        "Vocabulary: Agriculture, Environment",
+        "Reading Comprehension",
+        "Grammar: Pronouns, Adjectives",
+        "Formal Letter Writing",
+        "Essay Writing"
+      ],
+      "third": [
+        "Spoken English: Vowel Sounds",
+        "Vocabulary Development",
+        "Grammar Review",
+        "Reading Skills",
+        "Composition – Various Essay Types",
+        "Literature Appreciation"
+      ]
+    },
+    "Mathematics": {
+      "first": [
+        "Number Bases – Conversion",
+        "Fractions, Decimals, Approximations",
+        "Indices and Logarithms",
+        "Sets",
+        "Algebraic Expressions",
+        "Simple Equations",
+        "Quadratic Equations"
+      ],
+      "second": [
+        "Simultaneous Equations",
+        "Variation",
+        "Inequalities",
+        "Geometry – Angles, Polygons",
+        "Mensuration – Perimeter, Area",
+        "Statistics – Data Collection",
+        "Probability Introduction"
+      ],
+      "third": [
+        "Trigonometry – Ratios",
+        "Trigonometry – Graphs",
+        "Coordinate Geometry",
+        "Matrices",
+        "Arithmetic and Geometric Progressions",
+        "Review"
+      ]
+    },
+    "Citizenship and Heritage Studies": {
+      "first": [
+        "Citizenship – Concept and Types",
+        "Rights and Duties of Citizens",
+        "Nigerian Constitution",
+        "Government Structure",
+        "Civic Virtues and Values",
+        "Social Institutions"
+      ],
+      "second": [
+        "Democracy and Governance",
+        "Electoral Process",
+        "Political Parties",
+        "Human Rights",
+        "Rule of Law",
+        "Constitutionalism"
+      ],
+      "third": [
+        "Nigerian Heritage",
+        "Cultural Values",
+        "National Identity",
+        "Civic Responsibilities",
+        "Social Development"
+      ]
+    },
+    "Digital Technologies": {
+      "first": [
+        "Computer Fundamentals",
+        "Hardware Components",
+        "Software Concepts",
+        "Operating Systems",
+        "Word Processing",
+        "Spreadsheet Applications"
+      ],
+      "second": [
+        "Presentation Software",
+        "Database Management",
+        "Internet and Web Browsers",
+        "Email Communication",
+        "Cybersecurity Basics",
+        "Digital Citizenship"
+      ],
+      "third": [
+        "Web Design – HTML",
+        "Web Design – CSS",
+        "Introduction to Programming",
+        "Networking Basics",
+        "Project Work"
+      ]
+    },
+    "Biology": {
+      "first": [
+        "Classification of Living Things",
+        "Cell Structure and Organisation",
+        "Tissues and Systems",
+        "Plant and Animal Cells",
+        "Microscopy",
+        "Biology as a Science"
+      ],
+      "second": [
+        "Nutrition in Animals",
+        "Nutrition in Plants",
+        "Transport Systems",
+        "Respiration",
+        "Excretion",
+        "Support and Movement"
+      ],
+      "third": [
+        "Reproduction in Plants",
+        "Reproduction in Animals",
+        "Growth and Development",
+        "Coordination and Response",
+        "Ecology Introduction",
+        "Environmental Biology"
+      ]
+    },
+    "Chemistry": {
+      "first": [
+        "Introduction to Chemistry",
+        "Lab Safety and Equipment",
+        "Matter and Its Properties",
+        "Elements, Compounds, Mixtures",
+        "Atomic Structure",
+        "The Periodic Table"
+      ],
+      "second": [
+        "Chemical Bonding",
+        "Chemical Reactions",
+        "Acids, Bases, Salts",
+        "Oxidation and Reduction",
+        "States of Matter",
+        "Gas Laws"
+      ],
+      "third": [
+        "Solutions",
+        "Electrolysis",
+        "Environmental Chemistry",
+        "Chemistry of Elements",
+        "Organic Chemistry Introduction",
+        "Practical Chemistry"
+      ]
+    },
+    "Physics": {
+      "first": [
+        "Introduction to Physics",
+        "Measurement and Units",
+        "Motion – Types, Graphs",
+        "Force and Energy",
+        "Friction",
+        "Pressure"
+      ],
+      "second": [
+        "Work, Energy, Power",
+        "Simple Machines",
+        "Heat – Temperature, Thermal Expansion",
+        "Waves – Types, Properties",
+        "Sound Waves",
+        "Light – Reflection"
+      ],
+      "third": [
+        "Light – Refraction",
+        "Electrostatics",
+        "Current Electricity",
+        "Magnetism",
+        "Electromagnetic Induction",
+        "Nuclear Physics Introduction"
+      ]
+    },
+    "Agricultural Science": {
+      "first": [
+        "Introduction to Agriculture",
+        "Factors of Agricultural Production",
+        "Soil Science",
+        "Farm Tools and Machinery",
+        "Agronomic Practices",
+        "Crop Production"
+      ],
+      "second": [
+        "Animal Husbandry",
+        "Poultry Production",
+        "Fish Production",
+        "Agricultural Economics",
+        "Agricultural Extension",
+        "Modern Agricultural Practices"
+      ],
+      "third": [
+        "Agricultural Technology",
+        "Food Processing and Storage",
+        "Agricultural Policy",
+        "Environmental Management",
+        "Farm Business Management",
+        "Review"
+      ]
+    },
+    "Further Mathematics": {
+      "first": [
+        "Mathematical Induction",
+        "Binomial Theorem",
+        "Sequences and Series",
+        "Quadratic Equations",
+        "Inequalities",
+        "Operations on Sets"
+      ],
+      "second": [
+        "Trigonometry – Identities",
+        "Trigonometry – Graphs",
+        "Coordinate Geometry",
+        "Vectors",
+        "Matrices",
+        "Probability"
+      ],
+      "third": [
+        "Statistics – Measures of Central Tendency",
+        "Statistics – Measures of Dispersion",
+        "Calculus Introduction",
+        "Differentiation",
+        "Integration",
+        "Review"
+      ]
+    },
+    "Food and Nutrition": {
+      "first": [
+        "Introduction to Food and Nutrition",
+        "Nutrients – Carbohydrates, Proteins, Fats",
+        "Vitamins and Minerals",
+        "Food Sources and Functions",
+        "Meal Planning",
+        "Food Hygiene and Safety"
+      ],
+      "second": [
+        "Food Preparation Methods",
+        "Cooking Techniques",
+        "Food Preservation",
+        "Kitchen Management",
+        "Special Diets",
+        "Food and Culture"
+      ],
+      "third": [
+        "Food Service",
+        "Table Setting and Etiquette",
+        "Entrepreneurship in Food Industry",
+        "Food Science",
+        "Review"
+      ]
+    },
+    "Geography": {
+      "first": [
+        "Introduction to Geography",
+        "The Earth – Shape, Movement",
+        "Latitude and Longitude",
+        "Map Reading Skills",
+        "Weather and Climate",
+        "Atmosphere"
+      ],
+      "second": [
+        "Hydrology",
+        "Rocks and Minerals",
+        "Soils",
+        "Vegetation",
+        "Landforms",
+        "Environmental Resources"
+      ],
+      "third": [
+        "Population Geography",
+        "Settlement Geography",
+        "Economic Geography",
+        "Transport and Communication",
+        "Nigerian Geography",
+        "Review"
+      ]
+    },
+    "Technical Drawing": {
+      "first": [
+        "Introduction to Technical Drawing",
+        "Drawing Instruments and Materials",
+        "Line Types and Conventions",
+        "Lettering",
+        "Dimensioning",
+        "Geometric Construction"
+      ],
+      "second": [
+        "Orthographic Projection",
+        "Isometric Drawing",
+        "Oblique Projection",
+        "Scales",
+        "Areas and Volumes",
+        "InSectional Views"
+      ],
+      "third": [
+        "CAD Introduction",
+        "Engineering Drawing",
+        "Building Drawing",
+        "Electrical Drawing Symbols",
+        "Project Work"
+      ]
+    },
+    "Nigerian History": {
+      "first": [
+        "Introduction to Nigerian History",
+        "Nigerian Peoples and Cultures",
+        "Early Nigerian States",
+        "The Trans-Saharan Trade",
+        "Islam in Nigeria",
+        "European Contact"
+      ],
+      "second": [
+        "Colonial Rule in Nigeria",
+        "Nationalist Movements",
+        "Independence and Its Aftermath",
+        "The First Republic",
+        "Military Rule",
+        "Nigerian Civil War"
+      ],
+      "third": [
+        "Post-Civil War Nigeria",
+        "Democratization Process",
+        "Contemporary Nigeria",
+        "Nigeria's Foreign Policy",
+        "Nigeria and International Organisations",
+        "Review"
+      ]
+    },
+    "Government": {
+      "first": [
+        "Introduction to Government",
+        "Basic Concepts – State, Power, Authority",
+        "Types of Government",
+        "Features of Democracy",
+        "The Nigerian Constitution",
+        "Federalism"
+      ],
+      "second": [
+        "Arms of Government",
+        "The Legislature",
+        "The Executive",
+        "The Judiciary",
+        "Political Parties",
+        "Electoral Process"
+      ],
+      "third": [
+        "Public Administration",
+        "Political Participation",
+        "Pressure Groups",
+        "Nigerian Federalism",
+        "Review"
+      ]
+    },
+    "Christian Religious Studies": {
+      "first": [
+        "The Person of Jesus Christ",
+        "The Teachings of Jesus",
+        "The Miracles of Jesus",
+        "The Parables of Jesus",
+        "The Sermon on the Mount",
+        "Christian Ethics"
+      ],
+      "second": [
+        "The Passion Narrative",
+        "The Death and Resurrection",
+        "The Early Church",
+        "The Apostle Paul",
+        "The Epistles",
+        "Christian Living"
+      ],
+      "third": [
+        "Church History",
+        "Christian Denominations",
+        "Contemporary Christianity",
+        "Social Issues and Christianity",
+        "Review"
+      ]
+    },
+    "Visual Arts": {
+      "first": [
+        "Introduction to Visual Arts",
+        "Elements of Art",
+        "Principles of Design",
+        "Drawing and Painting",
+        "Sculpture",
+        "Nigerian Art History"
+      ],
+      "second": [
+        "African Art",
+        "Nigerian Traditional Art",
+        "Contemporary Nigerian Art",
+        "Art Appreciation",
+        "Craft and Design",
+        "Textile Art"
+      ],
+      "third": [
+        "Printmaking",
+        "Photography",
+        "Graphic Design",
+        "Portfolio Development",
+        "Art Exhibition"
+      ]
+    },
+    "Literature in English": {
+      "first": [
+        "Introduction to Literature",
+        "Types of Literature – Prose, Poetry, Drama",
+        "Literary Devices and Techniques",
+        "Prose – Elements and Analysis",
+        "Poetry – Forms and Features",
+        "Drama – Structure and Performance"
+      ],
+      "second": [
+        "African Literature",
+        "Nigerian Literature",
+        "World Literature",
+        "Literary Criticism",
+        "Research Methods in Literature",
+        "Creative Writing"
+      ],
+      "third": [
+        "Comparative Literature",
+        "Literature and Society",
+        "Review of Prescribed Texts",
+        "Exam Preparation"
+      ]
+    },
+    "Catering and Craft Practice": {
+      "first": [
+        "Introduction to Catering",
+        "Food Hygiene and Safety",
+        "Kitchen Equipment",
+        "Basic Cooking Methods",
+        "Food and Nutrition",
+        "Menu Planning"
+      ],
+      "second": [
+        "Food Service",
+        "Table Setting",
+        "Beverage Service",
+        "Accommodation Services",
+        "Housekeeping",
+        "Customer Care"
+      ],
+      "third": [
+        "Entrepreneurship in Catering",
+        "Business Management",
+        "Marketing Catering Services",
+        "Costing and Pricing",
+        "Project Work"
+      ]
+    },
+    "Financial Accounting": {
+      "first": [
+        "Introduction to Accounting",
+        "The Accounting Equation",
+        "Double Entry Book-keeping",
+        "Ledger Accounts",
+        "Trial Balance",
+        "Cash Book"
+      ],
+      "second": [
+        "Petty Cash",
+        "Bank Reconciliation",
+        "Correction of Errors",
+        "Final Accounts – Trading Account",
+        "Final Accounts – Profit and Loss Account",
+        "Balance Sheet"
+      ],
+      "third": [
+        "Depreciation",
+        "Provisions and Reserves",
+        "Accounts from Incomplete Records",
+        "Introduction to Partnership Accounts",
+        "Manufacturing Accounts",
+        "Review"
+      ]
+    },
+    "Commerce": {
+      "first": [
+        "Introduction to Commerce",
+        "Aids to Trade",
+        "Transport and Communication",
+        "Warehousing",
+        "Insurance",
+        "Advertising and Salesmanship"
+      ],
+      "second": [
+        "Trade – Home and Foreign",
+        "Imports and Exports",
+        "Balance of Trade",
+        "Commercial Documents",
+        "Terms of Trade",
+        "International Trade Organisations"
+      ],
+      "third": [
+        "Nigerian Commerce",
+        "Economic Development",
+        "Small Scale Business",
+        "Entrepreneurship",
+        "Review"
+      ]
+    },
+    "Marketing": {
+      "first": [
+        "Introduction to Marketing",
+        "Marketing Concepts",
+        "Consumer Behaviour",
+        "Market Research",
+        "Product Planning",
+        "Pricing Strategies"
+      ],
+      "second": [
+        "Distribution Channels",
+        "Promotion and Advertising",
+        "Personal Selling",
+        "Sales Management",
+        "Market Segmentation",
+        "Marketing Environment"
+      ],
+      "third": [
+        "Nigerian Marketing System",
+        "International Marketing",
+        "Digital Marketing Introduction",
+        "Marketing Ethics",
+        "Review"
+      ]
+    },
+    "Economics": {
+      "first": [
+        "Introduction to Economics",
+        "Basic Concepts – Wants, Scarcity, Choice",
+        "Factors of Production",
+        "Economic Systems",
+        "Demand and Supply",
+        "Price Determination"
+      ],
+      "second": [
+        "Theory of Production",
+        "Market Structures",
+        "National Income",
+        "Money and Banking",
+        "Inflation and Deflation",
+        "Government Finance"
+      ],
+      "third": [
+        "International Trade",
+        "Balance of Payments",
+        "Economic Development",
+        "Nigerian Economy",
+        "Review"
+      ]
+    },
+    "Livestock Farming": {
+      "first": [
+        "Introduction to Livestock Farming",
+        "Poultry Production",
+        "Rabbit Production",
+        "Fish Production",
+        "Livestock Nutrition",
+        "Disease Management"
+      ],
+      "second": [
+        "Sheep and Goat Production",
+        "Cattle Production",
+        "Swine Production",
+        "Livestock Housing",
+        "Breeding and Genetics",
+        "Record Keeping"
+      ],
+      "third": [
+        "Marketing Livestock Products",
+        "Entrepreneurship",
+        "Business Planning",
+        "Value Addition",
+        "Review"
+      ]
+    },
+    "Beauty and Cosmetology": {
+      "first": [
+        "Introduction to Beauty and Cosmetology",
+        "Advanced Hair Styling",
+        "Hair Coloring Techniques",
+        "Advanced Skin Care",
+        "Makeup Artistry",
+        "Nail Technology"
+      ],
+      "second": [
+        "Salon Management",
+        "Customer Service",
+        "Product Knowledge",
+        "Business Planning",
+        "Marketing Beauty Services",
+        "Professional Ethics"
+      ],
+      "third": [
+        "Entrepreneurship in Beauty",
+        "Financial Management",
+        "Advanced Techniques",
+        "Portfolio Development",
+        "Review"
+      ]
+    },
+    "Solar Photovoltaic Installation and Maintenance": {
+      "first": [
+        "Review of Solar PV Fundamentals",
+        "Advanced PV Technologies",
+        "Energy Storage Systems",
+        "Grid-Tied Systems",
+        "Off-Grid Systems",
+        "Hybrid Systems"
+      ],
+      "second": [
+        "System Design and Sizing",
+        "Installation Procedures",
+        "Commissioning and Testing",
+        "Maintenance Practices",
+        "Troubleshooting",
+        "Safety Standards"
+      ],
+      "third": [
+        "Solar Energy Economics",
+        "Project Management",
+        "Client Relations",
+        "Business Development",
+        "Review"
+      ]
+    }
+  },
+  "SSS2": {
+    "English Language": {
+      "first": [
+        "Advanced Grammar – Tenses Review",
+        "Vocabulary Development",
+        "Reading Comprehension – Critical Analysis",
+        "Essay Writing – Argumentative and Expository",
+        "Literature – Prose Study",
+        "Oral English – Emphasis and Intonation"
+      ],
+      "second": [
+        "Advanced Composition",
+        "Summary Writing",
+        "Literature – Poetry Study",
+        "Drama Study",
+        "Grammar – Advanced Structures",
+        "Vocabulary Enhancement"
+      ],
+      "third": [
+        "Revision of Major Topics",
+        "Exam Preparation",
+        "Past Question Practice",
+        "Literature Review",
+        "Creative Writing"
+      ]
+    },
+    "Mathematics": {
+      "first": [
+        "Simultaneous Equations – Graphical",
+        "Quadratic Equations – Graphs",
+        "Logarithms and Indices",
+        "Matrices and Determinants",
+        "Sequences and Series",
+        "Sets and Venn Diagrams"
+      ],
+      "second": [
+        "Trigonometry – Compound Angles",
+        "Differentiation Introduction",
+        "Integration Introduction",
+        "Statistics – Grouped Data",
+        "Probability – Mutually Exclusive Events",
+        "Vector Geometry"
+      ],
+      "third": [
+        "Calculus Applications",
+        "Coordinate Geometry",
+        "Review of Key Topics",
+        "Problem Solving",
+        "Exam Preparation"
+      ]
+    },
+    "Citizenship and Heritage Studies": {
+      "first": [
+        "Advanced Citizenship Concepts",
+        "Nigerian Political System",
+        "Constitutional Law",
+        "Human Rights in Nigeria",
+        "Civil Society",
+        "Nigerian Heritage"
+      ],
+      "second": [
+        "Democracy and Development",
+        "Leadership and Governance",
+        "Social Justice",
+        "Nigerian Foreign Policy",
+        "International Relations",
+        "Nigerian Identity"
+      ],
+      "third": [
+        "Review of Key Topics",
+        "Current Issues",
+        "Exam Preparation",
+        "Research Skills"
+      ]
+    },
+    "Digital Technologies": {
+      "first": [
+        "Advanced Programming",
+        "Database Management Systems",
+        "Web Development – Advanced HTML/CSS",
+        "Introduction to JavaScript",
+        "Networking Concepts",
+        "Cybersecurity"
+      ],
+      "second": [
+        "Advanced Web Development",
+        "Python Programming",
+        "Software Engineering",
+        "Cloud Computing",
+        "Project Management",
+        "Digital Ethics"
+      ],
+      "third": [
+        "Review and Revision",
+        "Project Work",
+        "Exam Preparation"
+      ]
+    },
+    "Biology": {
+      "first": [
+        "Genetics – Mendelian Laws",
+        "Genetics – Beyond Mendel",
+        "Evolution",
+        "Ecology – Ecosystems",
+        "Ecology – Energy Flow",
+        "Environmental Biology"
+      ],
+      "second": [
+        "Human Biology – Circulatory System",
+        "Human Biology – Respiratory System",
+        "Human Biology – Nervous System",
+        "Human Biology – Reproductive System",
+        "Plant Biology",
+        "Microbiology"
+      ],
+      "third": [
+        "Biotechnology",
+        "Conservation Biology",
+        "Environmental Issues",
+        "Review",
+        "Exam Preparation"
+      ]
+    },
+    "Chemistry": {
+      "first": [
+        "Organic Chemistry – Hydrocarbons",
+        "Organic Chemistry – Functional Groups",
+        "Organic Chemistry – Reactions",
+        "Chemical Kinetics",
+        "Equilibrium",
+        "Thermochemistry"
+      ],
+      "second": [
+        "Electrochemistry",
+        "Nuclear Chemistry",
+        "Chemistry of Elements – Group IV",
+        "Chemistry of Elements – Group V",
+        "Chemistry of Elements – Group VII",
+        "Transition Metals"
+      ],
+      "third": [
+        "Organic Chemistry Review",
+        "Analytical Chemistry",
+        "Practical Chemistry",
+        "Review",
+        "Exam Preparation"
+      ]
+    },
+    "Physics": {
+      "first": [
+        "Electric Fields",
+        "Capacitance",
+        "Current Electricity – Detailed",
+        "Resistance and Resistivity",
+        "Electrical Circuits",
+        "Power and Energy in Circuits"
+      ],
+      "second": [
+        "Magnetic Fields",
+        "Electromagnetic Induction",
+        "Alternating Current",
+        "Optics – Lenses",
+        "Optics – Optical Instruments",
+        "Wave Motion"
+      ],
+      "third": [
+        "Sound Waves – Detailed",
+        "Modern Physics",
+        "Nuclear Physics",
+        "Electronics Introduction",
+        "Review",
+        "Exam Preparation"
+      ]
+    },
+    "Agricultural Science": {
+      "first": [
+        "Advanced Crop Production",
+        "Soil Science – Detailed",
+        "Pest and Disease Management",
+        "Agricultural Extension",
+        "Farm Management",
+        "Agricultural Economics"
+      ],
+      "second": [
+        "Advanced Animal Husbandry",
+        "Livestock Diseases",
+        "Feed Formulation",
+        "Breeding Programs",
+        "Veterinary Science",
+        "Agricultural Technology"
+      ],
+      "third": [
+        "Food Processing",
+        "Marketing of Agricultural Products",
+        "Agricultural Policy",
+        "Review",
+        "Exam Preparation"
+      ]
+    },
+    "Further Mathematics": {
+      "first": [
+        "Matrices – Advanced Operations",
+        "Determinants – 3×3",
+        "Vector Algebra",
+        "Scalar and Vector Products",
+        "Equations of Lines and Planes",
+        "Complex Numbers"
+      ],
+      "second": [
+        "Limits and Continuity",
+        "Differentiation – Techniques",
+        "Integration – Techniques",
+        "Differential Equations",
+        "Laplace Transforms",
+        "Fourier Series"
+      ],
+      "third": [
+        "Review of Key Topics",
+        "Problem Solving",
+        "Exam Preparation"
+      ]
+    },
+    "Food and Nutrition": {
+      "first": [
+        "Advanced Food Science",
+        "Food Chemistry",
+        "Food Microbiology",
+        "Advanced Cooking Techniques",
+        "International Cuisine",
+        "Food Safety Management"
+      ],
+      "second": [
+        "Catering Management",
+        "Event Planning",
+        "Costing and Pricing",
+        "Marketing in Food Industry",
+        "Entrepreneurship",
+        "Quality Control"
+      ],
+      "third": [
+        "Review",
+        "Practical Projects",
+        "Exam Preparation"
+      ]
+    },
+    "Geography": {
+      "first": [
+        "Advanced Map Reading",
+        "Climate and Vegetation",
+        "Biogeography",
+        "Geomorphology",
+        "Hydrology – Detailed",
+        "Environmental Management"
+      ],
+      "second": [
+        "Population Studies",
+        "Urban Geography",
+        "Economic Geography of Nigeria",
+        "Transport Geography",
+        "Development Studies",
+        "Geographic Information Systems"
+      ],
+      "third": [
+        "Regional Geography",
+        "Resource Management",
+        "Environmental Issues",
+        "Review",
+        "Exam Preparation"
+      ]
+    },
+    "Technical Drawing": {
+      "first": [
+        "Advanced Orthographic Projection",
+        "Development of Surfaces",
+        "Interpenetration of Solids",
+        "Isometric Projection – Advanced",
+        "Perspective Drawing",
+        "CAD – Advanced Applications"
+      ],
+      "second": [
+        "Engineering Drawing",
+        "Machine Drawing",
+        "Building Drawing – Advanced",
+        "Electrical Drawing",
+        "Pipe Drawing",
+        "Structural Drawing"
+      ],
+      "third": [
+        "Review",
+        "Project Work",
+        "Exam Preparation"
+      ]
+    },
+    "Nigerian History": {
+      "first": [
+        "Pre-Colonial Nigerian States",
+        "The Sokoto Caliphate",
+        "The Bornu Empire",
+        "Yoruba Kingdoms",
+        "The Igbo Society",
+        "European Colonization"
+      ],
+      "second": [
+        "Nationalist Movements",
+        "Independence Struggle",
+        "Post-Independence Politics",
+        "The Civil War",
+        "Military Governments",
+        "Democratic Transitions"
+      ],
+      "third": [
+        "Contemporary Nigeria",
+        "Nigerian Economy",
+        "Nigerian Society",
+        "Review",
+        "Exam Preparation"
+      ]
+    },
+    "Government": {
+      "first": [
+        "Political Philosophy",
+        "Political Development in Nigeria",
+        "Constitutional Development",
+        "Local Government",
+        "Public Administration",
+        "Political Parties"
+      ],
+      "second": [
+        "Electoral Systems",
+        "Pressure Groups",
+        "Political Behaviour",
+        "Nigerian Federalism",
+        "Political Economy",
+        "Comparative Government"
+      ],
+      "third": [
+        "International Politics",
+        "Nigerian Foreign Policy",
+        "Review",
+        "Exam Preparation"
+      ]
+    },
+    "Christian Religious Studies": {
+      "first": [
+        "Old Testament Survey",
+        "The Pentateuch",
+        "Historical Books",
+        "Wisdom Literature",
+        "The Prophets",
+        "New Testament Introduction"
+      ],
+      "second": [
+        "The Gospels",
+        "The Acts of the Apostles",
+        "The Pauline Epistles",
+        "General Epistles",
+        "Revelation",
+        "Christian Doctrine"
+      ],
+      "third": [
+        "Church History",
+        "Christian Ethics",
+        "Social Issues",
+        "Review",
+        "Exam Preparation"
+      ]
+    },
+    "Visual Arts": {
+      "first": [
+        "Art History – Western Art",
+        "Art History – African Art",
+        "Nigerian Art Movements",
+        "Art Criticism",
+        "Art Appreciation",
+        "Studio Practice"
+      ],
+      "second": [
+        "Painting Techniques",
+        "Sculpture – Advanced",
+        "Printmaking",
+        "Textile Design",
+        "Graphic Design",
+        "Photography"
+      ],
+      "third": [
+        "Portfolio Development",
+        "Art Exhibition",
+        "Review",
+        "Exam Preparation"
+      ]
+    },
+    "Literature in English": {
+      "first": [
+        "Prose – Novel Study",
+        "Prose – Character Analysis",
+        "Poetry – Advanced Study",
+        "Poetry – Critical Analysis",
+        "Drama – Play Study",
+        "Drama – Performance Analysis"
+      ],
+      "second": [
+        "African Literature – Detailed Study",
+        "Non-African Literature",
+        "Comparative Literature",
+        "Literary Theory",
+        "Research Methods",
+        "Creative Writing"
+      ],
+      "third": [
+        "Review of Prescribed Texts",
+        "Exam Techniques",
+        "Past Question Practice",
+        "Exam Preparation"
+      ]
+    },
+    "Catering and Craft Practice": {
+      "first": [
+        "Advanced Food Preparation",
+        "International Cuisine",
+        "Pastry and Baking",
+        "Food Presentation",
+        "Kitchen Management",
+        "Cost Control"
+      ],
+      "second": [
+        "Accommodation Management",
+        "Event Catering",
+        "Beverage Management",
+        "Hospitality Industry",
+        "Tourism",
+        "Customer Relations"
+      ],
+      "third": [
+        "Entrepreneurship",
+        "Business Planning",
+        "Marketing",
+        "Review",
+        "Exam Preparation"
+      ]
+    },
+    "Financial Accounting": {
+      "first": [
+        "Partnership Accounts",
+        "Company Accounts",
+        "Consignment Accounts",
+        "Joint Venture Accounts",
+        "Branch Accounts",
+        "Departmental Accounts"
+      ],
+      "second": [
+        "Hire Purchase",
+        "Lease Accounting",
+        "Farm Accounts",
+        "Manufacturing Accounts",
+        "Incomplete Records",
+        "Accounts of Non-Profit Organisations"
+      ],
+      "third": [
+        "Review",
+        "Exam Preparation",
+        "Past Questions"
+      ]
+    },
+    "Commerce": {
+      "first": [
+        "International Trade – Detailed",
+        "Balance of Payments",
+        "Exchange Rates",
+        "Trade Organisations",
+        "Commercial Law",
+        "Business Ethics"
+      ],
+      "second": [
+        "Nigerian Commerce",
+        "Economic Reforms",
+        "Privatisation and Commercialisation",
+        "Deregulation",
+        "Small and Medium Enterprises",
+        "Review"
+      ],
+      "third": [
+        "Review",
+        "Exam Preparation",
+        "Past Questions"
+      ]
+    },
+    "Marketing": {
+      "first": [
+        "Advanced Marketing Management",
+        "Brand Management",
+        "Consumer Behaviour – Detailed",
+        "Market Research – Advanced",
+        "Product Development",
+        "Sales Management"
+      ],
+      "second": [
+        "Distribution Management",
+        "Digital Marketing",
+        "Social Media Marketing",
+        "International Marketing",
+        "Marketing Ethics",
+        "Review"
+      ],
+      "third": [
+        "Review",
+        "Exam Preparation",
+        "Past Questions"
+      ]
+    },
+    "Economics": {
+      "first": [
+        "Advanced Microeconomics",
+        "Consumer Theory",
+        "Producer Theory",
+        "Market Structures – Detailed",
+        "Factor Markets",
+        "Welfare Economics"
+      ],
+      "second": [
+        "Advanced Macroeconomics",
+        "National Income – Detailed",
+        "Inflation and Deflation",
+        "Monetary Policy",
+        "Fiscal Policy",
+        "International Economics"
+      ],
+      "third": [
+        "Nigerian Economy – Detailed",
+        "Economic Development",
+        "Structural Adjustment",
+        "Review",
+        "Exam Preparation"
+      ]
+    },
+    "Livestock Farming": {
+      "first": [
+        "Advanced Livestock Management",
+        "Animal Nutrition",
+        "Reproduction Technology",
+        "Disease Control",
+        "Farm Economics",
+        "Sustainable Livestock Farming"
+      ],
+      "second": [
+        "Livestock Products Processing",
+        "Marketing Strategies",
+        "Business Planning",
+        "Entrepreneurship",
+        "Value Addition",
+        "Review"
+      ],
+      "third": [
+        "Review",
+        "Practical Projects",
+        "Exam Preparation"
+      ]
+    },
+    "Beauty and Cosmetology": {
+      "first": [
+        "Advanced Beauty Techniques",
+        "Specialized Hair Styling",
+        "Advanced Makeup Artistry",
+        "Spa and Wellness",
+        "Beauty Therapy",
+        "Advanced Nail Technology"
+      ],
+      "second": [
+        "Salon Management – Advanced",
+        "Business Development",
+        "Marketing Strategies",
+        "Customer Relations",
+        "Professional Ethics",
+        "Review"
+      ],
+      "third": [
+        "Review",
+        "Practical Projects",
+        "Exam Preparation"
+      ]
+    }
+  },
+  "SSS3": {
+    "English Language": {
+      "first": [
+        "Comprehensive Grammar Review",
+        "Advanced Vocabulary",
+        "Reading Comprehension – Critical Analysis",
+        "Essay Writing – All Types",
+        "Literature – Comprehensive Review",
+        "Exam Preparation"
+      ],
+      "second": [
+        "Summary Writing",
+        "Comprehension Practice",
+        "Literature – Prescribed Texts Review",
+        "Grammar – Advanced Structures",
+        "Vocabulary Enhancement",
+        "Past Question Practice"
+      ],
+      "third": [
+        "Final Revision",
+        "Mock Examinations",
+        "WAEC/NECO Preparation",
+        "Exam Strategies"
+      ]
+    },
+    "Mathematics": {
+      "first": [
+        "Advanced Calculus",
+        "Differential Equations",
+        "Matrices – Advanced",
+        "Statistics – Advanced",
+        "Probability – Advanced",
+        "Mechanics"
+      ],
+      "second": [
+        "Coordinate Geometry – Advanced",
+        "Trigonometry – Advanced",
+        "Vectors – Advanced",
+        "Complex Numbers",
+        "Review of Key Topics",
+        "Problem Solving"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "Mock Examinations",
+        "WAEC/NECO Preparation",
+        "Exam Strategies"
+      ]
+    },
+    "Citizenship and Heritage Studies": {
+      "first": [
+        "Comprehensive Review of SS1–SS2",
+        "Nigerian Constitution – Detailed",
+        "Human Rights Law",
+        "Constitutional Development",
+        "Nigerian Politics",
+        "National Issues"
+      ],
+      "second": [
+        "International Relations",
+        "Nigerian Foreign Policy",
+        "Development Studies",
+        "Social Issues",
+        "Review"
+      ],
+      "third": [
+        "Final Revision",
+        "Mock Examinations",
+        "WAEC/NECO Preparation"
+      ]
+    },
+    "Digital Technologies": {
+      "first": [
+        "Advanced Programming",
+        "Database Systems",
+        "Web Development",
+        "Networking",
+        "Cybersecurity",
+        "Project Management"
+      ],
+      "second": [
+        "Software Engineering",
+        "Cloud Computing",
+        "Artificial Intelligence Introduction",
+        "Data Science Basics",
+        "Review"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "Practical Projects",
+        "WAEC/NECO Preparation"
+      ]
+    },
+    "Biology": {
+      "first": [
+        "Genetics – Advanced",
+        "Molecular Biology",
+        "Biotechnology",
+        "Ecology – Ecosystems",
+        "Evolution – Advanced",
+        "Conservation Biology"
+      ],
+      "second": [
+        "Human Physiology – Advanced",
+        "Plant Physiology – Advanced",
+        "Microbiology – Advanced",
+        "Environmental Biology",
+        "Biological Techniques",
+        "Review"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "WAEC/NECO Preparation",
+        "Practical Review"
+      ]
+    },
+    "Chemistry": {
+      "first": [
+        "Organic Chemistry – Advanced",
+        "Physical Chemistry – Advanced",
+        "Inorganic Chemistry – Advanced",
+        "Analytical Chemistry",
+        "Industrial Chemistry",
+        "Environmental Chemistry"
+      ],
+      "second": [
+        "Practical Chemistry – Advanced",
+        "Chemical Calculations",
+        "Review of Key Topics",
+        "Exam Preparation",
+        "Past Question Analysis"
+      ],
+      "third": [
+        "Intensive Revision",
+        "Individual Support Sessions",
+        "Final Exam Strategies",
+        "Past Exam Correction Sessions",
+        "Group Discussion and Peer Review",
+        "Last-Minute Revision",
+        "Mock Final Exams"
+      ]
+    },
+    "Physics": {
+      "first": [
+        "Optics – Advanced",
+        "Electrostatics – Advanced",
+        "Current Electricity – Advanced",
+        "Magnetism – Advanced",
+        "Electromagnetic Induction – Advanced",
+        "Modern Physics"
+      ],
+      "second": [
+        "Nuclear Physics – Advanced",
+        "Electronics",
+        "Communication Systems",
+        "Energy and Power",
+        "Review"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "WAEC/NECO Preparation",
+        "Practical Review"
+      ]
+    },
+    "Agricultural Science": {
+      "first": [
+        "Advanced Crop Science",
+        "Soil Science – Detailed",
+        "Pest and Disease Management – Advanced",
+        "Agricultural Extension – Advanced",
+        "Farm Management – Advanced",
+        "Agricultural Economics – Detailed"
+      ],
+      "second": [
+        "Advanced Animal Science",
+        "Livestock Products",
+        "Agricultural Technology",
+        "Food Processing",
+        "Review"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "WAEC/NECO Preparation",
+        "Practical Review"
+      ]
+    },
+    "Further Mathematics": {
+      "first": [
+        "Inequalities",
+        "Matrices and Determinants",
+        "Partial Fractions",
+        "Probability Distributions",
+        "Variance",
+        "Correlation"
+      ],
+      "second": [
+        "Integration",
+        "Conic Sections",
+        "Statics",
+        "Modelling",
+        "Game Theory",
+        "Review"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "WAEC/NECO Preparation"
+      ]
+    },
+    "Food and Nutrition": {
+      "first": [
+        "Beverages",
+        "Special Diet",
+        "Cultural Food Habit",
+        "Traditional and Foreign Dishes",
+        "Art of Entertainment",
+        "Table Setting and Etiquette"
+      ],
+      "second": [
+        "Food Service",
+        "Self Employment (Catering Enterprise)",
+        "Work Ethics and Food Packaging",
+        "Experimental Cookery",
+        "Cooking Assignment",
+        "Practical Cookery Exercises"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "WAEC/NECO Preparation"
+      ]
+    },
+    "Geography": {
+      "first": [
+        "Denudation Processes",
+        "Weathering",
+        "Mass Movements",
+        "Climate Change",
+        "ECOWAS",
+        "Trade and Tourism",
+        "Satellite Remote Sensing",
+        "GIS Application"
+      ],
+      "second": [
+        "Review of Key Topics",
+        "Exam Preparation"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "WAEC/NECO Preparation"
+      ]
+    },
+    "Technical Drawing": {
+      "first": [
+        "Engineering Designs and Working Drawing",
+        "Screw Threads, Fasteners and Locking Devices",
+        "Engineering Working Drawing",
+        "Sections and Sectional Views",
+        "Block Sectioning"
+      ],
+      "second": [
+        "Computer-Aided Design",
+        "Arches",
+        "Roofs",
+        "Conventional Representation of Materials and Symbols",
+        "Blueprint Reading"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "WAEC/NECO Preparation"
+      ]
+    },
+    "Nigerian History": {
+      "first": [
+        "Islamic Movements in West Africa",
+        "The Jihads of Ahmadu Seku and Alhaji Umar",
+        "Activities of Samori Toure",
+        "Muslim States and European Colonization",
+        "Christian Missionary Activities",
+        "Empires in Western Sudan",
+        "Industrial Revolution and New Imperialism"
+      ],
+      "second": [
+        "The Berlin Conference",
+        "Colonial Subjugation and African Reaction",
+        "Colonial Rule in Africa",
+        "Colonial Economy and Underdevelopment",
+        "Colonial Africa and the World Wars",
+        "Origins of Nationalism",
+        "Patterns of Nationalist Movements",
+        "External Influences on African Nationalism"
+      ],
+      "third": [
+        "Apartheid in South Africa",
+        "The OAU (AU) and the Fight Against Apartheid",
+        "Neo-Colonialism",
+        "Problems of Independent African States",
+        "Military Intervention in African Politics",
+        "Boundary Disputes and African Unity",
+        "Global Institutions and Africa",
+        "Africans in the Diaspora"
+      ]
+    },
+    "Government": {
+      "first": [
+        "Military Rule in Nigeria",
+        "Conflict Resolution and Management",
+        "Peace Education",
+        "Interdependence of Nations and Globalization",
+        "Nigeria's Foreign Policy I",
+        "Nigeria's Foreign Policy II",
+        "International Organisation: UNO",
+        "International Organisation: OAU/AU",
+        "International Organisation: Commonwealth"
+      ],
+      "second": [
+        "International Organisation: ECOWAS",
+        "International Organisation: OPEC",
+        "Millennium Development Goals (MDGs) and NEPAD",
+        "E-Government, Leadership and Followership"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "WAEC/NECO Preparation"
+      ]
+    },
+    "Christian Religious Studies": {
+      "first": [
+        "Civic Responsibilities",
+        "HIV/AIDS I",
+        "HIV/AIDS II",
+        "Independence and Self-Actualization",
+        "Dignity of Labour",
+        "Christian Attitude to Corruption",
+        "Forgiveness",
+        "Perseverance, Wealth and Poverty"
+      ],
+      "second": [
+        "Comprehensive Review",
+        "Exam Preparation"
+      ],
+      "third": [
+        "Final Revision",
+        "WAEC/NECO Preparation"
+      ]
+    },
+    "Visual Arts": {
+      "first": [
+        "Drawing and Painting",
+        "History of Art (Western Art)",
+        "Impressionism Art Movement",
+        "Nigerian Contemporary Artists",
+        "Cubism",
+        "Furniture",
+        "Oriental and Oceanic Art",
+        "Sculpture",
+        "Photography"
+      ],
+      "second": [
+        "Cultural and Creative Arts",
+        "Imaginative Composition",
+        "Craft in Nigeria",
+        "Art Terminologies",
+        "Two and Three Dimensional Arts",
+        "Practical Project Work",
+        "Appreciation of Nigerian Crafts and Arts"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "WAEC/NECO Preparation"
+      ]
+    },
+    "Literature in English": {
+      "first": [
+        "Antony and Cleopatra – Introduction and Act I",
+        "Antony and Cleopatra – Act II",
+        "Antony and Cleopatra – Act III",
+        "Antony and Cleopatra – Acts IV and V",
+        "Introduction to Unseen Prose",
+        "Introduction to Unseen Poem",
+        "Principles of Answering Context Questions"
+      ],
+      "second": [
+        "Review of Shakespearean Text",
+        "Revision of African Prose",
+        "Revision of Non-African Prose",
+        "Revision of African Drama",
+        "Revision of Non-African Drama",
+        "Revision of African and Non-African Poetry"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "WAEC/NECO Preparation"
+      ]
+    },
+    "Catering and Craft Practice": {
+      "first": [
+        "Meal Planning",
+        "Special Menu – Vegetarians",
+        "Special Menu – Pregnant and Lactating Women",
+        "Special Menu – Infants and Toddlers",
+        "Special Menu – Adolescents",
+        "Special Menu – Aged / Elderly",
+        "Special Menu – Manual and Sedentary Workers",
+        "Special Menu – Diabetic and Hypertensive Patients",
+        "Special Menu – Invalid and Convalescent"
+      ],
+      "second": [
+        "Housekeeping Department",
+        "Bed Making",
+        "Hotel Receptionist",
+        "Front Office",
+        "Revision of Past Questions"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "WAEC/NECO Preparation"
+      ]
+    },
+    "Financial Accounting": {
+      "first": [
+        "Consignment Account",
+        "Joint Venture Account",
+        "Contract Account",
+        "Departmental Account",
+        "Branch Account",
+        "Public Sector Accounting"
+      ],
+      "second": [
+        "Comprehensive Review",
+        "Exam Preparation"
+      ],
+      "third": [
+        "Final Revision",
+        "WAEC/NECO Preparation"
+      ]
+    },
+    "Commerce": {
+      "first": [
+        "History of the Nigerian Capital Market",
+        "Stock Exchange",
+        "Second Tier Securities Market",
+        "Economic Grouping in West Africa",
+        "Business Law",
+        "Contract of Employment and Government Regulation of Business",
+        "Negotiable Instruments"
+      ],
+      "second": [
+        "Comprehensive Review",
+        "Exam Preparation"
+      ],
+      "third": [
+        "Final Revision",
+        "WAEC/NECO Preparation"
+      ]
+    },
+    "Marketing": {
+      "first": [
+        "International Marketing",
+        "International Trade System",
+        "Market Decision and Wider Market",
+        "Features of International Market",
+        "Legal, Social, Cultural and Demographic Features",
+        "Approaches to International Market",
+        "Regulations Guiding International Marketing",
+        "ICT in International Marketing"
+      ],
+      "second": [
+        "Internet Browsing and Electronic Marketing",
+        "Planning for a Personal Marketing Outlet",
+        "Setting up/Operating a Marketing Outlet",
+        "Purchase and Supply of Goods",
+        "Selling and Bargaining Skills",
+        "Fund Management"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "WAEC/NECO Preparation"
+      ]
+    },
+    "Economics": {
+      "first": [
+        "Economics Lessons from Asian Tigers, Japan, Europe, and America",
+        "Human Capital Development",
+        "Petroleum and the Nigerian Economy",
+        "Manufacturing and Construction",
+        "Service Industries",
+        "Agencies that Regulate Financial Markets",
+        "International Trade"
+      ],
+      "second": [
+        "Balance of Payments",
+        "Economic Growth and Development",
+        "Economic Development Planning",
+        "International Economic Organizations",
+        "Current Economic Plans",
+        "Economic Development Challenges",
+        "Economic Reform Programmes"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "WAEC/NECO Preparation"
+      ]
+    },
+    "Livestock Farming": {
+      "first": [
+        "Advanced Livestock Management",
+        "Animal Nutrition",
+        "Reproduction Technology",
+        "Disease Control",
+        "Farm Economics",
+        "Sustainable Livestock Farming"
+      ],
+      "second": [
+        "Livestock Products Processing",
+        "Marketing Strategies",
+        "Business Planning",
+        "Entrepreneurship",
+        "Value Addition"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "WAEC/NECO Preparation"
+      ]
+    },
+    "Beauty and Cosmetology": {
+      "first": [
+        "Advanced Beauty Techniques",
+        "Specialized Hair Styling",
+        "Advanced Makeup Artistry",
+        "Spa and Wellness",
+        "Beauty Therapy",
+        "Advanced Nail Technology"
+      ],
+      "second": [
+        "Salon Management – Advanced",
+        "Business Development",
+        "Marketing Strategies",
+        "Customer Relations",
+        "Professional Ethics"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "WAEC/NECO Preparation"
+      ]
+    },
+    "Solar Photovoltaic Installation and Maintenance": {
+      "first": [
+        "Advanced PV Technologies",
+        "Smart Solar Systems",
+        "Hybrid Energy Systems",
+        "Energy Policies in Nigeria",
+        "Climate Change and Renewable Energy",
+        "Environmental Impacts of PV Systems",
+        "Practical: Smart Solar Monitoring System"
+      ],
+      "second": [
+        "Preparation for SSCE",
+        "SSCE Past Questions – Theory",
+        "SSCE Past Questions – Practical",
+        "Mock Installation Project I",
+        "Mock Installation Project II",
+        "Mock Installation Project III",
+        "Mock SSCE",
+        "Exam Prep and Coaching"
+      ],
+      "third": [
+        "Comprehensive Revision I – Theory",
+        "Comprehensive Revision II – Practical",
+        "Final Project Presentation",
+        "Mock Exams",
+        "Final SSCE Preparation",
+        "WAEC/NECO Practical and Theory Exams"
+      ]
+    },
+    "Fashion Design and Garment Making": {
+      "first": [
+        "Tailoring Business I – Setting Up",
+        "Tailoring Business II – Costing and Pricing",
+        "Customer Relations",
+        "Entrepreneurship in Fashion",
+        "ICT in Fashion",
+        "Fashion Trends and Globalization",
+        "Practical: Business Proposal for a Fashion Line"
+      ],
+      "second": [
+        "Revision of Major Skills",
+        "SSCE Past Questions – Theory",
+        "SSCE Past Questions – Practical",
+        "Mock Project I",
+        "Mock Project II",
+        "Mock SSCE",
+        "Exam Prep"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "WAEC/NECO Preparation",
+        "Final Project"
+      ]
+    },
+    "Horticulture and Crop Production": {
+      "first": [
+        "Advanced Crop Science",
+        "Soil Science – Detailed",
+        "Pest and Disease Management – Advanced",
+        "Agricultural Extension – Advanced",
+        "Farm Management – Advanced",
+        "Agricultural Economics – Detailed"
+      ],
+      "second": [
+        "Advanced Plant Production",
+        "Greenhouse Technology",
+        "Hydroponics",
+        "Organic Farming",
+        "Marketing and Business",
+        "Review"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "WAEC/NECO Preparation"
+      ]
+    },
+    "Computer Hardware and GSM Repairs": {
+      "first": [
+        "Advanced GSM Repairs",
+        "Soldering and Desoldering",
+        "Replacing Phone Components",
+        "Troubleshooting Advanced Faults",
+        "Flashing and Unlocking",
+        "Practical: Complex Fault Repair"
+      ],
+      "second": [
+        "Entrepreneurship in GSM Repairs",
+        "Business Management",
+        "Financial Record Keeping",
+        "Marketing Services",
+        "Review"
+      ],
+      "third": [
+        "Comprehensive Review",
+        "WAEC/NECO Preparation"
+      ]
+    }
+  }
+}

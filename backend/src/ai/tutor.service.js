@@ -248,8 +248,8 @@ export const aiTutorService = {
               COUNT(DISTINCT DATE(created_at))::int as active_days,
               SUM(LENGTH(response))::int as total_chars
        FROM ai_usage
-       WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '${days} days'`,
-      [userId]
+       WHERE user_id = $1 AND created_at >= NOW() - ($2 || ' days')::interval`,
+      [userId, String(days)]
     );
     return result.rows[0];
   },

@@ -93,7 +93,6 @@ export const poolReady = new Promise((resolve) => {
 
   connect().catch(err => {
     console.error('Failed to initialize database:', err.message);
-    process.exit(1);
   });
 });
 

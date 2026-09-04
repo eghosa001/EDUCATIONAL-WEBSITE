@@ -40,7 +40,7 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
   fetchPosts: async (category) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await fetch(`/api/community/posts${category ? `?category=${category}` : ''}`, {
+      const response = await fetch(`/api/v1/community/posts${category ? `?category=${category}` : ''}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('edu_token')}` },
       });
       const data = await response.json();
@@ -52,7 +52,7 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
 
   createPost: async (data) => {
     try {
-      const response = await fetch('/api/community/posts', {
+      const response = await fetch('/api/v1/community/posts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -71,7 +71,7 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
 
   likePost: async (postId) => {
     try {
-      await fetch(`/api/community/posts/${postId}/like`, {
+      await fetch(`/api/v1/community/posts/${postId}/like`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${localStorage.getItem('edu_token')}` },
       });
@@ -87,7 +87,7 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
 
   commentOnPost: async (postId, content) => {
     try {
-      await fetch(`/api/community/posts/${postId}/comments`, {
+      await fetch(`/api/v1/community/posts/${postId}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -104,7 +104,7 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
   fetchStudyGroups: async () => {
     set({ isLoading: true });
     try {
-      const response = await fetch('/api/community/study-groups', {
+      const response = await fetch('/api/v1/community/study-groups', {
         headers: { Authorization: `Bearer ${localStorage.getItem('edu_token')}` },
       });
       const data = await response.json();
@@ -116,7 +116,7 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
 
   createStudyGroup: async (data) => {
     try {
-      const response = await fetch('/api/community/study-groups', {
+      const response = await fetch('/api/v1/community/study-groups', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -134,7 +134,7 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
 
   joinStudyGroup: async (groupId) => {
     try {
-      await fetch(`/api/community/study-groups/${groupId}/join`, {
+      await fetch(`/api/v1/community/study-groups/${groupId}/join`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${localStorage.getItem('edu_token')}` },
       });
@@ -146,7 +146,7 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
 
   leaveStudyGroup: async (groupId) => {
     try {
-      await fetch(`/api/community/study-groups/${groupId}/leave`, {
+      await fetch(`/api/v1/community/study-groups/${groupId}/leave`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${localStorage.getItem('edu_token')}` },
       });
@@ -159,7 +159,7 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
   fetchQnA: async (category) => {
     set({ isLoading: true });
     try {
-      const response = await fetch(`/api/community/qna${category ? `?category=${category}` : ''}`, {
+      const response = await fetch(`/api/v1/community/qna${category ? `?category=${category}` : ''}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('edu_token')}` },
       });
       const data = await response.json();
@@ -171,7 +171,7 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
 
   askQuestion: async (data) => {
     try {
-      const response = await fetch('/api/community/qna', {
+      const response = await fetch('/api/v1/community/qna', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -189,7 +189,7 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
 
   answerQuestion: async (questionId, answer) => {
     try {
-      await fetch(`/api/community/qna/${questionId}/answers`, {
+      await fetch(`/api/v1/community/qna/${questionId}/answers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -205,7 +205,7 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
 
   acceptAnswer: async (questionId, answerId) => {
     try {
-      await fetch(`/api/community/qna/${questionId}/answers/${answerId}/accept`, {
+      await fetch(`/api/v1/community/qna/${questionId}/answers/${answerId}/accept`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${localStorage.getItem('edu_token')}` },
       });

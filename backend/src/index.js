@@ -167,8 +167,8 @@ if (!process.env.VERCEL) {
     }
   };
 
-  process.on('SIGTERM', () => { pool.end(); process.exit(0); });
-  process.on('SIGINT', () => { pool.end(); process.exit(0); });
+  process.on('SIGTERM', async () => { if (pool) await pool.end(); process.exit(0); });
+  process.on('SIGINT', async () => { if (pool) await pool.end(); process.exit(0); });
   process.on('unhandledRejection', (reason) => { console.error('Unhandled Rejection:', reason); });
   process.on('uncaughtException', (error) => { console.error('Uncaught Exception:', error); process.exit(1); });
 

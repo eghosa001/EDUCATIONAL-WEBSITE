@@ -47,7 +47,7 @@ export function useAITutor() {
 
     try {
       // In production, call the AI API
-      const response = await fetch('/api/ai/chat', {
+      const response = await fetch('/api/v1/ai/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -99,7 +99,7 @@ export function useAITutor() {
   const generateQuiz = useCallback(async (topic: string, difficulty: string, count: number = 5) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/ai/generate-quiz', {
+      const response = await fetch('/api/v1/ai/generate-quiz', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -120,7 +120,7 @@ export function useAITutor() {
   const generateSummary = useCallback(async (content: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/ai/summary', {
+      const response = await fetch('/api/v1/ai/summary', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -141,7 +141,7 @@ export function useAITutor() {
   const generateFlashcards = useCallback(async (topic: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/ai/flashcards', {
+      const response = await fetch('/api/v1/ai/flashcards', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

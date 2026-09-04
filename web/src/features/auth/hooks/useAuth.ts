@@ -92,7 +92,7 @@ export function useLogout() {
 
   const handleLogout = useCallback(async () => {
     await logout();
-    router.push('/auth/login');
+    router.push('/login');
     router.refresh();
   }, [logout, router]);
 

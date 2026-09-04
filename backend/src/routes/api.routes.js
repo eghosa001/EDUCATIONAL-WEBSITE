@@ -35,6 +35,7 @@ import { corporateTrainingRoutes } from './corporate-training.routes.js';
 import { affiliateRoutes } from './affiliate.routes.js';
 import { advertisingRoutes } from './advertising.routes.js';
 import { bookmarkRoutes } from './bookmark.routes.js';
+import { administrationRoutes } from './administration.routes.js';
 
 export const apiRoutes = Router();
 
@@ -74,6 +75,7 @@ apiRoutes.use('/corporate-training', corporateTrainingRoutes);
 apiRoutes.use('/affiliate', affiliateRoutes);
 apiRoutes.use('/advertising', advertisingRoutes);
 apiRoutes.use('/bookmarks', bookmarkRoutes);
+apiRoutes.use('/administration', administrationRoutes);
 
 apiRoutes.get('/', (req, res) => {
   res.json({
@@ -116,6 +118,7 @@ apiRoutes.get('/', (req, res) => {
       affiliate: '/api/v1/affiliate',
       advertising: '/api/v1/advertising',
       bookmarks: '/api/v1/bookmarks',
+      administration: '/api/v1/administration',
     },
   });
 });
