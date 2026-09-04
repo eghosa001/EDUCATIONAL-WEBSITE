@@ -10,6 +10,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "jest --passWithNoTests",
+    "test:e2e": "npx --yes -p @playwright/test@1.55.0 playwright test",
+    "test:edge": "node ../supabase/tests/edge-smoke.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
