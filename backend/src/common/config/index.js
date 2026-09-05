@@ -3,6 +3,10 @@ dotenv.config();
 
 const isProduction = (process.env.NODE_ENV || 'development') === 'production';
 const jwtSecret = process.env.JWT_SECRET || '';
+const configuredCorsOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 if (isProduction && (!jwtSecret || jwtSecret.length < 32)) {
   throw new Error('JWT_SECRET must be set to a random value of at least 32 characters in production.');
@@ -44,8 +48,9 @@ export const config = {
   cors: {
     origin: (requestOrigin, callback) => {
       if (!requestOrigin) return callback(null, true);
-      try { new URL(requestOrigin); callback(null, true); }
-      catch { callback(new Error('Invalid origin'), false); }
+      if (configuredCorsOrigins.length > 0) return callback(null, configuredCorsOrigins.includes(requestOrigin));
+      // Development remains permissive; production should always define CORS_ORIGINS.
+      return callback(null, !isProduction);
     },
     credentials: true,
   },
@@ -87,7 +92,7 @@ export const config = {
     openai: { apiKey: process.env.OPENAI_API_KEY },
     defaultModel: process.env.AI_DEFAULT_MODEL || 'agnes-2.5-flash',
     maxTokens: parseInt(process.env.AI_MAX_TOKENS || '2048', 10),
-    temperature: parseFloat(process.env.AI_TEMPERATURE || '0.7'),
+    temperature: parseFloat(process.env.AI_TEMPERATURE || '0.7', 10),
   },
   fileUpload: {
     maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '104857600', 10),
