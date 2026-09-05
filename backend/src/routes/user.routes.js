@@ -67,6 +67,9 @@ userRoutes.post('/:id/roles',
 );
 
 userRoutes.delete('/:id/roles/:roleId',
-  validateRequest({ params: schemas.idParam }),
+  validateRequest({ params: Joi.object({
+    id: Joi.string().uuid().required(),
+    roleId: Joi.string().uuid().required(),
+  }) }),
   asyncHandler(userController.removeRole)
 );
