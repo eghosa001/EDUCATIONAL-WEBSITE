@@ -36,15 +36,12 @@ import { affiliateRoutes } from './affiliate.routes.js';
 import { advertisingRoutes } from './advertising.routes.js';
 import { bookmarkRoutes } from './bookmark.routes.js';
 import { administrationRoutes } from './administration.routes.js';
+import { authMiddleware } from '../common/middleware/index.js';
 import authorizeUserRoute from '../common/middleware/userAuthorization.js';
 
 export const apiRoutes = Router();
-
 apiRoutes.use('/auth', authRoutes);
-// Defense-in-depth authorization for every /users endpoint. The route module
-// itself also authenticates requests; this prevents accidental future routes
-// from bypassing ownership checks.
-apiRoutes.use('/users', authorizeUserRoute, userRoutes);
+apiRoutes.use('/users', authMiddleware, authorizeUserRoute, userRoutes);
 apiRoutes.use('/education', educationRoutes);
 apiRoutes.use('/curriculum', curriculumRoutes);
 apiRoutes.use('/courses', courseRoutes);
@@ -81,22 +78,6 @@ apiRoutes.use('/advertising', advertisingRoutes);
 apiRoutes.use('/bookmarks', bookmarkRoutes);
 apiRoutes.use('/administration', administrationRoutes);
 
-apiRoutes.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Educational Platform API v1',
-    documentation: '/api/docs',
-    endpoints: {
-      auth: '/api/v1/auth', users: '/api/v1/users', education: '/api/v1/education', curriculum: '/api/v1/curriculum',
-      courses: '/api/v1/courses', lessons: '/api/v1/lessons', flashcards: '/api/v1/flashcards', assessments: '/api/v1/assessments',
-      questions: '/api/v1/questions', exams: '/api/v1/exams', assignments: '/api/v1/assignments', progress: '/api/v1/progress',
-      library: '/api/v1/library', teachers: '/api/v1/teachers', parents: '/api/v1/parents', schools: '/api/v1/schools',
-      subscriptions: '/api/v1/subscriptions', payments: '/api/v1/payments', notifications: '/api/v1/notifications', ai: '/api/v1/ai',
-      gamification: '/api/v1/gamification', community: '/api/v1/community', search: '/api/v1/search', analytics: '/api/v1/analytics',
-      reports: '/api/v1/reports', admin: '/api/v1/admin', storage: '/api/v1/storage', liveClasses: '/api/v1/live-classes',
-      pastQuestions: '/api/v1/past-questions', documents: '/api/v1/documents', marketplace: '/api/v1/marketplace',
-      corporateTraining: '/api/v1/corporate-training', affiliate: '/api/v1/affiliate', advertising: '/api/v1/advertising',
-      bookmarks: '/api/v1/bookmarks', administration: '/api/v1/administration',
-    },
-  });
+apiRoutes.get('/', (_req, res) => {
+  res.json({ success: true, message: 'Educational Platform API v1', documentation: '/api/docs' });
 });
