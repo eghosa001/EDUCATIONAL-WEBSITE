@@ -7,9 +7,9 @@ import * as reportController from '../reports/controllers/report.controller.js';
 export const reportRoutes = Router();
 reportRoutes.use(authMiddleware);
 
-// Reports contain aggregate platform, financial, exam and earnings data.
-// Only platform administrators may enumerate, generate, or delete reports.
-reportRoutes.use(requireRole('super_admin', 'content_admin', 'school_admin'));
+// Reports currently query platform-wide data, including financial and teacher
+// earnings information. Keep the entire report API restricted to platform admins.
+reportRoutes.use(requireRole('super_admin', 'content_admin'));
 
 reportRoutes.get('/', validateRequest({ query: schemas.pagination }), asyncHandler(reportController.listReports));
 reportRoutes.post('/', validateRequest(Joi.object({
