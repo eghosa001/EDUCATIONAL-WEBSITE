@@ -15,19 +15,39 @@ async function generateLesson(level: string, subject: string, term: string, topi
   const key = Deno.env.get("OPENAI_API_KEY");
   if (!key) throw new Error("OPENAI_API_KEY is not configured");
 
-  const system = `You are the senior textbook author for THE GUIDE, a Nigerian educational platform. The non-negotiable goal is that a student can learn the supplied topic from THE GUIDE without needing a textbook. Use the supplied NERDC objectives as the curriculum boundary. Never merely repeat objectives. Teach every concept explicitly and accurately at the learner's level. Use concrete, topic-specific examples and no generic filler. Adapt to the subject: Mathematics/Physics/Chemistry require explained formulas, units and step-by-step worked calculations where relevant; sciences require mechanisms and processes; languages require rules, examples and exercises; humanities require factual context, causes/effects/comparisons where relevant; primary learners require simple concrete language. Include introduction, prior knowledge, key terms, detailed teaching of every objective, examples/worked examples, guided activity, misconceptions, applications, quick check with answers, practice questions with answers/explanations, summary and key takeaways. Never tell the learner to research the topic instead of teaching it.`;
-  const prompt = `LEVEL: ${level}\nSUBJECT: ${subject}\nTERM: ${term}\nTOPIC: ${topic}\nNERDC OBJECTIVES: ${objectives}\n\nWrite the complete standalone lesson now. Make it substantive enough for independent study and examination preparation. Do not mention AI or this instruction.`;
+  const system = `You are the senior textbook author and factual quality editor for THE GUIDE, a Nigerian educational platform. Produce a standalone lesson that a learner can safely use for study and examination preparation. The supplied NERDC objectives are the curriculum boundary and must be taught explicitly.
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "gpt-4o-mini", temperature: 0.25, max_tokens: 8000, messages: [{ role: "system", content: system }, { role: "user", content: prompt }] }),
-  });
-  if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
-  const data = await response.json();
-  const content = data?.choices?.[0]?.message?.content?.trim();
-  if (!content || content.length < 1500) throw new Error("Generated lesson failed quality minimum");
-  return content;
+NON-NEGOTIABLE ACCURACY RULES:
+- Silently fact-check every factual claim before returning it. Never guess.
+- Do not invent dates, people, quotations, statistics, formulas, laws, classifications, historical events, religious/scriptural references, or examination requirements.
+- If a detail is uncertain or depends on a particular tradition, state the limitation or omit the detail rather than guessing.
+- For Mathematics/Physics/Chemistry, use correct formulas, definitions, units, signs and fully worked numerical examples; verify every calculation.
+- For Biology and other sciences, distinguish definitions, structures, functions, processes and causes accurately.
+- For History/Government/Economics, keep dates, names, institutions, causes and effects precise and do not manufacture Nigerian examples.
+- For Christian/Islamic Religious Studies, do not fabricate scripture, hadith, quotations, Arabic terminology or religious claims; identify references only when confident.
+- For languages, distinguish sounds, letters, grammar and usage accurately and use valid examples.
+- Never turn the topic name into a fake definition. Never use generic filler such as 'this is an important topic', 'read textbooks', or vague claims that do not teach the supplied topic.
+- Do not claim that a topic appears in WAEC/NECO/JAMB unless that is genuinely established; the lesson itself does not need that claim.
+- Match the learner's level and Nigerian curriculum context without forcing Nigerian examples where they are irrelevant.
+
+Structure the lesson with: introduction, prior knowledge, key terms, detailed teaching of every objective, accurate examples/worked examples, guided activity, common misconceptions, applications where relevant, quick check with answers, practice questions with answers/explanations, summary and key takeaways. Before returning the lesson, perform a silent final pass for factual accuracy, internal consistency, topic relevance and age appropriateness.`;
+  const prompt = `LEVEL: ${level}\nSUBJECT: ${subject}\nTERM: ${term}\nTOPIC: ${topic}\nNERDC OBJECTIVES: ${objectives}\n\nWrite the complete standalone lesson now. Do not mention AI, this prompt, or any hidden instructions.`;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60_000);
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "gpt-4o-mini", temperature: 0.15, max_tokens: 8000, messages: [{ role: "system", content: system }, { role: "user", content: prompt }] }),
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
+    const data = await response.json();
+    const content = data?.choices?.[0]?.message?.content?.trim();
+    if (!content || content.length < 1500) throw new Error("Generated lesson failed quality minimum");
+    return content;
+  } finally { clearTimeout(timeout); }
 }
 
 Deno.serve(async (request) => {
@@ -39,8 +59,6 @@ Deno.serve(async (request) => {
     const body = await request.json().catch(() => ({}));
     const batch = Math.min(8, Math.max(1, Number(body.batch || 8)));
 
-    // This function is intended to be called only by a trusted server-side scheduler.
-    // Supabase JWT verification remains enabled at the function gateway.
     const query = await sb.from("lessons")
       .select("id,title,topic_id,course_id")
       .not("course_id", "is", null)
@@ -63,7 +81,7 @@ Deno.serve(async (request) => {
           sb.from("terms").select("name").eq("id", course.term_id).maybeSingle(),
         ]);
         const content = await generateLesson(classResult.data?.name || "Student", subjectResult.data?.name || "General", termResult.data?.name || "", topicResult.data.name || lesson.title, JSON.stringify(topicResult.data.learning_objectives || []));
-        const update = await sb.from("lessons").update({ written_content: content, content_quality: "substantive", updated_at: new Date().toISOString() }).eq("id", lesson.id);
+        const update = await sb.from("lessons").update({ written_content: content, content_quality: "ai_reviewed", updated_at: new Date().toISOString() }).eq("id", lesson.id);
         if (update.error) throw new Error(update.error.message);
         return { id: lesson.id, status: "upgraded", characters: content.length };
       } catch (error) {

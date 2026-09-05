@@ -3,10 +3,7 @@ import type { AiTutorSession, ChatMessage } from '@/types/models/ai';
 import type { PaginatedResponse } from '@/types/api/api';
 
 /**
- * AI is a privileged capability. The browser never receives an AI provider key
- * and never calls the legacy Express AI routes. Requests go through the
- * Supabase Edge Function `ai`, which authenticates the user and owns provider
- * credentials.
+ * AI is a privileged capability. The browser never receives an AI provider key.
  */
 const invokeAi = async <T>(body: Record<string, unknown>): Promise<T> => {
   const { data, error } = await getSupabase().functions.invoke('ai', { body });
@@ -19,8 +16,7 @@ export interface AiTutorMessage { role: 'user' | 'assistant'; content: string; }
 export interface AiTutorRequest { message: string; subjectId?: string; topicId?: string; context?: Record<string, unknown>; sessionId?: string; }
 export interface AiTutorResponse { message: ChatMessage; sessionId: string; }
 
-export const sendAiTutorMessage = (data: AiTutorRequest, _token?: string) =>
-  invokeAi<AiTutorResponse>({ action: 'tutor', ...data });
+export const sendAiTutorMessage = (data: AiTutorRequest, _token?: string) => invokeAi<AiTutorResponse>({ action: 'tutor', ...data });
 
 export const fetchAiTutorSessions = async (page = 1, limit = 20, _token?: string): Promise<PaginatedResponse<AiTutorSession>> => {
   const supabase = getSupabase();
@@ -56,18 +52,57 @@ export interface AiExplanation { explanation: string; keyPoints: string[]; examp
 export const getAiExplanation = (data: AiExplainRequest, _token?: string) => invokeAi<{ explanation: AiExplanation }>({ action: 'explain', ...data });
 
 export interface AiFlashcardRequest { subjectId: string; topicId?: string; count: number; }
-export interface AiFlashcard { id: string; front: string; back: string; subjectId: string; topicId?: string; }
-export const generateAiFlashcards = (data: AiFlashcardRequest, _token?: string) => invokeAi<{ flashcards: AiFlashcard[] }>({ action: 'flashcards', ...data });
+export interface AiFlashcard { id: string; front: string; back: string; subjectId: string; topicId?: string; difficulty?: string; }
+export const generateAiFlashcards = (data: AiFlashcardRequest, _token?: string) => {
+  return getSupabase().functions.invoke('flashcards', { body: data }).then(({ data, error }) => {
+    if (error) throw new Error(error.message || 'Flashcard generation failed');
+    if (data?.error) throw new Error(String(data.error));
+    return data as { flashcards: AiFlashcard[] };
+  });
+};
 
 export interface SavedFlashcard { id: string; front: string; back: string; subjectId?: string; topicId?: string; courseId?: string; difficulty?: string; }
+
+/** The database stores one flashcard set per row in `flashcards.cards` JSONB. */
 export const fetchMyFlashcards = async (_token?: string, params: { page?: number; limit?: number; difficulty?: string } = {}): Promise<{ flashcards: SavedFlashcard[]; pagination: { page: number; limit: number; total: number } }> => {
   const page = Math.max(1, params.page || 1);
   const limit = Math.min(100, Math.max(1, params.limit || 20));
-  let query = getSupabase().from('flashcards').select('*', { count: 'exact' }).eq('user_id', (await getSupabase().auth.getUser()).data.user?.id || '');
-  if (params.difficulty) query = query.eq('difficulty', params.difficulty);
-  const { data, error, count } = await query.range((page - 1) * limit, page * limit - 1);
+  const user = (await getSupabase().auth.getUser()).data.user;
+  if (!user) throw new Error('You must be signed in');
+
+  let query = getSupabase()
+    .from('flashcards')
+    .select('id,course_id,lesson_id,topic_id,subject_id,title,cards,created_at', { count: 'exact' })
+    .eq('created_by', user.id)
+    .order('created_at', { ascending: false });
+
+  const { data: sets, error, count } = await query.range((page - 1) * limit, page * limit - 1);
   if (error) throw new Error(error.message);
-  return { flashcards: (data || []) as SavedFlashcard[], pagination: { page, limit, total: count || 0 } };
+
+  const flashcards: SavedFlashcard[] = [];
+  for (const set of sets || []) {
+    const cards = Array.isArray(set.cards) ? set.cards : [];
+    for (const raw of cards) {
+      if (!raw || typeof raw !== 'object') continue;
+      const card = raw as Record<string, unknown>;
+      const front = String(card.front ?? '').trim();
+      const back = String(card.back ?? '').trim();
+      const difficulty = String(card.difficulty ?? '').trim().toLowerCase();
+      if (!front || !back) continue;
+      if (params.difficulty && difficulty !== params.difficulty.toLowerCase()) continue;
+      flashcards.push({
+        id: `${set.id}:${flashcards.length}`,
+        front,
+        back,
+        subjectId: set.subject_id || undefined,
+        topicId: set.topic_id || undefined,
+        courseId: set.course_id || undefined,
+        difficulty: difficulty || undefined,
+      });
+    }
+  }
+
+  return { flashcards, pagination: { page, limit, total: count || 0 } };
 };
 
 export interface AiSummarizeRequest { content: string; type: 'lesson' | 'article' | 'video_transcript'; length?: 'short' | 'medium' | 'detailed'; }

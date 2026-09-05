@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getSupabase } from '@/lib/supabase';
 import { generateAiFlashcards, fetchMyFlashcards } from '@/services/api/aiService';
 
-interface Flashcard { id: string; front: string; back: string; subjectId?: string; topicId?: string; }
+interface Flashcard { id: string; front: string; back: string; subjectId?: string; topicId?: string; difficulty?: string; }
 interface Subject { id: string; name: string; }
 
 export default function FlashcardsPage() {
@@ -37,6 +37,8 @@ export default function FlashcardsPage() {
           setSubjects((subjectRows || []) as Subject[]);
           setFlashcards((saved.flashcards || []) as Flashcard[]);
           setGenerated((saved.flashcards || []).length > 0);
+          setCurrentIndex(0);
+          setIsFlipped(false);
         }
       } catch (e: any) {
         if (!cancelled) setError(e?.message || 'Unable to load flashcards.');
@@ -52,10 +54,10 @@ export default function FlashcardsPage() {
     try {
       const res = await generateAiFlashcards({ subjectId, count: 20 }, token);
       const cards = (res.flashcards || []).filter((card: any) => String(card.front || '').trim() && String(card.back || '').trim()) as Flashcard[];
-      if (!cards.length) throw new Error('The AI service returned no flashcards. Please try again.');
+      if (!cards.length) throw new Error('No usable flashcards were generated. Please try again.');
       setFlashcards(cards); setGenerated(true); setCurrentIndex(0); setIsFlipped(false);
     } catch (e: any) {
-      setError(e?.message || 'Unable to generate flashcards. Check that the AI service is configured and try again.');
+      setError(e?.message || 'Unable to generate flashcards. Please try again.');
     } finally { setGenerating(false); }
   };
 
@@ -85,7 +87,7 @@ export default function FlashcardsPage() {
           {generating ? <><Loader2 className="mr-2 inline h-4 w-4 animate-spin"/>Generating...</> : 'Generate 20 cards'}
         </button>
       </div>
-      <p className="mt-2 text-xs text-slate-500">Choose the actual subject from the curriculum. The subject UUID is sent to the AI service automatically.</p>
+      <p className="mt-2 text-xs text-slate-500">Cards are generated from the selected curriculum subject and saved to your account for later review.</p>
     </section>
 
     {current ? <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-[#1b2045] sm:p-8">
