@@ -44,7 +44,6 @@ export default function LoginPage() {
           </form>
           <div className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">Don&apos;t have an account? <Link href="/register" className="font-medium text-brand-700 hover:text-brand-800 dark:text-brand-300">Sign up</Link></div>
         </div>
-        <div className="mt-6 rounded-xl border border-brand-200 bg-brand-50 p-4 dark:border-brand-900 dark:bg-brand-950/40"><p className="mb-2 text-sm font-semibold text-brand-900 dark:text-brand-200">Demo Credentials</p><div className="space-y-1 text-xs text-brand-800 dark:text-brand-300"><p><span className="font-medium">Admin:</span> admin@learnforge.ng / Admin@12345</p><p><span className="font-medium">Teacher:</span> teacher@learnforge.ng / Teacher@12345</p><p><span className="font-medium">Student:</span> student@learnforge.ng / Student@12345</p></div></div>
       </div>
     </div>
   );
