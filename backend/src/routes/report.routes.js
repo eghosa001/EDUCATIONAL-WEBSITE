@@ -5,15 +5,14 @@ import { schemas } from '../common/validators/joi.js';
 import * as reportController from '../reports/controllers/report.controller.js';
 
 export const reportRoutes = Router();
-
 reportRoutes.use(authMiddleware);
 
 reportRoutes.get('/', validateRequest({ query: schemas.pagination }), asyncHandler(reportController.listReports));
 reportRoutes.post('/', validateRequest(Joi.object({
   type: Joi.string().valid('user_summary', 'revenue_summary', 'content_summary', 'exam_performance', 'subscriptions_summary', 'teacher_earnings').required(),
-  title: Joi.string().optional(),
-  description: Joi.string().optional(),
-  filters: Joi.object().optional(),
-})), asyncHandler(reportController.generateReport));
+  title: Joi.string().max(200).optional(),
+  description: Joi.string().max(2000).optional(),
+  filters: Joi.object().max(20).optional(),
+})), asyncHandler(reportController.createReport));
 reportRoutes.get('/:reportId', asyncHandler(reportController.getReport));
 reportRoutes.delete('/:reportId', asyncHandler(reportController.deleteReport));
