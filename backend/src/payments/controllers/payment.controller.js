@@ -1,33 +1,18 @@
-import {
-  initializePayment,
-  verifyPayment,
-  refundPayment,
-  getPaymentById,
-  listPayments,
-  getPaymentStats,
-} from '../services/payment.service.js';
+import { initializePayment, verifyPayment, refundPayment, getPaymentById, listPayments, getPaymentStats } from '../services/payment.service.js';
 import { paymentModel } from '../models/payment.model.js';
 import { subscriptionModel, subscriptionPlanModel } from '../../subscriptions/models/subscription.model.js';
 import { studentCourseModel } from '../../progress/models/studentCourse.model.js';
 import { AppError, HTTP_STATUS, ERROR_CODES } from '../../common/errors/index.js';
-import { schemas } from '../../common/validators/joi.js';
-import { validateRequest, authMiddleware, optionalAuthMiddleware, requireRole } from '../../common/middleware/index.js';
-import { paystackService } from '../services/paystack.service.js';
-import { flutterwaveService } from '../services/flutterwave.service.js';
+import { requireRole } from '../../common/middleware/index.js';
 import { NOTIFICATION_TYPES } from '../../common/constants/index.js';
 import { notificationService } from '../../notifications/services/notification.service.js';
+import crypto from 'crypto';
 
-const notFound = (resource) => {
-  throw new AppError(`${resource} not found`, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
-};
+const notFound = (resource) => { throw new AppError(`${resource} not found`, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND); };
 
 export const initializeNewPayment = async (req, res) => {
   const result = await initializePayment(req.user.id, req.body);
-  res.status(HTTP_STATUS.CREATED).json({
-    success: true,
-    message: 'Payment initialized',
-    data: result.data,
-  });
+  res.status(HTTP_STATUS.CREATED).json({ success: true, message: 'Payment initialized', data: result.data });
 };
 
 export const verifyNewPayment = async (req, res) => {
@@ -43,13 +28,7 @@ export const getPayment = async (req, res) => {
 
 export const listAllPayments = async (req, res) => {
   const { page, limit, status, startDate, endDate } = req.query;
-  const result = await listPayments({
-    page: parseInt(page),
-    limit: parseInt(limit),
-    status,
-    startDate,
-    endDate,
-  });
+  const result = await listPayments({ page: parseInt(page), limit: parseInt(limit), status, startDate, endDate });
   res.json({ success: true, data: result });
 };
 
@@ -62,240 +41,143 @@ export const getPaymentStatsHandler = async (req, res) => {
 export const refundPaymentHandler = async (req, res) => {
   const { id } = req.params;
   const { reason } = req.body;
-
   const payment = await paymentModel.findById(id);
   if (!payment) notFound('Payment');
-  if (payment.user_id !== req.user.id && !req.user.roles.includes('super_admin')) {
-    throw new AppError('Unauthorized', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR);
-  }
-
+  if (payment.user_id !== req.user.id && !req.user.roles.includes('super_admin')) throw new AppError('Unauthorized', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR);
   const result = await refundPayment(id, req.user.id, reason);
   res.json({ success: true, message: 'Payment refunded', data: result });
 };
 
+const timingSafeHexEqual = (actual, expected) => {
+  if (!actual || !expected || !/^[a-f0-9]+$/i.test(actual) || actual.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(actual, 'hex'), Buffer.from(expected, 'hex'));
+};
+
 export const handlePaystackWebhook = async (req, res) => {
   try {
-    const payload = req.body;
-    console.log('[Paystack Webhook] Received event:', JSON.stringify(payload?.event));
-
-    if (!payload || !payload.event) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, error: 'Invalid payload' });
-    }
-
-    // Verify signature if webhook secret is configured
+    const secret = process.env.PAYSTACK_WEBHOOK_SECRET;
     const signature = req.headers['x-paystack-signature'];
-    if (signature) {
-      const crypto = await import('crypto');
-      const secret = process.env.PAYSTACK_WEBHOOK_SECRET;
-      if (secret) {
-        const hmac = crypto.createHmac('sha512', secret);
-        const digest = hmac.update(JSON.stringify(payload)).digest('hex');
-        if (digest !== signature) {
-          console.warn('[Paystack Webhook] Invalid signature');
-          return res.status(HTTP_STATUS.FORBIDDEN).json({ success: false, error: 'Invalid signature' });
-        }
-      }
-    }
+    if (!secret || typeof signature !== 'string' || !req.rawBody) return res.status(HTTP_STATUS.FORBIDDEN).json({ success: false, error: 'Webhook authentication failed' });
+    const expected = crypto.createHmac('sha512', secret).update(req.rawBody).digest('hex');
+    if (!timingSafeHexEqual(signature, expected)) return res.status(HTTP_STATUS.FORBIDDEN).json({ success: false, error: 'Webhook authentication failed' });
 
-    const event = payload.event;
+    const payload = req.body;
+    if (!payload || !payload.event || !payload.data) return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, error: 'Invalid payload' });
 
-    switch (event) {
-      case 'charge.success': {
-        const { reference, metadata } = payload.data;
+    switch (payload.event) {
+      case 'charge.success':
         await processSuccessfulPayment({
-          reference,
+          reference: payload.data.reference,
           gateway: 'paystack',
-          gatewayReference: payload.data?.transaction,
-          amount: payload.data?.amount / 100,
-          metadata: metadata || {},
+          gatewayReference: payload.data.transaction?.toString(),
+          amount: Number(payload.data.amount) / 100,
+          currency: payload.data.currency,
+          metadata: payload.data.metadata || {},
         });
         break;
-      }
-
       case 'charge.failed': {
-        const { reference, metadata } = payload.data;
-        const payment = await paymentModel.findByReference(reference);
-        if (payment && payment.status === 'pending') {
-          await paymentModel.update(payment.id, {
-            status: 'failed',
-            failureReason: 'Payment failed at gateway',
-            metadata: { ...payment.metadata, failureReason: 'gateway_decline' },
-          });
-        }
+        const payment = await paymentModel.findByReference(payload.data.reference);
+        if (payment?.status === 'pending') await paymentModel.update(payment.id, { status: 'failed', failureReason: 'Payment failed at gateway', metadata: { ...payment.metadata, failureReason: 'gateway_decline' } });
         break;
       }
-
-      case 'refund.processed':
-      case 'refund.requested': {
-        console.log('[Paystack Webhook] Refund event received:', event);
-        break;
-      }
-
       default:
-        console.log('[Paystack Webhook] Unhandled event:', event);
+        break;
     }
-
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (error) {
     console.error('[Paystack Webhook] Error:', error);
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, error: 'Internal server error' });
   }
 };
 
 export const handleFlutterwaveWebhook = async (req, res) => {
   try {
+    const secretHash = process.env.FLUTTERWAVE_WEBHOOK_SECRET || process.env.FLUTTERWAVE_ENCRYPTION_KEY;
+    const signature = req.headers['verif-hash'];
+    if (!secretHash || typeof signature !== 'string') return res.status(HTTP_STATUS.FORBIDDEN).json({ success: false, error: 'Webhook authentication failed' });
+    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(secretHash))) return res.status(HTTP_STATUS.FORBIDDEN).json({ success: false, error: 'Webhook authentication failed' });
+
     const payload = req.body;
-    console.log('[Flutterwave Webhook] Received event:', JSON.stringify(payload?.event?.type));
+    if (!payload?.data) return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, error: 'Invalid payload' });
 
-    if (!payload) {
-      return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, error: 'Invalid payload' });
-    }
-
-    // Verify encryption hash if configured
-    const secretHash = process.env.FLUTTERWAVE_ENCRYPTION_KEY;
-    if (secretHash && payload.enCRYPTED_SECURITY_HASH !== secretHash) {
-      console.warn('[Flutterwave Webhook] Invalid encryption hash');
-      return res.status(HTTP_STATUS.FORBIDDEN).json({ success: false, error: 'Invalid signature' });
-    }
-
-    const eventType = payload?.event?.type;
-
-    switch (eventType) {
-      case 'complete': {
-        const { tx_ref, amount, currency, customer_email } = payload.data;
+    switch (payload?.event?.type) {
+      case 'complete':
         await processSuccessfulPayment({
-          reference: tx_ref,
+          reference: payload.data.tx_ref,
           gateway: 'flutterwave',
-          gatewayReference: payload.data?.id?.toString(),
-          amount: parseFloat(amount),
-          metadata: payload.data?.metadata || {},
+          gatewayReference: payload.data.id?.toString(),
+          amount: Number(payload.data.amount),
+          currency: payload.data.currency,
+          metadata: payload.data.metadata || {},
         });
         break;
-      }
-
       case 'failed': {
-        const { tx_ref } = payload.data;
-        const payment = await paymentModel.findByReference(tx_ref);
-        if (payment && payment.status === 'pending') {
-          await paymentModel.update(payment.id, {
-            status: 'failed',
-            failureReason: 'Payment failed at gateway',
-          });
-        }
+        const payment = await paymentModel.findByReference(payload.data.tx_ref);
+        if (payment?.status === 'pending') await paymentModel.update(payment.id, { status: 'failed', failureReason: 'Payment failed at gateway' });
         break;
       }
-
-      case 'refund': {
-        console.log('[Flutterwave Webhook] Refund event received');
-        break;
-      }
-
       default:
-        console.log('[Flutterwave Webhook] Unhandled event:', eventType);
+        break;
     }
-
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (error) {
     console.error('[Flutterwave Webhook] Error:', error);
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, error: 'Internal server error' });
   }
 };
 
-async function processSuccessfulPayment({ reference, gateway, gatewayReference, amount, metadata }) {
+async function processSuccessfulPayment({ reference, gateway, gatewayReference, amount, currency, metadata }) {
+  if (!reference || !gateway || !Number.isFinite(amount) || amount <= 0) return;
   const payment = await paymentModel.findByReference(reference);
-  if (!payment) {
-    console.warn(`[Payment Webhook] Payment not found for reference: ${reference}`);
+  if (!payment || payment.gateway !== gateway) return;
+  if (payment.status === 'completed') return;
+  if (payment.status !== 'pending') return;
+
+  const paymentAmount = Number(payment.amount);
+  const expectedCurrency = String(payment.currency || 'NGN').toUpperCase();
+  const receivedCurrency = String(currency || expectedCurrency).toUpperCase();
+  if (Math.abs(paymentAmount - amount) > 0.01 || expectedCurrency !== receivedCurrency) {
+    await paymentModel.update(payment.id, { status: 'failed', failureReason: 'Gateway amount or currency mismatch' });
     return;
   }
 
-  // Idempotency: skip if already completed
-  if (payment.status === 'completed') {
-    console.log(`[Payment Webhook] Payment already completed for reference: ${reference}`);
-    return;
-  }
+  const completed = await paymentModel.markCompleted(payment.id, { gatewayReference, paidAt: new Date() });
+  if (!completed) return; // Another webhook already completed this payment.
 
-  // Idempotency: skip if already failed
-  if (payment.status === 'failed') {
-    return;
-  }
+  if (completed.purpose === 'subscription' && completed.purpose_id) await activateSubscription(completed);
+  if (completed.purpose === 'course' && completed.purpose_id) await grantCourseAccess(completed);
 
-  // Idempotency: skip if amount doesn't match significantly
-  const paymentAmount = parseFloat(payment.amount);
-  if (amount && Math.abs(paymentAmount - amount) > 0.01) {
-    console.warn(`[Payment Webhook] Amount mismatch. Expected: ${paymentAmount}, Got: ${amount}`);
-    await paymentModel.update(payment.id, {
-      status: 'failed',
-      failureReason: 'Amount mismatch',
-    });
-    return;
-  }
-
-  await paymentModel.update(payment.id, {
-    status: 'completed',
-    paidAt: new Date(),
-    gatewayReference: gatewayReference || payment.gateway_reference,
-  });
-
-  console.log(`[Payment Webhook] Payment completed: ${reference}, purpose: ${payment.purpose}, purposeId: ${payment.purpose_id}`);
-
-  // Activate subscription if applicable
-  if (payment.purpose === 'subscription' && payment.purpose_id) {
-    await activateSubscription(payment, metadata);
-  }
-
-  // Grant course access if applicable
-  if (payment.purpose === 'course' && payment.purpose_id) {
-    await grantCourseAccess(payment, metadata);
-  }
-
-  // Send notification
   try {
     await notificationService.create({
-      userId: payment.user_id,
+      userId: completed.user_id,
       type: NOTIFICATION_TYPES.PAYMENT_SUCCESS,
       title: 'Payment Successful',
       body: `Your payment of ₦${paymentAmount.toLocaleString()} was successful.`,
       actionUrl: '/dashboard/subscriptions/billing',
       channel: 'in_app',
     });
-  } catch (notifErr) {
-    console.error('[Payment Webhook] Notification error:', notifErr);
-  }
+  } catch (notifErr) { console.error('[Payment Webhook] Notification error:', notifErr); }
 }
 
-async function activateSubscription(payment, metadata) {
+async function activateSubscription(payment) {
   const plan = await subscriptionPlanModel.findById(payment.purpose_id);
-  if (!plan) {
-    console.error(`[Payment Webhook] Plan not found: ${payment.purpose_id}`);
-    return;
-  }
-
+  if (!plan) return;
   const existingSub = await subscriptionModel.findByUser(payment.user_id);
-  if (existingSub && existingSub.status === 'active') {
-    console.log(`[Payment Webhook] Active subscription exists for user: ${payment.user_id}, renewing`);
-    // Renew existing subscription
-    const now = new Date();
-    const periodEnd = new Date(now);
-    periodEnd.setDate(periodEnd.getDate() + plan.durationDays);
+  const now = new Date();
+  const periodEnd = new Date(now);
+  periodEnd.setDate(periodEnd.getDate() + Number(plan.durationDays || plan.duration_days || 0));
+
+  if (existingSub && ['active', 'trialing'].includes(existingSub.status)) {
     await subscriptionModel.update(existingSub.id, {
       currentPeriodStart: now,
       currentPeriodEnd: periodEnd,
       status: 'active',
+      cancelAtPeriodEnd: false,
       gatewaySubscriptionId: payment.gateway_reference,
       gateway: payment.gateway,
     });
     return;
   }
-
-  const now = new Date();
-  const periodEnd = new Date(now);
-  periodEnd.setDate(periodEnd.getDate() + plan.durationDays);
 
   await subscriptionModel.create({
     userId: payment.user_id,
@@ -308,14 +190,9 @@ async function activateSubscription(payment, metadata) {
   });
 }
 
-async function grantCourseAccess(payment, metadata) {
+async function grantCourseAccess(payment) {
   const enrollment = await studentCourseModel.findByStudentAndCourse(payment.user_id, payment.purpose_id);
-  if (!enrollment) {
-    await studentCourseModel.create({
-      studentId: payment.user_id,
-      courseId: payment.purpose_id,
-    });
-  }
+  if (!enrollment) await studentCourseModel.create({ studentId: payment.user_id, courseId: payment.purpose_id });
 }
 
 export const fetchPaymentGateways = async (req, res) => {
