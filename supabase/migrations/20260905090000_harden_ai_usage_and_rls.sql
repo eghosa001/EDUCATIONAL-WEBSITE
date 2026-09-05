@@ -17,7 +17,6 @@ UPDATE public.ai_usage a SET questions_asked = m.questions_asked, tokens_used = 
 FROM merged m WHERE a.user_id = m.user_id AND a.date = m.date;
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_ai_usage_user_date ON public.ai_usage(user_id, date);
-
 CREATE OR REPLACE FUNCTION public.consume_ai_request(p_user_id uuid, p_daily_limit integer DEFAULT 100)
 RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE current_count integer;
@@ -27,18 +26,15 @@ BEGIN
   ON CONFLICT (user_id, date) DO UPDATE SET questions_asked = public.ai_usage.questions_asked + 1
   RETURNING questions_asked INTO current_count;
   IF current_count > p_daily_limit THEN
-    UPDATE public.ai_usage SET questions_asked = GREATEST(questions_asked - 1, 0)
-    WHERE user_id = p_user_id AND date = CURRENT_DATE;
+    UPDATE public.ai_usage SET questions_asked = GREATEST(questions_asked - 1, 0) WHERE user_id = p_user_id AND date = CURRENT_DATE;
     RETURN false;
   END IF;
   RETURN true;
 END;
 $$;
-
 CREATE OR REPLACE FUNCTION public.release_ai_request(p_user_id uuid)
 RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
-  UPDATE public.ai_usage SET questions_asked = GREATEST(questions_asked - 1, 0)
-  WHERE user_id = p_user_id AND date = CURRENT_DATE;
+  UPDATE public.ai_usage SET questions_asked = GREATEST(questions_asked - 1, 0) WHERE user_id = p_user_id AND date = CURRENT_DATE;
 $$;
 REVOKE ALL ON FUNCTION public.consume_ai_request(uuid, integer) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.release_ai_request(uuid) FROM PUBLIC;
@@ -50,28 +46,58 @@ DROP POLICY IF EXISTS "points_history_insert_own" ON public.points_history;
 DROP POLICY IF EXISTS "wallets_insert_own" ON public.wallets;
 DROP POLICY IF EXISTS "wallet_transactions_insert_own" ON public.wallet_transactions;
 DROP POLICY IF EXISTS "payments_insert_own" ON public.payments;
-
 DROP POLICY IF EXISTS "users_select_for_auth" ON public.users;
 DROP POLICY IF EXISTS "users_admin_read" ON public.users;
 DROP POLICY IF EXISTS "users_select_own" ON public.users;
 CREATE POLICY "users_select_own" ON public.users FOR SELECT USING (auth.uid() = id);
 
--- Replace the previous migration's broad authenticated-user OR role policies.
+-- Replace the explicitly identified broad admin-read policies from the previous auth migration.
 DO $$
-DECLARE
-  r RECORD;
+DECLARE policy_name text;
 BEGIN
-  FOR r IN
-    SELECT pol.polname, c.relname
-    FROM pg_policy pol JOIN pg_class c ON c.oid = pol.polrelid
-    WHERE c.relnamespace = 'public'::regnamespace
-      AND pg_get_expr(pol.polqual, pol.polrelid) LIKE '%auth.uid() IS NOT NULL%'
-  LOOP
-    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', r.polname, r.relname);
+  FOREACH policy_name IN ARRAY ARRAY[
+    'student_points_admin_read','points_history_admin_read','achievements_admin_read','rewards_admin_read','user_rewards_admin_read',
+    'ai_conversations_admin_read','ai_messages_admin_read','ai_usage_admin_read','notifications_admin_read','flashcards_admin_read',
+    'flashcard_reviews_admin_read','wallets_admin_read','wallet_transactions_admin_read','payments_admin_read','transactions_admin_read',
+    'invoices_admin_read','subscriptions_admin_read','payment_methods_admin_read','coupon_usages_admin_read','lesson_progress_admin_read',
+    'study_sessions_admin_read','student_courses_admin_read','quiz_attempts_admin_read','exam_attempts_admin_read','exam_answers_admin_read',
+    'submissions_admin_read','assignments_admin_read','user_roles_admin_read','roles_admin_read'
+  ] LOOP
+    -- Each policy is dropped on the known table below; no unrelated table is touched.
+    NULL;
   END LOOP;
 END $$;
 
--- Explicitly recreate safe admin reads for the security-sensitive tables.
+DROP POLICY IF EXISTS "student_points_admin_read" ON public.student_points;
+DROP POLICY IF EXISTS "points_history_admin_read" ON public.points_history;
+DROP POLICY IF EXISTS "achievements_admin_read" ON public.achievements;
+DROP POLICY IF EXISTS "rewards_admin_read" ON public.rewards;
+DROP POLICY IF EXISTS "user_rewards_admin_read" ON public.user_rewards;
+DROP POLICY IF EXISTS "ai_conversations_admin_read" ON public.ai_conversations;
+DROP POLICY IF EXISTS "ai_messages_admin_read" ON public.ai_messages;
+DROP POLICY IF EXISTS "ai_usage_admin_read" ON public.ai_usage;
+DROP POLICY IF EXISTS "notifications_admin_read" ON public.notifications;
+DROP POLICY IF EXISTS "flashcards_admin_read" ON public.flashcards;
+DROP POLICY IF EXISTS "flashcard_reviews_admin_read" ON public.flashcard_reviews;
+DROP POLICY IF EXISTS "wallets_admin_read" ON public.wallets;
+DROP POLICY IF EXISTS "wallet_transactions_admin_read" ON public.wallet_transactions;
+DROP POLICY IF EXISTS "payments_admin_read" ON public.payments;
+DROP POLICY IF EXISTS "transactions_admin_read" ON public.transactions;
+DROP POLICY IF EXISTS "invoices_admin_read" ON public.invoices;
+DROP POLICY IF EXISTS "subscriptions_admin_read" ON public.subscriptions;
+DROP POLICY IF EXISTS "payment_methods_admin_read" ON public.payment_methods;
+DROP POLICY IF EXISTS "coupon_usages_admin_read" ON public.coupon_usages;
+DROP POLICY IF EXISTS "lesson_progress_admin_read" ON public.lesson_progress;
+DROP POLICY IF EXISTS "study_sessions_admin_read" ON public.study_sessions;
+DROP POLICY IF EXISTS "student_courses_admin_read" ON public.student_courses;
+DROP POLICY IF EXISTS "quiz_attempts_admin_read" ON public.quiz_attempts;
+DROP POLICY IF EXISTS "exam_attempts_admin_read" ON public.exam_attempts;
+DROP POLICY IF EXISTS "exam_answers_admin_read" ON public.exam_answers;
+DROP POLICY IF EXISTS "submissions_admin_read" ON public.submissions;
+DROP POLICY IF EXISTS "assignments_admin_read" ON public.assignments;
+DROP POLICY IF EXISTS "user_roles_admin_read" ON public.user_roles;
+DROP POLICY IF EXISTS "roles_admin_read" ON public.roles;
+
 CREATE POLICY "student_points_admin_read" ON public.student_points FOR SELECT USING ((auth.jwt() ->> 'role') IN ('admin','super_admin'));
 CREATE POLICY "points_history_admin_read" ON public.points_history FOR SELECT USING ((auth.jwt() ->> 'role') IN ('admin','super_admin'));
 CREATE POLICY "achievements_admin_read" ON public.achievements FOR SELECT USING ((auth.jwt() ->> 'role') IN ('admin','super_admin'));
@@ -99,8 +125,5 @@ CREATE POLICY "exam_attempts_admin_read" ON public.exam_attempts FOR SELECT USIN
 CREATE POLICY "exam_answers_admin_read" ON public.exam_answers FOR SELECT USING ((auth.jwt() ->> 'role') IN ('admin','super_admin'));
 CREATE POLICY "submissions_admin_read" ON public.submissions FOR SELECT USING ((auth.jwt() ->> 'role') IN ('admin','super_admin'));
 CREATE POLICY "assignments_admin_read" ON public.assignments FOR SELECT USING ((auth.jwt() ->> 'role') IN ('admin','super_admin'));
-
-DROP POLICY IF EXISTS "user_roles_admin_read" ON public.user_roles;
-DROP POLICY IF EXISTS "roles_admin_read" ON public.roles;
 CREATE POLICY "user_roles_admin_read" ON public.user_roles FOR SELECT USING ((auth.jwt() ->> 'role') IN ('admin','super_admin'));
 CREATE POLICY "roles_admin_read" ON public.roles FOR SELECT USING ((auth.jwt() ->> 'role') IN ('admin','super_admin'));
