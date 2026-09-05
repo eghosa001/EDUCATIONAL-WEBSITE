@@ -13,17 +13,17 @@ export const initializeNewPayment = async (req, res) => {
   const result = await initializePayment(req.user.id, req.body);
   res.status(HTTP_STATUS.CREATED).json({ success: true, message: 'Payment initialized', data: result.data });
 };
-export const verifyNewPayment = async (req, res) => { res.json(await verifyPayment(req.body.reference)); };
+export const verifyNewPayment = async (req, res) => { res.json(await verifyPayment(req.body.reference, req.user.id)); };
 export const getPayment = async (req, res) => { res.json({ success: true, data: { payment: await getPaymentById(req.params.id, req.user.id) } }); };
 export const listAllPayments = async (req, res) => {
   const { page, limit, status, startDate, endDate } = req.query;
   res.json({ success: true, data: await listPayments({ page: parseInt(page), limit: parseInt(limit), status, startDate, endDate }) });
 };
-export const getPaymentStatsHandler = async (req, res) => { res.json({ success: true, data: { stats: await getPaymentStats(req.query.userId || null) } }); };
+export const getPaymentStatsHandler = async (req, res) => { res.json({ success: true, data: { stats: await getPaymentStats(req.user.id) } }); };
 export const refundPaymentHandler = async (req, res) => {
   const payment = await paymentModel.findById(req.params.id);
   if (!payment) notFound('Payment');
-  if (payment.user_id !== req.user.id && !req.user.roles.includes('super_admin')) throw new AppError('Unauthorized', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR);
+  if (!req.user.roles?.includes('super_admin')) throw new AppError('Super administrator access required', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR);
   res.json({ success: true, message: 'Payment refunded', data: await refundPayment(req.params.id, req.user.id, req.body.reason) });
 };
 
@@ -46,10 +46,8 @@ export const handlePaystackWebhook = async (req, res) => {
     if (!timingSafeHexEqual(signature, expected)) return res.status(HTTP_STATUS.FORBIDDEN).json({ success: false, error: 'Webhook authentication failed' });
     const payload = req.body;
     if (!payload || !payload.event || !payload.data) return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, error: 'Invalid payload' });
-
-    if (payload.event === 'charge.success') {
-      await processSuccessfulPayment({ reference: payload.data.reference, gateway: 'paystack', gatewayReference: payload.data.transaction?.toString(), amount: Number(payload.data.amount) / 100, currency: payload.data.currency });
-    } else if (payload.event === 'charge.failed') {
+    if (payload.event === 'charge.success') await processSuccessfulPayment({ reference: payload.data.reference, gateway: 'paystack', gatewayReference: payload.data.transaction?.toString(), amount: Number(payload.data.amount) / 100, currency: payload.data.currency });
+    else if (payload.event === 'charge.failed') {
       const payment = await paymentModel.findByReference(payload.data.reference);
       if (payment?.status === 'pending') await paymentModel.update(payment.id, { status: 'failed', failureReason: 'Payment failed at gateway' });
     }
@@ -67,10 +65,8 @@ export const handleFlutterwaveWebhook = async (req, res) => {
     if (!secretHash || typeof signature !== 'string' || !timingSafeStringEqual(signature, secretHash)) return res.status(HTTP_STATUS.FORBIDDEN).json({ success: false, error: 'Webhook authentication failed' });
     const payload = req.body;
     if (!payload?.data) return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, error: 'Invalid payload' });
-
-    if (payload?.event?.type === 'complete') {
-      await processSuccessfulPayment({ reference: payload.data.tx_ref, gateway: 'flutterwave', gatewayReference: payload.data.id?.toString(), amount: Number(payload.data.amount), currency: payload.data.currency });
-    } else if (payload?.event?.type === 'failed') {
+    if (payload?.event?.type === 'complete') await processSuccessfulPayment({ reference: payload.data.tx_ref, gateway: 'flutterwave', gatewayReference: payload.data.id?.toString(), amount: Number(payload.data.amount), currency: payload.data.currency });
+    else if (payload?.event?.type === 'failed') {
       const payment = await paymentModel.findByReference(payload.data.tx_ref);
       if (payment?.status === 'pending') await paymentModel.update(payment.id, { status: 'failed', failureReason: 'Payment failed at gateway' });
     }
@@ -94,7 +90,6 @@ async function processSuccessfulPayment({ reference, gateway, gatewayReference, 
   }
   const completed = await paymentModel.markCompleted(payment.id, { gatewayReference, paidAt: new Date() });
   if (!completed) return;
-
   if (completed.purpose === 'subscription' && completed.purpose_id) await activateSubscription(completed);
   if (completed.purpose === 'course' && completed.purpose_id) await grantCourseAccess(completed);
   try {
@@ -121,7 +116,7 @@ async function grantCourseAccess(payment) {
   if (!enrollment) await studentCourseModel.create({ studentId: payment.user_id, courseId: payment.purpose_id });
 }
 
-export const fetchPaymentGateways = async (req, res) => {
+export const fetchPaymentGateways = async (_req, res) => {
   res.json({ success: true, data: { gateways: [
     { id: '1', name: 'Paystack', code: 'paystack', isActive: !!process.env.PAYSTACK_SECRET_KEY },
     { id: '2', name: 'Flutterwave', code: 'flutterwave', isActive: !!process.env.FLUTTERWAVE_SECRET_KEY },
