@@ -5,17 +5,16 @@ import { schemas } from '../common/validators/joi.js';
 import * as adminController from '../admin/controllers/admin.controller.js';
 
 export const adminRoutes = Router();
-
 adminRoutes.use(authMiddleware, requireRole('super_admin', 'content_admin'));
 
 adminRoutes.get('/dashboard', asyncHandler(adminController.getDashboard));
 adminRoutes.get('/audit-logs', validateRequest({ query: schemas.pagination }), asyncHandler(adminController.listAuditLogs));
-adminRoutes.get('/settings', asyncHandler(adminController.getSettings));
-adminRoutes.patch('/settings', validateRequest(Joi.object({
+adminRoutes.get('/settings', requireRole('super_admin'), asyncHandler(adminController.getSettings));
+adminRoutes.patch('/settings', requireRole('super_admin'), validateRequest(Joi.object({
   updates: Joi.array().items(Joi.object({
-    key: Joi.string().required(),
-    value: Joi.alternatives().try(Joi.string(), Joi.number(), Joi.boolean(), Joi.object()).required(),
-  })).required(),
+    key: Joi.string().trim().min(1).max(100).required(),
+    value: Joi.alternatives().try(Joi.string().max(5000), Joi.number(), Joi.boolean(), Joi.object()).required(),
+  })).min(1).max(100).required(),
 })), asyncHandler(adminController.updateSettings));
 adminRoutes.get('/content/pending', asyncHandler(adminController.getPendingContent));
 adminRoutes.patch('/content/:type/:id/approve', validateRequest(Joi.object({ type: Joi.string().valid('course', 'lesson').required() })), asyncHandler(adminController.approveContent));
