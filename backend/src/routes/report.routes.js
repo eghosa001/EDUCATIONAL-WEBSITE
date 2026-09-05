@@ -1,11 +1,15 @@
 import { Router } from 'express';
 import Joi from 'joi';
-import { asyncHandler, validateRequest, authMiddleware } from '../common/middleware/index.js';
+import { asyncHandler, validateRequest, authMiddleware, requireRole } from '../common/middleware/index.js';
 import { schemas } from '../common/validators/joi.js';
 import * as reportController from '../reports/controllers/report.controller.js';
 
 export const reportRoutes = Router();
 reportRoutes.use(authMiddleware);
+
+// Reports contain aggregate platform, financial, exam and earnings data.
+// Only platform administrators may enumerate, generate, or delete reports.
+reportRoutes.use(requireRole('super_admin', 'content_admin', 'school_admin'));
 
 reportRoutes.get('/', validateRequest({ query: schemas.pagination }), asyncHandler(reportController.listReports));
 reportRoutes.post('/', validateRequest(Joi.object({
@@ -14,5 +18,5 @@ reportRoutes.post('/', validateRequest(Joi.object({
   description: Joi.string().max(2000).optional(),
   filters: Joi.object().max(20).optional(),
 })), asyncHandler(reportController.createReport));
-reportRoutes.get('/:reportId', asyncHandler(reportController.getReport));
-reportRoutes.delete('/:reportId', asyncHandler(reportController.deleteReport));
+reportRoutes.get('/:reportId', validateRequest({ params: Joi.object({ reportId: Joi.string().uuid().required() }) }), asyncHandler(reportController.getReport));
+reportRoutes.delete('/:reportId', validateRequest({ params: Joi.object({ reportId: Joi.string().uuid().required() }) }), asyncHandler(reportController.deleteReport));
