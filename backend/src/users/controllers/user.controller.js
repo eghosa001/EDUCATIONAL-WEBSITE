@@ -1,8 +1,47 @@
 import { pool } from '../../common/database/index.js';
 import { AppError, HTTP_STATUS, ERROR_CODES } from '../../common/errors/index.js';
-import { USER_ROLES } from '../../common/constants/index.js';
+
+const ADMIN_ROLES = new Set(['super_admin', 'content_admin']);
+
+const isAdmin = (req) => ADMIN_ROLES.has(req.user?.role);
+
+const assertSelfOrAdmin = (req, id) => {
+  if (req.user?.id !== id && !isAdmin(req)) {
+    throw new AppError('Not authorized to access this user', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR);
+  }
+};
+
+const assertAdmin = (req) => {
+  if (!isAdmin(req)) {
+    throw new AppError('Insufficient permissions', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR);
+  }
+};
+
+const SORT_FIELDS = {
+  created: 'u.created_at',
+  created_at: 'u.created_at',
+  first_name: 'u.first_name',
+  last_name: 'u.last_name',
+  email: 'u.email',
+  last_login: 'u.last_login_at',
+};
+
+const parseSort = (sort) => {
+  if (!sort) return 'u.created_at DESC';
+  const [field, direction = 'asc'] = String(sort).split(':');
+  const column = SORT_FIELDS[field];
+  if (!column) {
+    throw new AppError('Invalid sort field', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+  }
+  const normalizedDirection = direction.toLowerCase();
+  if (!['asc', 'desc'].includes(normalizedDirection)) {
+    throw new AppError('Invalid sort direction', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+  }
+  return `${column} ${normalizedDirection.toUpperCase()}`;
+};
 
 export const listUsers = async (req, res) => {
+  assertAdmin(req);
   const { page, limit, search, sort } = req.query;
   const offset = (page - 1) * limit;
 
@@ -16,7 +55,7 @@ export const listUsers = async (req, res) => {
     paramIndex++;
   }
 
-  const orderBy = sort ? sort.replace(':', ' ') : 'u.created_at DESC';
+  const orderBy = parseSort(sort);
 
   const countResult = await pool.query(
     `SELECT COUNT(*) FROM users u ${whereClause}`,
@@ -67,6 +106,7 @@ export const listUsers = async (req, res) => {
 
 export const getUserById = async (req, res) => {
   const { id } = req.params;
+  assertSelfOrAdmin(req, id);
 
   const result = await pool.query(
     `SELECT u.id, u.email, u.first_name, u.last_name, u.middle_name, u.date_of_birth,
@@ -111,13 +151,16 @@ export const getUserById = async (req, res) => {
 
 export const updateUser = async (req, res) => {
   const { id } = req.params;
+  assertSelfOrAdmin(req, id);
   const updates = req.body;
 
   const fields = [];
   const values = [];
   let paramIndex = 1;
 
-  const allowedFields = ['first_name', 'last_name', 'middle_name', 'phone', 'date_of_birth', 'gender', 'avatar_url', 'is_active'];
+  const allowedFields = ['first_name', 'last_name', 'middle_name', 'phone', 'date_of_birth', 'gender', 'avatar_url'];
+  if (isAdmin(req)) allowedFields.push('is_active');
+
   for (const [key, value] of Object.entries(updates)) {
     const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
     if (allowedFields.includes(snakeKey)) {
@@ -143,6 +186,7 @@ export const updateUser = async (req, res) => {
 };
 
 export const deleteUser = async (req, res) => {
+  assertAdmin(req);
   const { id } = req.params;
 
   await pool.query('UPDATE users SET is_active = FALSE WHERE id = $1', [id]);
@@ -153,6 +197,7 @@ export const deleteUser = async (req, res) => {
 
 export const getUserProfile = async (req, res) => {
   const { id } = req.params;
+  assertSelfOrAdmin(req, id);
 
   const result = await pool.query(
     `SELECT u.*, 
@@ -192,11 +237,8 @@ export const getUserProfile = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   const { id } = req.params;
+  assertSelfOrAdmin(req, id);
   const updates = req.body;
-
-  if (req.user.id !== id && !req.user.permissions?.includes('users:update')) {
-    throw new AppError('Not authorized to update this profile', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR);
-  }
 
   const fields = [];
   const values = [];
@@ -229,6 +271,7 @@ export const updateProfile = async (req, res) => {
 
 export const getUserCourses = async (req, res) => {
   const { id } = req.params;
+  assertSelfOrAdmin(req, id);
   const { page, limit } = req.query;
   const offset = (page - 1) * limit;
 
@@ -272,6 +315,7 @@ export const getUserCourses = async (req, res) => {
 
 export const getUserProgress = async (req, res) => {
   const { id } = req.params;
+  assertSelfOrAdmin(req, id);
 
   const result = await pool.query(
     `SELECT s.name as subject_name, s.code as subject_code,
@@ -305,6 +349,7 @@ export const getUserProgress = async (req, res) => {
 
 export const getUserAchievements = async (req, res) => {
   const { id } = req.params;
+  assertSelfOrAdmin(req, id);
 
   const result = await pool.query(
     `SELECT a.*, sa.earned_at
@@ -332,6 +377,7 @@ export const getUserAchievements = async (req, res) => {
 };
 
 export const assignRole = async (req, res) => {
+  assertAdmin(req);
   const { id } = req.params;
   const { roleId } = req.body;
 
@@ -344,6 +390,7 @@ export const assignRole = async (req, res) => {
 };
 
 export const removeRole = async (req, res) => {
+  assertAdmin(req);
   const { id, roleId } = req.params;
 
   await pool.query('DELETE FROM user_roles WHERE user_id = $1 AND role_id = $2', [id, roleId]);
