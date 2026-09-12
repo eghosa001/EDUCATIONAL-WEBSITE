@@ -20,8 +20,8 @@ function walk(dir) {
 
 function routeFromPageFile(file) {
   const rel = path.relative(APP_ROOT, file).split(path.sep).join('/');
-  if (!/\/page\.(tsx|ts|jsx|js)$/.test('/' + rel)) return null;
-  let route = rel.replace(/\/page\.(tsx|ts|jsx|js)$/, '');
+  if (!/(^|\/)page\.(tsx|ts|jsx|js)$/.test(rel)) return null;
+  let route = rel.replace(/(^|\/)page\.(tsx|ts|jsx|js)$/, '');
   route = route.split('/').filter(Boolean).filter(s => !(s.startsWith('(') && s.endsWith(')'))).join('/');
   return route ? '/' + route : '/';
 }
@@ -61,7 +61,6 @@ test.describe('THE GUIDE comprehensive route and UI smoke suite', () => {
       page.on('console', msg => {
         if (msg.type() === 'error' && /Unhandled Runtime Error|Hydration failed|ChunkLoadError/i.test(msg.text())) fatal.push(`console: ${msg.text()}`);
       });
-
       const response = await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 30000 });
       expect(response, `No response for ${route}`).not.toBeNull();
       expect(response.status(), `${route} returned HTTP ${response.status()}`).toBeLessThan(500);
@@ -71,14 +70,12 @@ test.describe('THE GUIDE comprehensive route and UI smoke suite', () => {
       expect(bodyText.length, `${route} appears blank`).toBeGreaterThan(10);
       expect(bodyText).not.toMatch(/Application error: a client-side exception has occurred/i);
       expect(fatal, `Fatal browser errors on ${route}`).toEqual([]);
-
       const images = page.locator('img:visible');
       for (let i = 0; i < await images.count(); i++) {
         await expect(images.nth(i)).toHaveJSProperty('complete', true);
         const width = await images.nth(i).evaluate(img => img.naturalWidth);
         expect(width, `Broken image on ${route}`).toBeGreaterThan(0);
       }
-
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow, `Horizontal overflow on ${route}`).toBeLessThanOrEqual(8);
     });
