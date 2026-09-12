@@ -12,6 +12,12 @@ const out = (body: unknown, status = 200) => new Response(JSON.stringify(body), 
 const uuid = (value: unknown) => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 const isoDay = (value: unknown) => String(value || '').slice(0, 10);
 const successfulPaymentStatuses = ['success', 'successful', 'completed'];
+const csvCell = (value: unknown) => `"${String(value ?? '').replaceAll('"', '""')}"`;
+const toCsv = (rows: Record<string, unknown>[]) => {
+  if (!rows.length) return '';
+  const headers = Object.keys(rows[0]);
+  return [headers.map(csvCell).join(','), ...rows.map((row) => headers.map((key) => csvCell(row[key])).join(','))].join('\n');
+};
 
 const calculateStreaks = (days: string[]) => {
   const unique = [...new Set(days.filter(Boolean))].sort();
@@ -204,7 +210,7 @@ Deno.serve(async (req) => {
     if (action === 'revenue') {
       const [{ data: payments, error: paymentError }, { data: subscriptions, error: subscriptionError }, { data: plans, error: planError }] = await Promise.all([
         admin.from('payments').select('amount,paid_at,status,gateway,purpose,purpose_id').in('status', successfulPaymentStatuses),
-        admin.from('subscriptions').select('plan_id,status,canceled_at'),
+        admin.from('subscriptions').select('id,plan_id,status,canceled_at'),
         admin.from('subscription_plans').select('id,name'),
       ]);
       if (paymentError || subscriptionError || planError) return out({ error: 'Unable to load revenue analytics' }, 500);
@@ -252,7 +258,7 @@ Deno.serve(async (req) => {
         admin.from('exams').select('id,title'),
       ]);
       const courseViews = new Map<string, number>();
-      for (const row of lessons || []) courseViews.set((row as any).course_id, (courseViews.get((row as any).course_id) || 0) + Number((row as any).view_count || 0));
+      for (const row of lessons || []) if ((row as any).course_id) courseViews.set((row as any).course_id, (courseViews.get((row as any).course_id) || 0) + Number((row as any).view_count || 0));
       const mostViewedCourses = [...(courses || [])]
         .map((row: any) => ({ courseId: row.id, title: row.title, viewCount: courseViews.get(row.id) || Number(row.enrollment_count || 0) }))
         .sort((a, b) => b.viewCount - a.viewCount).slice(0, 10);
@@ -271,12 +277,13 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'learning') {
-      const [{ data: sessions }, { data: lessonProgress }, { data: attempts }] = await Promise.all([
+      const [{ data: sessions }, { data: lessonProgress }, { data: attempts }, { data: enrollments }] = await Promise.all([
         admin.from('study_sessions').select('course_id,lesson_id,duration_seconds,started_at').eq('student_id', user.id),
         admin.from('lesson_progress').select('lesson_id,completed_at,status').eq('student_id', user.id),
         admin.from('exam_attempts').select('id').eq('student_id', user.id),
+        admin.from('student_courses').select('course_id,completed_at,progress_percentage').eq('student_id', user.id),
       ]);
-      const courseIds = [...new Set((sessions || []).map((s: any) => s.course_id).filter(Boolean))];
+      const courseIds = [...new Set([...(sessions || []).map((s: any) => s.course_id), ...(enrollments || []).map((e: any) => e.course_id)].filter(Boolean))];
       const lessonIds = [...new Set((sessions || []).map((s: any) => s.lesson_id).filter(Boolean))];
       const attemptIds = (attempts || []).map((a: any) => a.id);
       const [{ data: courses }, { data: lessons }, { data: answers }] = await Promise.all([
@@ -327,15 +334,35 @@ Deno.serve(async (req) => {
         if (question.subject_id) {
           const key = String(subjectNames.get(question.subject_id) || question.subject_id);
           const score = subjectScores.get(key) || { correct: 0, total: 0 };
-          score.total += 1; if ((row as any).is_correct) score.correct += 1; subjectScores.set(key, score);
+          score.total += 1;
+          if ((row as any).is_correct) score.correct += 1;
+          subjectScores.set(key, score);
         }
         if (question.topic_id) {
           const score = topicScores.get(question.topic_id) || { correct: 0, total: 0 };
-          score.total += 1; if ((row as any).is_correct) score.correct += 1; topicScores.set(question.topic_id, score);
+          score.total += 1;
+          if ((row as any).is_correct) score.correct += 1;
+          topicScores.set(question.topic_id, score);
         }
       }
+      const completionBySubject = new Map<string, { completed: number; total: number }>();
+      for (const row of enrollments || []) {
+        const subjectId = courseSubject.get((row as any).course_id);
+        const key = String(subjectNames.get(subjectId) || subjectId || 'Other');
+        const entry = completionBySubject.get(key) || { completed: 0, total: 0 };
+        entry.total += 1;
+        if ((row as any).completed_at || Number((row as any).progress_percentage || 0) >= 100) entry.completed += 1;
+        completionBySubject.set(key, entry);
+      }
       const performanceBySubject: Record<string, { averageScore: number; completionRate: number }> = {};
-      for (const [name, score] of subjectScores) performanceBySubject[name] = { averageScore: score.total ? (score.correct / score.total) * 100 : 0, completionRate: 0 };
+      for (const name of new Set([...subjectScores.keys(), ...completionBySubject.keys()])) {
+        const score = subjectScores.get(name);
+        const completion = completionBySubject.get(name);
+        performanceBySubject[name] = {
+          averageScore: score?.total ? (score.correct / score.total) * 100 : 0,
+          completionRate: completion?.total ? (completion.completed / completion.total) * 100 : 0,
+        };
+      }
       const popularTopics = [...topicTime.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([topicId, timeSpent]) => ({ topicId, topicName: String(topicNames.get(topicId) || 'Topic'), timeSpent }));
       const weakAreas = [...topicScores.entries()].map(([topicId, score]) => ({ topicId, topicName: String(topicNames.get(topicId) || 'Topic'), averageScore: score.total ? (score.correct / score.total) * 100 : 0 })).sort((a, b) => a.averageScore - b.averageScore).slice(0, 10);
       return out({ analytics: { timeSpentBySubject, performanceBySubject, activityByDay, popularTopics, weakAreas } });
@@ -373,7 +400,37 @@ Deno.serve(async (req) => {
       } });
     }
 
-    if (action === 'export') return out({ error: 'Analytics export is not enabled yet; use the analytics datasets directly.' }, 501);
+    if (action === 'export') {
+      const reportType = String((body as any).reportType || '');
+      const format = String((body as any).format || 'csv').toLowerCase();
+      if (format !== 'csv') return out({ error: 'Only CSV analytics export is currently supported' }, 400);
+      let rows: Record<string, unknown>[] = [];
+      if (reportType === 'users') {
+        const { data, error } = await admin.from('users').select('id,email,first_name,last_name,is_active,is_verified,created_at,last_login_at').order('created_at', { ascending: false });
+        if (error) return out({ error: 'Unable to export users' }, 500);
+        rows = (data || []) as Record<string, unknown>[];
+      } else if (reportType === 'courses') {
+        const { data, error } = await admin.from('courses').select('id,title,status,enrollment_count,rating,review_count,lesson_count,created_at').order('created_at', { ascending: false });
+        if (error) return out({ error: 'Unable to export courses' }, 500);
+        rows = (data || []) as Record<string, unknown>[];
+      } else if (reportType === 'exams') {
+        const { data, error } = await admin.from('exams').select('id,title,status,created_at').order('created_at', { ascending: false });
+        if (error) return out({ error: 'Unable to export exams' }, 500);
+        rows = (data || []) as Record<string, unknown>[];
+      } else if (reportType === 'revenue') {
+        const { data, error } = await admin.from('payments').select('id,reference,user_id,amount,currency,gateway,status,purpose,paid_at,created_at').order('created_at', { ascending: false });
+        if (error) return out({ error: 'Unable to export revenue' }, 500);
+        rows = (data || []) as Record<string, unknown>[];
+      } else if (reportType === 'activity') {
+        const { data, error } = await admin.from('study_sessions').select('id,student_id,course_id,lesson_id,activity_type,duration_seconds,started_at,ended_at').order('started_at', { ascending: false });
+        if (error) return out({ error: 'Unable to export activity' }, 500);
+        rows = (data || []) as Record<string, unknown>[];
+      } else {
+        return out({ error: 'Unsupported report type' }, 400);
+      }
+      return out({ filename: `${reportType}-${new Date().toISOString().slice(0, 10)}.csv`, mimeType: 'text/csv', content: toCsv(rows) });
+    }
+
     return out({ error: 'Unsupported analytics action' }, 400);
   } catch (error) {
     console.error('Analytics operation failed:', error instanceof Error ? error.message : 'unknown error');
