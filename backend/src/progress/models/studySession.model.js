@@ -15,8 +15,8 @@ export const studySessionModel = {
   async end(id) {
     const result = await query(
       `UPDATE study_sessions
-       SET ended_at = NOW(), duration_seconds = EXTRACT(EPOCH FROM (NOW() - started_at))::int
-       WHERE id = $1
+       SET ended_at = NOW(), duration_seconds = GREATEST(0, EXTRACT(EPOCH FROM (NOW() - started_at))::int)
+       WHERE id = $1 AND ended_at IS NULL
        RETURNING *`,
       [id]
     );
@@ -32,16 +32,30 @@ export const studySessionModel = {
          AND ($3::timestamptz IS NULL OR started_at <= $3)`,
       [studentId, fromDate, toDate]
     );
-    return result.rows[0].total_seconds;
+    return Number(result.rows[0]?.total_seconds || 0);
   },
 
   async listByStudent(studentId, { page = 1, limit = 20 } = {}) {
-    const offset = (page - 1) * limit;
-    const result = await query(
-      'SELECT * FROM study_sessions WHERE student_id = $1 ORDER BY started_at DESC LIMIT $2 OFFSET $3',
-      [studentId, limit, offset]
-    );
-    return { data: result.rows, page, limit };
+    const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+    const safeLimit = Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 20));
+    const offset = (safePage - 1) * safeLimit;
+    const [result, countResult] = await Promise.all([
+      query(
+        'SELECT * FROM study_sessions WHERE student_id = $1 ORDER BY started_at DESC, id LIMIT $2 OFFSET $3',
+        [studentId, safeLimit, offset]
+      ),
+      query('SELECT COUNT(*)::int AS total FROM study_sessions WHERE student_id = $1', [studentId]),
+    ]);
+    const total = Number(countResult.rows[0]?.total || 0);
+    return {
+      data: result.rows,
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: total === 0 ? 0 : Math.ceil(total / safeLimit),
+      },
+    };
   },
 };
 
