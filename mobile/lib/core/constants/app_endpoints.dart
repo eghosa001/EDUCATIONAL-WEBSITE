@@ -13,7 +13,7 @@ class AppEndpoints {
   // Users
   static const String users = '/users';
   static const String usersProfile = '/users/profile';
-  static const String usersUpdate = '/users/update';
+  static const String usersUpdate = '/users/profile';
 
   // Education
   static const String educationLevels = '/education/levels';
