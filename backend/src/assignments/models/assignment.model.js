@@ -49,6 +49,8 @@ export const assignmentModel = {
   },
 
   async list({ page = 1, limit = 20, courseId, teacherId, isActive } = {}) {
+    const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+    const safeLimit = Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 20));
     const conditions = [];
     const values = [];
 
@@ -66,15 +68,27 @@ export const assignmentModel = {
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const offset = (page - 1) * limit;
-    values.push(limit, offset);
+    const countResult = await query(`SELECT COUNT(*)::int AS total FROM assignments ${whereClause}`, values);
+    const total = Number(countResult.rows[0]?.total || 0);
+    const offset = (safePage - 1) * safeLimit;
+    const pageValues = [...values, safeLimit, offset];
 
     const result = await query(
-      `SELECT * FROM assignments ${whereClause} ORDER BY due_date DESC NULLS LAST LIMIT $${values.length - 1} OFFSET $${values.length}`,
-      values
+      `SELECT * FROM assignments ${whereClause}
+       ORDER BY due_date DESC NULLS LAST, created_at DESC, id
+       LIMIT $${pageValues.length - 1} OFFSET $${pageValues.length}`,
+      pageValues
     );
 
-    return { data: result.rows, page, limit };
+    return {
+      data: result.rows,
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: total === 0 ? 0 : Math.ceil(total / safeLimit),
+      },
+    };
   },
 
   async delete(id) {
