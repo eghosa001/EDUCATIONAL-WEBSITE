@@ -47,7 +47,7 @@ export const quizModel = {
     return result.rows;
   },
 
-  async list({ page = 1, limit = 20, courseId, lessonId } = {}) {
+  async list({ page = 1, limit = 20, courseId, lessonId, isActive } = {}) {
     const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
     const safeLimit = Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 20));
     const conditions = [];
@@ -60,6 +60,10 @@ export const quizModel = {
     if (lessonId) {
       conditions.push(`lesson_id = $${values.length + 1}`);
       values.push(lessonId);
+    }
+    if (isActive !== undefined) {
+      conditions.push(`is_active = $${values.length + 1}`);
+      values.push(isActive);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
