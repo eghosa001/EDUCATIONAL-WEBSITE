@@ -102,7 +102,20 @@ class AuthenticationRepository {
 
   Future<Map<String, dynamic>> getProfile() async {
     final response = await _apiClient.get<Map<String, dynamic>>(AppEndpoints.usersProfile);
-    return Map<String, dynamic>.from(response.data?['data'] as Map? ?? const {});
+    final data = Map<String, dynamic>.from(response.data?['data'] as Map? ?? const {});
+    final rawUser = data['user'];
+    if (rawUser is Map) {
+      await _storage.saveUser(Map<String, dynamic>.from(rawUser));
+    }
+    return data;
+  }
+
+  Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> updates) async {
+    await _apiClient.patch<Map<String, dynamic>>(
+      AppEndpoints.usersProfile,
+      data: updates,
+    );
+    return getProfile();
   }
 }
 
