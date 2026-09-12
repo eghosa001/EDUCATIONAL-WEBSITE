@@ -9,8 +9,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "jest --passWithNoTests",
-    "test:e2e": "npx --yes -p @playwright/test@1.55.0 playwright test",
+    "test": "node --test tests/*.test.mjs",
+    "test:e2e": "playwright test",
     "test:edge": "node ../supabase/tests/edge-smoke.mjs",
     "typecheck": "tsc --noEmit"
   },
@@ -61,6 +61,7 @@
     "zustand": "^4.4.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.55.0",
     "@testing-library/jest-dom": "^6.1.0",
     "@testing-library/react": "^14.0.0",
     "@types/bcryptjs": "^2.4.6",
