@@ -41,29 +41,20 @@ const refreshCookieAuth = (req, _res, next) => {
   next();
 };
 
-const verifyEmailToken = asyncHandler(async (req, _res, next) => {
-  if (useSupabaseAuth) {
-    throw new AppError(
-      'Email verification is handled by the verification link sent to your email address',
-      HTTP_STATUS.BAD_REQUEST,
-      ERROR_CODES.VALIDATION_ERROR
-    );
-  }
-
-  const token = req.body?.token;
-  const userId = req.params?.id;
-  if (!token || !userId) {
-    throw new AppError('Verification token is required', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
-  }
-
-  const tokenHash = hashToken(token);
+// Local/legacy mode identifies the account by the one-time token because the
+// public route has never had an :id path parameter. Supabase mode validates the
+// token through GoTrue in the selected controller instead.
+const prepareLegacyVerification = asyncHandler(async (req, _res, next) => {
+  if (useSupabaseAuth) return next();
+  const tokenHash = hashToken(req.body.token);
   const result = await pool.query(
-    'SELECT id FROM users WHERE id = $1 AND is_verified = FALSE AND email_verification_token = $2',
-    [userId, tokenHash]
+    'SELECT id FROM users WHERE is_verified = FALSE AND email_verification_token = $1 LIMIT 1',
+    [tokenHash]
   );
   if (!result.rows.length) {
     throw new AppError('Invalid or expired verification token', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
   }
+  req.params.id = result.rows[0].id;
   next();
 });
 
@@ -77,14 +68,22 @@ authRoutes.get('/me', authMiddleware, asyncHandler(authController.getCurrentUser
 authRoutes.post(
   '/verify-email',
   authRateLimiter,
-  validateRequest({
-    params: schemas.idParam,
-    body: Joi.object({ token: Joi.string().min(32).max(256).required() }),
-  }),
-  verifyEmailToken,
-  asyncHandler(authController.verifyEmail)
+  validateRequest(Joi.object({ token: Joi.string().min(32).max(512).required() })),
+  prepareLegacyVerification,
+  asyncHandler(chooseAuthHandler(authController.verifyEmail, supabaseAuthController.verifyEmailWithSupabase))
 );
-authRoutes.post('/resend-verification', authMiddleware, authRateLimiter, asyncHandler(authController.resendVerification));
-authRoutes.post('/forgot-password', authRateLimiter, validateRequest(schemas.user.login.keys({ email: true })), asyncHandler(passwordController.forgotPassword));
+
+if (useSupabaseAuth) {
+  authRoutes.post(
+    '/resend-verification',
+    authRateLimiter,
+    validateRequest(Joi.object({ email: Joi.string().email().required() })),
+    asyncHandler(supabaseAuthController.resendVerificationWithSupabase)
+  );
+} else {
+  authRoutes.post('/resend-verification', authMiddleware, authRateLimiter, asyncHandler(authController.resendVerification));
+}
+
+authRoutes.post('/forgot-password', authRateLimiter, validateRequest(Joi.object({ email: Joi.string().email().required() })), asyncHandler(passwordController.forgotPassword));
 authRoutes.post('/reset-password', authRateLimiter, validateRequest(Joi.object({ token: Joi.string().min(32).max(256).required(), password: Joi.string().min(8).max(128).pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).required() })), asyncHandler(passwordController.resetPassword));
 authRoutes.post('/change-password', authMiddleware, authRateLimiter, validateRequest(schemas.user.changePassword), asyncHandler(passwordController.changePassword));
