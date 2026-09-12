@@ -82,18 +82,29 @@ jobs:
         if: env.VERCEL_TOKEN != ''
         shell: bash
         run: |
-          set -o pipefail
-          url=$(vercel deploy --prod --yes --token="$VERCEL_TOKEN" --cwd=web 2>&1 | tee /tmp/vercel-deploy.log | tail -n 1)
-          if [[ ! "$url" =~ ^https:// ]]; then
-            echo 'Vercel did not return a deployment URL.'
-            cat /tmp/vercel-deploy.log
+          set +e
+          output=$(vercel deploy --prod --yes --token="$VERCEL_TOKEN" --scope=ogs7 --cwd=web 2>&1)
+          status=$?
+          set -e
+
+          printf '%s\n' "$output"
+
+          if [ "$status" -ne 0 ]; then
+            echo "Vercel deploy exited with status $status"
+            exit "$status"
+          fi
+
+          url=$(printf '%s\n' "$output" | grep -Eo 'https://[^[:space:]]+\.vercel\.app' | tail -n 1)
+          if [ -z "$url" ]; then
+            echo 'Vercel deployment succeeded but no deployment URL was detected.'
             exit 1
           fi
+
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed to $url"
 
       - name: Smoke test deployment
         if: env.VERCEL_TOKEN != '' && steps.deploy.outputs.url != ''
         run: |
-          curl --fail --silent --show-error --retry 8 --retry-delay 5 "${{ steps.deploy.outputs.url }}/" > /dev/null
-          curl --fail --silent --show-error --retry 8 --retry-delay 5 "${{ steps.deploy.outputs.url }}/robots.txt" > /dev/null
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors "${{ steps.deploy.outputs.url }}/" > /dev/null
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors "${{ steps.deploy.outputs.url }}/robots.txt" > /dev/null
