@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - 'web/**'
-      - 'supabase/functions/**'
       - '.github/workflows/deploy-web.yml'
   workflow_dispatch:
 
@@ -58,6 +57,11 @@ jobs:
     env:
       VERCEL_TOKEN: ${{ secrets.deploy }}
     steps:
+      - name: Checkout deployment context
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
       - name: Require Vercel deployment token
         if: env.VERCEL_TOKEN == ''
         run: |
@@ -65,7 +69,30 @@ jobs:
           echo 'Add the Vercel access token as an Actions secret named deploy, then re-run this workflow.'
           exit 1
 
-      - name: Wait for matching Vercel production deployment
+      - name: Detect whether website source changed
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          web_changed=false
+          if [ "${{ github.event_name }}" = 'push' ]; then
+            before='${{ github.event.before }}'
+            if [ -n "$before" ] && [ "$before" != '0000000000000000000000000000000000000000' ] && git cat-file -e "$before^{commit}" 2>/dev/null; then
+              if git diff --name-only "$before" "$GITHUB_SHA" | grep -q '^web/'; then
+                web_changed=true
+              fi
+            elif git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep -q '^web/'; then
+              web_changed=true
+            fi
+          else
+            web_changed=true
+          fi
+
+          echo "web_changed=$web_changed" >> "$GITHUB_OUTPUT"
+          echo "Website source changed: $web_changed"
+
+      - name: Wait for Vercel production deployment
         id: vercel
         if: env.VERCEL_TOKEN != ''
         shell: bash
@@ -73,39 +100,49 @@ jobs:
           set -euo pipefail
 
           api='https://api.vercel.com/v7/deployments'
-          deployment_url=''
+          require_exact='${{ steps.changes.outputs.web_changed }}'
 
           for attempt in $(seq 1 60); do
-            response=$(curl --fail --silent --show-error --get "$api" \
-              -H "Authorization: Bearer $VERCEL_TOKEN" \
-              --data-urlencode "projectId=$VERCEL_PROJECT_ID" \
-              --data-urlencode "teamId=$VERCEL_ORG_ID" \
-              --data-urlencode 'target=production' \
-              --data-urlencode 'state=READY' \
-              --data-urlencode "sha=$GITHUB_SHA" \
-              --data-urlencode 'limit=1')
+            args=(
+              --fail --silent --show-error --get "$api"
+              -H "Authorization: Bearer $VERCEL_TOKEN"
+              --data-urlencode "projectId=$VERCEL_PROJECT_ID"
+              --data-urlencode "teamId=$VERCEL_ORG_ID"
+              --data-urlencode 'target=production'
+              --data-urlencode 'state=READY'
+              --data-urlencode 'branch=main'
+              --data-urlencode 'limit=1'
+            )
 
+            if [ "$require_exact" = 'true' ]; then
+              args+=(--data-urlencode "sha=$GITHUB_SHA")
+            fi
+
+            response=$(curl "${args[@]}")
             deployment_url=$(printf '%s' "$response" | jq -r '.deployments[0].url // empty')
             deployment_sha=$(printf '%s' "$response" | jq -r '.deployments[0].meta.githubCommitSha // empty')
 
-            if [ -n "$deployment_url" ] && [ "$deployment_sha" = "$GITHUB_SHA" ]; then
-              deployment_url="https://$deployment_url"
-              echo "Found READY Vercel production deployment for $GITHUB_SHA: $deployment_url"
-              echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
-              exit 0
+            if [ -n "$deployment_url" ]; then
+              if [ "$require_exact" != 'true' ] || [ "$deployment_sha" = "$GITHUB_SHA" ]; then
+                deployment_url="https://$deployment_url"
+                echo "Verified READY Vercel production deployment: $deployment_url (commit: ${deployment_sha:-unknown})"
+                echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
+                echo "sha=$deployment_sha" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
             fi
 
-            echo "Attempt $attempt/60: matching READY deployment not available yet."
+            echo "Attempt $attempt/60: suitable READY production deployment not available yet."
             sleep 5
           done
 
-          echo "No READY Vercel production deployment was found for commit $GITHUB_SHA."
-          echo 'Recent matching deployment data:'
+          echo 'No suitable READY Vercel production deployment was found.'
           curl --fail --silent --show-error --get "$api" \
             -H "Authorization: Bearer $VERCEL_TOKEN" \
             --data-urlencode "projectId=$VERCEL_PROJECT_ID" \
             --data-urlencode "teamId=$VERCEL_ORG_ID" \
-            --data-urlencode "sha=$GITHUB_SHA" \
+            --data-urlencode 'target=production' \
+            --data-urlencode 'branch=main' \
             --data-urlencode 'limit=5' | jq '{deployments: [.deployments[] | {uid, url, state, target, created, githubCommitSha: .meta.githubCommitSha}]}'
           exit 1
 
