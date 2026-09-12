@@ -38,8 +38,46 @@ import { bookmarkRoutes } from './bookmark.routes.js';
 import { administrationRoutes } from './administration.routes.js';
 import { authMiddleware } from '../common/middleware/index.js';
 import authorizeUserRoute from '../common/middleware/userAuthorization.js';
+import { pool, poolReady, useSupabase, supabaseQuery } from '../common/database/index.js';
+import { config } from '../common/config/index.js';
 
 export const apiRoutes = Router();
+
+apiRoutes.get('/health', async (_req, res) => {
+  let healthy = false;
+  let databaseStatus = 'error';
+  try {
+    await poolReady;
+    if (useSupabase) {
+      await supabaseQuery('users', { select: 'id', limit: 1 });
+    } else {
+      const result = await pool.query('SELECT 1');
+      if (!result?.rowCount) throw new Error('Database probe returned no rows');
+    }
+    healthy = true;
+    databaseStatus = 'ok';
+  } catch (error) {
+    console.error('[api health] Database connectivity check failed:', error instanceof Error ? error.message : error);
+  }
+
+  res.status(healthy ? 200 : 503).json({
+    success: healthy,
+    message: healthy ? 'Educational Platform API is operational' : 'API database connectivity degraded',
+    timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || 'unknown',
+    environment: config.env,
+    database: {
+      local: useSupabase ? 'inactive' : databaseStatus,
+      supabase: useSupabase ? databaseStatus : 'inactive',
+      mode: useSupabase ? 'supabase' : 'local',
+    },
+    services: {
+      api: healthy ? 'healthy' : 'degraded',
+      database: databaseStatus,
+    },
+  });
+});
+
 apiRoutes.use('/auth', authRoutes);
 apiRoutes.use('/users', authMiddleware, authorizeUserRoute, userRoutes);
 apiRoutes.use('/education', educationRoutes);
