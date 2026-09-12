@@ -142,3 +142,35 @@ test('admin payment-wide routes exclude content-only administrators', () => {
   assert.match(routes, /get\('\/'.*requireRole\('admin', 'super_admin'\)/s);
   assert.doesNotMatch(routes, /requireRole\([^)]*content_admin[^)]*\).*getPaymentStatsHandler/s);
 });
+
+test('successful paid subscription upgrades update plan, gateway and billing period on both completion paths', () => {
+  const service = fs.readFileSync(path.join(REPO_ROOT, 'backend', 'src', 'payments', 'services', 'payment.service.js'), 'utf8');
+  const controller = fs.readFileSync(path.join(REPO_ROOT, 'backend', 'src', 'payments', 'controllers', 'payment.controller.js'), 'utf8');
+  for (const source of [service, controller]) {
+    assert.match(source, /SET plan_id = \$2/);
+    assert.match(source, /gateway_subscription_id = \$3/);
+    assert.match(source, /current_period_start = \$5/);
+    assert.match(source, /current_period_end = \$6/);
+  }
+});
+
+test('versioned health endpoint performs a real database probe and admin health page contains no mock status list', () => {
+  const routes = fs.readFileSync(path.join(REPO_ROOT, 'backend', 'src', 'routes', 'api.routes.js'), 'utf8');
+  const page = fs.readFileSync(path.join(REPO_ROOT, 'admin', 'src', 'app', '(dashboard)', 'health', 'page.tsx'), 'utf8');
+  assert.match(routes, /apiRoutes\.get\('\/health'/);
+  assert.match(routes, /supabaseQuery\('users'/);
+  assert.match(routes, /pool\.query\('SELECT 1'\)/);
+  assert.match(page, /apiConfig\.baseUrl/);
+  assert.doesNotMatch(page, /Services Status \(mock/);
+  assert.doesNotMatch(page, /Nodemailer configured/);
+});
+
+test('privileged mutation audit is wired and redacts sensitive fields', () => {
+  const routes = fs.readFileSync(path.join(REPO_ROOT, 'backend', 'src', 'routes', 'api.routes.js'), 'utf8');
+  const audit = fs.readFileSync(path.join(REPO_ROOT, 'backend', 'src', 'common', 'middleware', 'auditTrail.js'), 'utf8');
+  assert.match(routes, /apiRoutes\.use\(auditPrivilegedMutation\)/);
+  assert.match(audit, /PRIVILEGED_ROLES/);
+  assert.match(audit, /SENSITIVE_KEY/);
+  assert.match(audit, /\[redacted\]/);
+  assert.match(audit, /res\.once\('finish'/);
+});
