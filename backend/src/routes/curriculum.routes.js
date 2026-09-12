@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import Joi from 'joi';
-import { asyncHandler, validateRequest, authMiddleware } from '../common/middleware/index.js';
+import { asyncHandler, validateRequest, authMiddleware, requireRole } from '../common/middleware/index.js';
 import { schemas } from '../common/validators/joi.js';
 import * as curriculumController from '../curriculum/controllers/curriculum.controller.js';
 
 export const curriculumRoutes = Router();
+const curriculumManager = requireRole('content_admin', 'super_admin');
 
 const subjectSchema = Joi.object({
   educationSystemId: Joi.string().uuid().required(),
@@ -52,6 +53,10 @@ const topicListQuery = schemas.pagination.keys({
   levelCode: Joi.string().max(50).optional(),
 });
 
+const subtopicListQuery = Joi.object({
+  topicId: Joi.string().uuid().optional(),
+});
+
 const subtopicSchema = Joi.object({
   topicId: Joi.string().uuid().required(),
   name: Joi.string().min(2).max(100).required(),
@@ -86,6 +91,7 @@ curriculumRoutes.get('/subjects',
 
 curriculumRoutes.post('/subjects',
   authMiddleware,
+  curriculumManager,
   validateRequest(subjectSchema),
   asyncHandler(curriculumController.createSubject)
 );
@@ -97,6 +103,7 @@ curriculumRoutes.get('/subjects/:id',
 
 curriculumRoutes.patch('/subjects/:id',
   authMiddleware,
+  curriculumManager,
   validateRequest({ params: schemas.idParam }),
   validateRequest(subjectUpdateSchema),
   asyncHandler(curriculumController.updateSubject)
@@ -104,6 +111,7 @@ curriculumRoutes.patch('/subjects/:id',
 
 curriculumRoutes.delete('/subjects/:id',
   authMiddleware,
+  curriculumManager,
   validateRequest({ params: schemas.idParam }),
   asyncHandler(curriculumController.deleteSubject)
 );
@@ -115,6 +123,7 @@ curriculumRoutes.get('/topics',
 
 curriculumRoutes.post('/topics',
   authMiddleware,
+  curriculumManager,
   validateRequest(topicSchema),
   asyncHandler(curriculumController.createTopic)
 );
@@ -126,6 +135,7 @@ curriculumRoutes.get('/topics/:id',
 
 curriculumRoutes.patch('/topics/:id',
   authMiddleware,
+  curriculumManager,
   validateRequest({ params: schemas.idParam }),
   validateRequest(topicUpdateSchema),
   asyncHandler(curriculumController.updateTopic)
@@ -133,16 +143,19 @@ curriculumRoutes.patch('/topics/:id',
 
 curriculumRoutes.delete('/topics/:id',
   authMiddleware,
+  curriculumManager,
   validateRequest({ params: schemas.idParam }),
   asyncHandler(curriculumController.deleteTopic)
 );
 
 curriculumRoutes.get('/subtopics',
+  validateRequest({ query: subtopicListQuery }),
   asyncHandler(curriculumController.listSubtopics)
 );
 
 curriculumRoutes.post('/subtopics',
   authMiddleware,
+  curriculumManager,
   validateRequest(subtopicSchema),
   asyncHandler(curriculumController.createSubtopic)
 );
@@ -154,6 +167,7 @@ curriculumRoutes.get('/subtopics/:id',
 
 curriculumRoutes.patch('/subtopics/:id',
   authMiddleware,
+  curriculumManager,
   validateRequest({ params: schemas.idParam }),
   validateRequest(subtopicUpdateSchema),
   asyncHandler(curriculumController.updateSubtopic)
@@ -161,6 +175,7 @@ curriculumRoutes.patch('/subtopics/:id',
 
 curriculumRoutes.delete('/subtopics/:id',
   authMiddleware,
+  curriculumManager,
   validateRequest({ params: schemas.idParam }),
   asyncHandler(curriculumController.deleteSubtopic)
 );
