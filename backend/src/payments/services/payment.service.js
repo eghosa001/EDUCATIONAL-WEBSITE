@@ -129,7 +129,21 @@ const grantEntitlement = async (payment) => {
     const periodEnd = new Date(now);
     periodEnd.setDate(periodEnd.getDate() + Number(plan.durationDays || plan.duration_days || 0));
     if (existingSub && ['active', 'trialing'].includes(existingSub.status)) {
-      await subscriptionModel.update(existingSub.id, { currentPeriodStart: now, currentPeriodEnd: periodEnd, status: 'active', cancelAtPeriodEnd: false, gatewaySubscriptionId: payment.gateway_reference, gateway: payment.gateway });
+      await query(
+        `UPDATE subscriptions
+            SET plan_id = $2,
+                gateway_subscription_id = $3,
+                gateway = $4,
+                status = 'active',
+                current_period_start = $5,
+                current_period_end = $6,
+                cancel_at_period_end = FALSE,
+                canceled_at = NULL,
+                ended_at = NULL,
+                updated_at = NOW()
+          WHERE id = $1`,
+        [existingSub.id, payment.purpose_id, payment.gateway_reference, payment.gateway, now, periodEnd]
+      );
     } else {
       await subscriptionModel.create({ userId: payment.user_id, planId: payment.purpose_id, gatewaySubscriptionId: payment.gateway_reference, gateway: payment.gateway, status: 'active', currentPeriodStart: now, currentPeriodEnd: periodEnd });
     }
