@@ -8,21 +8,29 @@ import {
   validateSubscriptionAccess,
   applyCoupon,
   createInvoice,
+  creditWalletBalance,
 } from '../services/subscription.service.js';
 import { subscriptionPlanModel, subscriptionModel, invoiceModel, walletModel } from '../models/subscription.model.js';
 import { AppError, HTTP_STATUS, ERROR_CODES } from '../../common/errors/index.js';
+import { query } from '../../common/database/index.js';
+import { generateReference } from '../../common/utils/transaction.js';
 
 const notFound = (resource) => {
   throw new AppError(`${resource} not found`, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
 };
 
 const isAdmin = (user) => user?.roles?.includes('admin') || user?.roles?.includes('super_admin');
+const positiveInt = (value, fallback, max = 100) => {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, max);
+};
 
 export const listPlans = async (req, res) => {
   const { page, limit, isActive } = req.query;
   const { data, pagination } = await subscriptionPlanModel.list({
-    page: parseInt(page),
-    limit: parseInt(limit),
+    page: positiveInt(page, 1),
+    limit: positiveInt(limit, 20),
     isActive: isActive !== undefined ? isActive === 'true' : undefined,
   });
   res.json({ success: true, data: { plans: data }, pagination });
@@ -69,6 +77,39 @@ export const getMySubscription = async (req, res) => {
   res.json({ success: true, data: { subscription } });
 };
 
+export const listAllSubscriptions = async (req, res) => {
+  const page = positiveInt(req.query.page, 1);
+  const limit = positiveInt(req.query.limit, 20);
+  const offset = (page - 1) * limit;
+  const values = [];
+  const conditions = [];
+  if (req.query.status) {
+    values.push(req.query.status);
+    conditions.push(`s.status = $${values.length}`);
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  values.push(limit, offset);
+  const rows = await query(
+    `SELECT s.*, sp.name AS plan_name, sp.code AS plan_code, sp.price,
+            u.email, u.first_name, u.last_name
+       FROM subscriptions s
+       LEFT JOIN subscription_plans sp ON sp.id = s.plan_id
+       LEFT JOIN users u ON u.id = s.user_id
+       ${where}
+      ORDER BY s.created_at DESC
+      LIMIT $${values.length - 1} OFFSET $${values.length}`,
+    values
+  );
+  const countValues = values.slice(0, -2);
+  const count = await query(`SELECT COUNT(*)::int AS total FROM subscriptions s ${where}`, countValues);
+  const total = count.rows[0]?.total || 0;
+  res.json({
+    success: true,
+    data: rows.rows,
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  });
+};
+
 export const getSubscriptionHandler = async (req, res) => {
   const subscription = await getSubscriptionById(req.params.id);
   if (subscription.user_id !== req.user.id && !isAdmin(req.user)) {
@@ -93,10 +134,7 @@ export const createNewSubscription = async (req, res) => {
       ERROR_CODES.PAYMENT_ERROR
     );
   }
-  if (couponCode) {
-    // Coupons cannot reduce an already-free plan further and are not consumed here.
-    await applyCoupon(couponCode, planId);
-  }
+  if (couponCode) await applyCoupon(couponCode, planId);
 
   const subscription = await createSubscription(req.user.id, planId, 'free');
   const invoice = await createInvoice(req.user.id, planId, 0, plan.currency || 'NGN', null, 0);
@@ -160,11 +198,36 @@ export const applyCouponHandler = async (req, res) => {
 };
 
 export const getInvoices = async (req, res) => {
-  const { page, limit, status } = req.query;
-  const result = await invoiceModel.findByUser(req.user.id, {
-    page: parseInt(page), limit: parseInt(limit), status,
-  });
-  res.json({ success: true, data: result });
+  const page = positiveInt(req.query.page, 1);
+  const limit = positiveInt(req.query.limit, 20);
+  const { status } = req.query;
+
+  if (!isAdmin(req.user)) {
+    const result = await invoiceModel.findByUser(req.user.id, { page, limit, status });
+    return res.json({ success: true, data: result });
+  }
+
+  const offset = (page - 1) * limit;
+  const values = [];
+  const conditions = [];
+  if (status) {
+    values.push(status);
+    conditions.push(`i.status = $${values.length}`);
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  values.push(limit, offset);
+  const rows = await query(
+    `SELECT i.*, u.email, u.first_name, u.last_name
+       FROM invoices i
+       LEFT JOIN users u ON u.id = i.user_id
+       ${where}
+      ORDER BY i.created_at DESC
+      LIMIT $${values.length - 1} OFFSET $${values.length}`,
+    values
+  );
+  const count = await query(`SELECT COUNT(*)::int AS total FROM invoices i ${where}`, values.slice(0, -2));
+  const total = count.rows[0]?.total || 0;
+  return res.json({ success: true, data: rows.rows, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
 };
 
 export const getInvoiceById = async (req, res) => {
@@ -176,21 +239,48 @@ export const getInvoiceById = async (req, res) => {
   res.json({ success: true, data: { invoice } });
 };
 
+const targetUserIdForAdminQuery = (req) => {
+  const requested = req.query.userId || req.body?.userId;
+  if (!requested || requested === req.user.id) return req.user.id;
+  if (!isAdmin(req.user)) {
+    throw new AppError('Administrator access required', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR);
+  }
+  return requested;
+};
+
 export const getWallet = async (req, res) => {
-  let wallet = await walletModel.findByUserId(req.user.id);
-  if (!wallet) wallet = await walletModel.createOrUpdate(req.user.id);
+  const targetUserId = targetUserIdForAdminQuery(req);
+  let wallet = await walletModel.findByUserId(targetUserId);
+  if (!wallet) wallet = await walletModel.createOrUpdate(targetUserId);
   res.json({ success: true, data: { wallet } });
 };
 
 export const listWalletTransactions = async (req, res) => {
-  const { page, limit } = req.query;
-  const wallet = await walletModel.findByUserId(req.user.id);
+  const targetUserId = targetUserIdForAdminQuery(req);
+  const page = positiveInt(req.query.page, 1);
+  const limit = positiveInt(req.query.limit, 20);
+  const wallet = await walletModel.findByUserId(targetUserId);
   if (!wallet) {
-    return res.json({ success: true, data: { transactions: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } } });
+    return res.json({ success: true, data: { transactions: [], pagination: { page, limit, total: 0, totalPages: 0 } } });
   }
-  const result = await (await import('../models/subscription.model.js')).walletTransactionModel.listByWallet(
-    wallet.id,
-    { page: parseInt(page), limit: parseInt(limit) }
-  );
+  const result = await (await import('../models/subscription.model.js')).walletTransactionModel.listByWallet(wallet.id, { page, limit });
   res.json({ success: true, data: result });
+};
+
+export const fundWalletForUser = async (req, res) => {
+  const { userId, amount } = req.body;
+  const numericAmount = Number(amount);
+  if (!userId || !Number.isFinite(numericAmount) || numericAmount <= 0) {
+    throw new AppError('A valid userId and positive amount are required', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+  }
+  let wallet = await walletModel.findByUserId(userId);
+  if (!wallet) wallet = await walletModel.createOrUpdate(userId);
+  if (!wallet) notFound('Wallet');
+  const transaction = await creditWalletBalance(
+    userId,
+    numericAmount,
+    `Administrative wallet credit by ${req.user.id}`,
+    generateReference()
+  );
+  res.status(HTTP_STATUS.CREATED).json({ success: true, message: 'Wallet credited', data: transaction });
 };
