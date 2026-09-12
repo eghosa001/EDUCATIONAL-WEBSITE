@@ -54,10 +54,6 @@ export const userService = {
     return { ...result, roles, role: primaryRole, primaryRole, permissions };
   },
 
-  async updateRole(userId, role) {
-    return userModel.updateRole(userId, role);
-  },
-
   async deactivateUser(userId) {
     return userModel.deactivate(userId);
   },
