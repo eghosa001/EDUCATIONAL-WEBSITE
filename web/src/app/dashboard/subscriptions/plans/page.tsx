@@ -9,12 +9,15 @@ import {
   createSubscription,
   applyCouponHandler,
 } from '@/services/api/subscriptionService';
+import { createPayment, fetchPaymentGateways, type PaymentGateway } from '@/services/api/paymentService';
 import type { SubscriptionPlan } from '@/types/models/subscription';
 
 export default function PlansPage() {
   const router = useRouter();
-  const { user, token } = useAuthStore();
+  const { token } = useAuthStore();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [gateways, setGateways] = useState<PaymentGateway[]>([]);
+  const [selectedGateway, setSelectedGateway] = useState<'paystack' | 'flutterwave' | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [couponCode, setCouponCode] = useState('');
@@ -25,23 +28,42 @@ export default function PlansPage() {
 
   useEffect(() => {
     if (!token) { setLoading(false); return; }
-    fetchSubscriptionPlans(token).then((res) => {
-      setPlans(res.plans.filter((p) => p.isActive));
+    Promise.all([
+      fetchSubscriptionPlans(token),
+      fetchPaymentGateways(token).catch(() => ({ gateways: [] as PaymentGateway[] })),
+    ]).then(([planResult, gatewayResult]) => {
+      setPlans(planResult.plans.filter((p) => p.isActive));
+      const available = ('data' in gatewayResult && gatewayResult.data?.gateways
+        ? gatewayResult.data.gateways
+        : ('gateways' in gatewayResult ? gatewayResult.gateways : []))
+        .filter((gateway) => gateway.isActive && (gateway.code === 'paystack' || gateway.code === 'flutterwave'));
+      setGateways(available);
+      const preferred = available.find((gateway) => gateway.code === 'paystack') || available[0];
+      if (preferred) setSelectedGateway(preferred.code as 'paystack' | 'flutterwave');
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [token]);
 
   const handleSelectPlan = (planId: string) => {
     setSelectedPlan(planId);
+    setCouponCode('');
+    setDiscountApplied(0);
     setError(null);
   };
 
   const handleApplyCoupon = async () => {
     if (!selectedPlan || !couponCode || !token) return;
+    const plan = plans.find((item) => item.id === selectedPlan);
+    if (plan && Number(plan.price || 0) > 0) {
+      setError('Coupon discounts are temporarily unavailable for paid checkout. No charge has been made.');
+      setDiscountApplied(0);
+      return;
+    }
     setApplyingCoupon(true);
     try {
       const result = await applyCouponHandler(couponCode, selectedPlan, token);
       setDiscountApplied(result.discountAmount);
+      setError(null);
     } catch {
       setError('Invalid coupon code');
     } finally {
@@ -51,20 +73,42 @@ export default function PlansPage() {
 
   const handleSubscribe = async () => {
     if (!selectedPlan || !token) return;
+    const plan = plans.find((item) => item.id === selectedPlan);
+    if (!plan) return;
+
     setSubmitting(true);
     setError(null);
     try {
-      const result = await createSubscription(
-        { planId: selectedPlan, couponCode: discountApplied > 0 ? couponCode : undefined },
-        token
-      );
-      if (result.data?.authorizationUrl) {
-        window.location.href = result.data.authorizationUrl;
-      } else {
+      const price = Number(plan.price || 0);
+      if (price <= 0) {
+        await createSubscription({ planId: selectedPlan }, token);
         router.push('/subscriptions/billing');
+        return;
       }
+
+      if (discountApplied > 0) {
+        setError('Coupon discounts are temporarily unavailable for paid checkout. Remove the coupon before continuing.');
+        return;
+      }
+      if (!selectedGateway) {
+        setError('No online payment gateway is currently available. Please try again later.');
+        return;
+      }
+
+      const result = await createPayment({
+        amount: price,
+        currency: plan.currency || 'NGN',
+        gateway: selectedGateway,
+        planId: selectedPlan,
+        redirectUrl: `${window.location.origin}/subscriptions/billing`,
+        metadata: { source: 'subscription-plans' },
+      }, token);
+
+      const authorizationUrl = result.data?.authorizationUrl;
+      if (!authorizationUrl) throw new Error('Payment gateway did not return a checkout URL');
+      window.location.assign(authorizationUrl);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to subscribe';
+      const message = err instanceof Error ? err.message : 'Failed to start payment';
       setError(message);
     } finally {
       setSubmitting(false);
@@ -76,9 +120,8 @@ export default function PlansPage() {
     return basePrice > 0 ? `₦${basePrice.toLocaleString()}` : 'Free';
   };
 
-  const findSelectedPlan = (): SubscriptionPlan | undefined => {
-    return plans.find((p) => p.id === selectedPlan);
-  };
+  const selectedPlanDetails = plans.find((plan) => plan.id === selectedPlan);
+  const selectedPlanIsPaid = Number(selectedPlanDetails?.price || 0) > 0;
 
   if (loading) {
     return (
@@ -96,7 +139,7 @@ export default function PlansPage() {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div role="alert" className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
           {error}
         </div>
       )}
@@ -138,7 +181,24 @@ export default function PlansPage() {
       {selectedPlan && (
         <div className="max-w-xl mx-auto bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Complete your subscription</h3>
-          <div className="flex gap-2 mb-4">
+
+          {selectedPlanIsPaid && (
+            <div className="mb-4">
+              <label htmlFor="payment-gateway" className="block text-sm font-medium text-gray-700 mb-2">Payment gateway</label>
+              <select
+                id="payment-gateway"
+                value={selectedGateway || ''}
+                onChange={(event) => setSelectedGateway(event.target.value as 'paystack' | 'flutterwave')}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                disabled={gateways.length === 0}
+              >
+                {gateways.length === 0 && <option value="">No gateway available</option>}
+                {gateways.map((gateway) => <option key={gateway.code} value={gateway.code}>{gateway.name}</option>)}
+              </select>
+            </div>
+          )}
+
+          <div className="flex gap-2 mb-2">
             <input
               type="text"
               value={couponCode}
@@ -155,13 +215,15 @@ export default function PlansPage() {
               {applyingCoupon ? 'Applying...' : 'Apply'}
             </button>
           </div>
+          {selectedPlanIsPaid && <p className="mb-4 text-xs text-gray-500">Paid-plan coupons are disabled until they can be bound atomically to a verified payment.</p>}
+
           <button
             type="button"
             onClick={handleSubscribe}
-            disabled={submitting}
+            disabled={submitting || (selectedPlanIsPaid && !selectedGateway)}
             className="w-full flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-white font-semibold disabled:opacity-50"
           >
-            {submitting ? 'Processing...' : 'Subscribe'}
+            {submitting ? 'Processing...' : selectedPlanIsPaid ? 'Continue to secure payment' : 'Activate free plan'}
             {!submitting && <ArrowRight className="w-4 h-4" />}
           </button>
         </div>
