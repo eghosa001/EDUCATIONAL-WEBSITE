@@ -123,14 +123,16 @@ export default function CurriculumPage() {
     return q ? subjects.filter(subject => subject.name.toLowerCase().includes(q)) : subjects;
   }, [subjects, subjectSearch]);
 
-  const filteredTopicsByTerm = useMemo(() => {
+  const filteredTopicsByTerm = useMemo<Record<string, Topic[]>>(() => {
     const q = topicSearch.trim().toLowerCase();
     if (!q) return topicsByTerm;
-    return Object.fromEntries(
-      Object.entries(topicsByTerm)
-        .map(([term, topics]) => [term, topics.filter(topic => `${cleanTopicName(topic.name)} ${topic.name} ${topic.description || ''}`.toLowerCase().includes(q))])
-        .filter(([, topics]) => (topics as Topic[]).length > 0),
-    );
+    const filteredEntries: Array<[string, Topic[]]> = Object.entries(topicsByTerm)
+      .map(([term, topics]): [string, Topic[]] => [
+        term,
+        topics.filter(topic => `${cleanTopicName(topic.name)} ${topic.name} ${topic.description || ''}`.toLowerCase().includes(q)),
+      ])
+      .filter(([, topics]) => topics.length > 0);
+    return Object.fromEntries(filteredEntries) as Record<string, Topic[]>;
   }, [topicsByTerm, topicSearch]);
 
   const sortedTerms = Object.keys(filteredTopicsByTerm).sort(
@@ -224,7 +226,7 @@ export default function CurriculumPage() {
                     <span className="text-xs text-gray-400">{filteredTopicsByTerm[term].length} topic{filteredTopicsByTerm[term].length === 1 ? '' : 's'}</span>
                   </div>
                   <ol className="grid gap-2 md:grid-cols-2">
-                    {filteredTopicsByTerm[term].map((topic, index) => (
+                    {filteredTopicsByTerm[term].map((topic: Topic, index: number) => (
                       <li key={topic.id} className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:bg-slate-800 dark:text-slate-200" title={topic.name}>
                         <span className="mr-2 font-semibold text-gray-400">{index + 1}.</span>{cleanTopicName(topic.name)}
                       </li>
