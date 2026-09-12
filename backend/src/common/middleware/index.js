@@ -19,6 +19,45 @@ const parseCookies = (cookieHeader) => {
   return cookies;
 };
 
+const getRequestToken = (req) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) return authHeader.slice(7).trim();
+  const cookies = parseCookies(req.headers.cookie);
+  return cookies.access_token || null;
+};
+
+/**
+ * Verify either the platform's legacy API JWT or a Supabase Auth access token.
+ * Both paths verify signatures/expiry; Supabase tokens are never trusted by
+ * decoding them locally without verification.
+ */
+const verifyIdentityToken = async (token) => {
+  try {
+    const { verifyToken } = await import('../../auth/utils/jwt.js');
+    const decoded = verifyToken(token);
+    if (decoded?.sub) return { userId: decoded.sub, provider: 'platform' };
+  } catch {
+    // The admin/web clients may use a Supabase Auth session instead.
+  }
+
+  const { supabaseAdmin, supabase } = await import('../supabase/index.js');
+  const client = supabaseAdmin || supabase;
+  if (!client) throw new Error('Supabase authentication is not configured');
+  const { data, error } = await client.auth.getUser(token);
+  if (error || !data?.user?.id) throw new Error('Invalid Supabase session');
+  return { userId: data.user.id, provider: 'supabase' };
+};
+
+const loadAuthenticatedUser = async (token) => {
+  const identity = await verifyIdentityToken(token);
+  const userService = await import('../../users/services/user.service.js');
+  const user = await userService.default.getUserById(identity.userId);
+  if (!user || !user.is_active) {
+    throw new AppError('User not found or inactive', HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.AUTHENTICATION_ERROR);
+  }
+  return { user, provider: identity.provider };
+};
+
 export const errorHandler = (err, req, res, next) => {
   handleError(err, res);
 };
@@ -34,37 +73,16 @@ export const notFoundHandler = (req, res) => {
 };
 
 export const authMiddleware = asyncHandler(async (req, res, next) => {
-  let token = null;
-
-  // Try Authorization header first (existing clients)
-  const authHeader = req.headers.authorization;
-  if (authHeader?.startsWith('Bearer ')) {
-    token = authHeader.split(' ')[1];
-  }
-
-  // Fall back to HttpOnly cookie (new secure path)
-  if (!token) {
-    const cookies = parseCookies(req.headers.cookie);
-    token = cookies['access_token'];
-  }
-
+  const token = getRequestToken(req);
   if (!token) {
     throw new AppError('No token provided', HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.AUTHENTICATION_ERROR);
   }
 
   try {
-    const { verifyToken } = await import('../../auth/utils/jwt.js');
-    const decoded = verifyToken(token);
-
-    const userService = await import('../../users/services/user.service.js');
-    const user = await userService.default.getUserById(decoded.sub);
-
-    if (!user || !user.is_active) {
-      throw new AppError('User not found or inactive', HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.AUTHENTICATION_ERROR);
-    }
-
+    const { user, provider } = await loadAuthenticatedUser(token);
     req.user = user;
     req.token = token;
+    req.authProvider = provider;
     next();
   } catch (error) {
     if (error instanceof AppError) throw error;
@@ -73,35 +91,17 @@ export const authMiddleware = asyncHandler(async (req, res, next) => {
 });
 
 export const optionalAuthMiddleware = asyncHandler(async (req, res, next) => {
-  let token = null;
-
-  const authHeader = req.headers.authorization;
-  if (authHeader?.startsWith('Bearer ')) {
-    token = authHeader.split(' ')[1];
-  }
-
-  if (!token) {
-    const cookies = parseCookies(req.headers.cookie);
-    token = cookies['access_token'];
-  }
-
+  const token = getRequestToken(req);
   if (token) {
     try {
-      const { verifyToken } = await import('../../auth/utils/jwt.js');
-      const decoded = verifyToken(token);
-
-      const userService = await import('../../users/services/user.service.js');
-      const user = await userService.default.getUserById(decoded.sub);
-
-      if (user && user.is_active) {
-        req.user = user;
-        req.token = token;
-      }
+      const { user, provider } = await loadAuthenticatedUser(token);
+      req.user = user;
+      req.token = token;
+      req.authProvider = provider;
     } catch {
-      // Invalid or expired token — proceed unauthenticated
+      // Invalid or expired token — proceed unauthenticated.
     }
   }
-
   next();
 });
 
@@ -111,7 +111,8 @@ export const requireRole = (...roles) => {
       throw new AppError('Authentication required', HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.AUTHENTICATION_ERROR);
     }
 
-    if (!roles.includes(req.user.role)) {
+    const userRoles = new Set([req.user.role, ...(req.user.roles || [])].filter(Boolean));
+    if (!roles.some((role) => userRoles.has(role))) {
       throw new AppError('Insufficient permissions', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR);
     }
 
@@ -125,8 +126,8 @@ export const requirePermission = (...permissions) => {
       throw new AppError('Authentication required', HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.AUTHENTICATION_ERROR);
     }
 
-    const userPermissions = req.user.permissions || [];
-    const hasPermission = permissions.some(p => userPermissions.includes(p));
+    const userPermissions = Array.isArray(req.user.permissions) ? req.user.permissions : [];
+    const hasPermission = userPermissions.includes('*') || permissions.some((permission) => userPermissions.includes(permission));
 
     if (!hasPermission) {
       throw new AppError('Insufficient permissions', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR);
