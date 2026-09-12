@@ -8,6 +8,14 @@ export const courseRoutes = Router();
 const courseManager = requireRole('teacher', 'content_admin', 'super_admin');
 const sectionParams = Joi.object({ id: Joi.string().uuid().required(), sectionId: Joi.string().uuid().required() });
 
+const courseListQuery = schemas.pagination.keys({
+  status: Joi.string().valid('draft', 'pending_review', 'approved', 'published', 'archived', 'rejected').optional(),
+  subjectId: Joi.string().uuid().optional(),
+  classId: Joi.string().uuid().optional(),
+  teacherId: Joi.string().uuid().optional(),
+  featured: Joi.boolean().optional(),
+});
+
 const sectionSchema = Joi.object({
   title: Joi.string().min(3).max(300).required(),
   description: Joi.string().optional(),
@@ -18,7 +26,7 @@ const sectionUpdateSchema = sectionSchema.fork(['title'], (s) => s.optional());
 
 courseRoutes.get('/',
   optionalAuthMiddleware,
-  validateRequest({ query: schemas.pagination }),
+  validateRequest({ query: courseListQuery }),
   asyncHandler(courseController.listCourses)
 );
 
@@ -35,6 +43,7 @@ courseRoutes.get('/my',
 
 courseRoutes.get('/saved',
   authMiddleware,
+  validateRequest({ query: schemas.pagination }),
   asyncHandler(courseController.listSavedCourses)
 );
 
