@@ -19,11 +19,83 @@ const notFound = (resource) => {
   throw new AppError(`${resource} not found`, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
 };
 
+const validationError = (message) => {
+  throw new AppError(message, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+};
+
 const isAdmin = (user) => user?.roles?.includes('admin') || user?.roles?.includes('super_admin');
 const positiveInt = (value, fallback, max = 100) => {
   const parsed = Number.parseInt(value, 10);
   if (!Number.isFinite(parsed) || parsed < 1) return fallback;
   return Math.min(parsed, max);
+};
+
+const normalizePlanPayload = (body, { partial = false } = {}) => {
+  const source = body || {};
+  const out = {};
+  const required = (key, value) => {
+    if (!partial && (value === undefined || value === null || value === '')) validationError(`${key} is required`);
+  };
+
+  required('name', source.name);
+  required('code', source.code);
+  required('price', source.price);
+  required('billingCycle', source.billingCycle);
+  required('durationDays', source.durationDays);
+
+  if (source.name !== undefined) {
+    if (typeof source.name !== 'string' || source.name.trim().length < 2 || source.name.trim().length > 100) validationError('name must be between 2 and 100 characters');
+    out.name = source.name.trim();
+  }
+  if (source.code !== undefined) {
+    if (typeof source.code !== 'string' || !/^[a-z0-9][a-z0-9_-]{1,49}$/i.test(source.code)) validationError('code must be 2-50 letters, numbers, underscores, or hyphens');
+    out.code = source.code.toLowerCase();
+  }
+  if (source.description !== undefined) {
+    if (source.description !== null && typeof source.description !== 'string') validationError('description must be text');
+    out.description = source.description || null;
+  }
+  if (source.price !== undefined) {
+    const value = Number(source.price);
+    if (!Number.isFinite(value) || value < 0) validationError('price must be a non-negative number');
+    out.price = Math.round(value * 100) / 100;
+  }
+  if (source.currency !== undefined) {
+    if (typeof source.currency !== 'string' || !/^[A-Za-z]{3}$/.test(source.currency)) validationError('currency must be a 3-letter code');
+    out.currency = source.currency.toUpperCase();
+  }
+  if (source.billingCycle !== undefined) {
+    if (!['monthly', 'yearly', 'one_time'].includes(source.billingCycle)) validationError('billingCycle must be monthly, yearly, or one_time');
+    out.billingCycle = source.billingCycle;
+  }
+  if (source.durationDays !== undefined) {
+    const value = Number(source.durationDays);
+    if (!Number.isInteger(value) || value < 1 || value > 3650) validationError('durationDays must be an integer between 1 and 3650');
+    out.durationDays = value;
+  }
+  if (source.trialDays !== undefined) {
+    const value = Number(source.trialDays);
+    if (!Number.isInteger(value) || value < 0 || value > 365) validationError('trialDays must be an integer between 0 and 365');
+    out.trialDays = value;
+  }
+  if (source.features !== undefined) {
+    if (!Array.isArray(source.features) || source.features.some((item) => typeof item !== 'string')) validationError('features must be an array of strings');
+    out.features = source.features;
+  }
+  if (source.limits !== undefined) {
+    if (!source.limits || typeof source.limits !== 'object' || Array.isArray(source.limits)) validationError('limits must be an object');
+    out.limits = source.limits;
+  }
+  if (source.isActive !== undefined) {
+    if (typeof source.isActive !== 'boolean') validationError('isActive must be boolean');
+    out.isActive = source.isActive;
+  }
+  if (source.displayOrder !== undefined) {
+    const value = Number(source.displayOrder);
+    if (!Number.isInteger(value) || value < 0 || value > 10000) validationError('displayOrder must be an integer between 0 and 10000');
+    out.displayOrder = value;
+  }
+  return out;
 };
 
 export const listPlans = async (req, res) => {
@@ -48,20 +120,26 @@ export const getPlanById = async (req, res) => {
 };
 
 export const createPlan = async (req, res) => {
-  const { name, code, description, price, currency, billingCycle, durationDays, trialDays, features, limits, isActive, displayOrder } = req.body;
-  const existingCode = await subscriptionPlanModel.findByCode(code);
+  const payload = normalizePlanPayload(req.body);
+  const existingCode = await subscriptionPlanModel.findByCode(payload.code);
   if (existingCode) throw new AppError('Plan code already exists', HTTP_STATUS.CONFLICT, ERROR_CODES.CONFLICT);
 
   const plan = await subscriptionPlanModel.create({
-    name, code, description, price, currency: currency || 'NGN',
-    billingCycle, durationDays, trialDays, features: features || [], limits: limits || {},
-    isActive: isActive !== undefined ? isActive : true, displayOrder: displayOrder || 0,
+    ...payload,
+    currency: payload.currency || 'NGN',
+    trialDays: payload.trialDays ?? 0,
+    features: payload.features || [],
+    limits: payload.limits || {},
+    isActive: payload.isActive ?? true,
+    displayOrder: payload.displayOrder ?? 0,
   });
   res.status(HTTP_STATUS.CREATED).json({ success: true, message: 'Subscription plan created', data: { plan } });
 };
 
 export const updatePlan = async (req, res) => {
-  const plan = await subscriptionPlanModel.update(req.params.id, req.body);
+  const payload = normalizePlanPayload(req.body, { partial: true });
+  if (Object.keys(payload).length === 0) validationError('No valid plan fields were provided');
+  const plan = await subscriptionPlanModel.update(req.params.id, payload);
   if (!plan) notFound('Subscription plan');
   res.json({ success: true, message: 'Subscription plan updated', data: { plan } });
 };
