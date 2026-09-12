@@ -11,7 +11,8 @@ export interface Payment {
   amount: number;
   currency: string;
   status: 'pending' | 'completed' | 'failed' | 'refunded';
-  method: string;
+  method?: string;
+  gateway?: string;
   reference: string;
   description?: string;
   metadata?: Record<string, unknown>;
@@ -29,12 +30,28 @@ export interface PaymentFilters {
 }
 
 export interface CreatePaymentData {
+  // Amount remains required by the HTTP validator for compatibility, but the
+  // backend ignores it for entitlement-bearing plan/course payments and derives
+  // the authoritative amount from the referenced resource.
   amount: number;
   currency?: string;
-  method: string;
-  reference?: string;
-  description?: string;
+  gateway: 'paystack' | 'flutterwave';
+  planId?: string;
+  courseId?: string;
+  examId?: string;
+  redirectUrl?: string;
   metadata?: Record<string, unknown>;
+}
+
+export interface CreatePaymentResponse {
+  success: boolean;
+  message?: string;
+  data: {
+    payment: Payment;
+    authorizationUrl?: string | null;
+    accessCode?: string | null;
+    reference?: string;
+  };
 }
 
 export const fetchPayments = async (
@@ -61,7 +78,7 @@ export const fetchPaymentById = async (paymentId: string, token: string): Promis
   return handleApiError(response);
 };
 
-export const createPayment = async (data: CreatePaymentData, token: string) => {
+export const createPayment = async (data: CreatePaymentData, token: string): Promise<CreatePaymentResponse> => {
   const response = await fetch(`${baseUrl}/payments`, {
     method: 'POST',
     headers: getAuthHeaders(token),
@@ -87,10 +104,10 @@ export interface PaymentGateway {
   name: string;
   code: string;
   isActive: boolean;
-  config: Record<string, unknown>;
+  config?: Record<string, unknown>;
 }
 
-export const fetchPaymentGateways = async (token?: string): Promise<{ gateways: PaymentGateway[] }> => {
+export const fetchPaymentGateways = async (token?: string): Promise<{ success?: boolean; data?: { gateways: PaymentGateway[] }; gateways?: PaymentGateway[] }> => {
   const response = await fetch(`${baseUrl}/payments/gateways`, {
     headers: getAuthHeaders(token), credentials: 'include'
   });
