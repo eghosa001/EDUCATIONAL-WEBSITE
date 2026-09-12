@@ -34,6 +34,15 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }
 
   @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final authState = ref.watch(authNotifierProvider);
@@ -101,18 +110,22 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 label: 'Create Account',
                 isLoading: authState.isLoading,
                 onPressed: () async {
-                  if (_formKey.currentState!.validate()) {
-                    await ref.read(authNotifierProvider.notifier).register(
-                      email: _emailController.text.trim(),
-                      password: _passwordController.text,
-                      firstName: _firstNameController.text.trim(),
-                      lastName: _lastNameController.text.trim(),
-                      role: _parseRole(_selectedRole),
-                    );
-                    final state = ref.read(authNotifierProvider);
-                    if (state.isAuthenticated && mounted) {
-                      context.go('/verify-email');
-                    }
+                  if (!_formKey.currentState!.validate()) return;
+
+                  await ref.read(authNotifierProvider.notifier).register(
+                    email: _emailController.text.trim(),
+                    password: _passwordController.text,
+                    firstName: _firstNameController.text.trim(),
+                    lastName: _lastNameController.text.trim(),
+                    role: _parseRole(_selectedRole),
+                  );
+                  if (!mounted) return;
+
+                  final state = ref.read(authNotifierProvider);
+                  if (state.requiresEmailVerification) {
+                    context.go('/verify-email');
+                  } else if (state.isAuthenticated) {
+                    context.go('/home');
                   }
                 },
               ),
