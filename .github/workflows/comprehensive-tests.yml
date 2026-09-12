@@ -146,6 +146,9 @@ jobs:
       - name: Typecheck admin app
         working-directory: admin
         run: npm run typecheck
+      - name: Run admin repository tests
+        working-directory: admin
+        run: npm test
       - name: Build admin app
         working-directory: admin
         run: npm run build
