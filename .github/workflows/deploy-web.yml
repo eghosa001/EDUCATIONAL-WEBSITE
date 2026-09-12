@@ -1,158 +1,16 @@
-name: Deploy Website
+name: Legacy Vercel Website Deployment
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'web/**'
-      - '.github/workflows/deploy-web.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: deploy-website-production
-  cancel-in-progress: true
-
-env:
-  VERCEL_ORG_ID: team_NCVETs3OwQwsVNul4nJKcnIL
-  VERCEL_PROJECT_ID: prj_V4ogfcOg1QSGDjbE9PW6KLJcB66R
-
 jobs:
-  validate:
-    name: Validate website
+  legacy:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Unit and repository tests
-        run: npm test
-
-      - name: Production build
-        run: npm run build
-
-  deploy:
-    name: Verify production deployment
-    needs: validate
-    runs-on: ubuntu-latest
-    environment:
-      name: production
-      url: ${{ steps.vercel.outputs.url }}
-    env:
-      VERCEL_TOKEN: ${{ secrets.deploy }}
-    steps:
-      - name: Checkout deployment context
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      - name: Require Vercel deployment token
-        if: env.VERCEL_TOKEN == ''
+      - name: Legacy deployment disabled
         run: |
-          echo 'GitHub secret deploy is not configured or is unavailable to this workflow.'
-          echo 'Add the Vercel access token as an Actions secret named deploy, then re-run this workflow.'
-          exit 1
-
-      - name: Detect whether website source changed
-        id: changes
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          web_changed=false
-          if [ "${{ github.event_name }}" = 'push' ]; then
-            before='${{ github.event.before }}'
-            if [ -n "$before" ] && [ "$before" != '0000000000000000000000000000000000000000' ] && git cat-file -e "$before^{commit}" 2>/dev/null; then
-              if git diff --name-only "$before" "$GITHUB_SHA" | grep -q '^web/'; then
-                web_changed=true
-              fi
-            elif git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep -q '^web/'; then
-              web_changed=true
-            fi
-          else
-            web_changed=true
-          fi
-
-          echo "web_changed=$web_changed" >> "$GITHUB_OUTPUT"
-          echo "Website source changed: $web_changed"
-
-      - name: Wait for Vercel production deployment
-        id: vercel
-        if: env.VERCEL_TOKEN != ''
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          api='https://api.vercel.com/v7/deployments'
-          require_exact='${{ steps.changes.outputs.web_changed }}'
-
-          for attempt in $(seq 1 60); do
-            args=(
-              --fail --silent --show-error --get "$api"
-              -H "Authorization: Bearer $VERCEL_TOKEN"
-              --data-urlencode "projectId=$VERCEL_PROJECT_ID"
-              --data-urlencode "teamId=$VERCEL_ORG_ID"
-              --data-urlencode 'target=production'
-              --data-urlencode 'state=READY'
-              --data-urlencode 'branch=main'
-              --data-urlencode 'limit=1'
-            )
-
-            if [ "$require_exact" = 'true' ]; then
-              args+=(--data-urlencode "sha=$GITHUB_SHA")
-            fi
-
-            response=$(curl "${args[@]}")
-            deployment_url=$(printf '%s' "$response" | jq -r '.deployments[0].url // empty')
-            deployment_sha=$(printf '%s' "$response" | jq -r '.deployments[0].meta.githubCommitSha // empty')
-
-            if [ -n "$deployment_url" ]; then
-              if [ "$require_exact" != 'true' ] || [ "$deployment_sha" = "$GITHUB_SHA" ]; then
-                deployment_url="https://$deployment_url"
-                echo "Verified READY Vercel production deployment: $deployment_url (commit: ${deployment_sha:-unknown})"
-                echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
-                echo "sha=$deployment_sha" >> "$GITHUB_OUTPUT"
-                exit 0
-              fi
-            fi
-
-            echo "Attempt $attempt/60: suitable READY production deployment not available yet."
-            sleep 5
-          done
-
-          echo 'No suitable READY Vercel production deployment was found.'
-          curl --fail --silent --show-error --get "$api" \
-            -H "Authorization: Bearer $VERCEL_TOKEN" \
-            --data-urlencode "projectId=$VERCEL_PROJECT_ID" \
-            --data-urlencode "teamId=$VERCEL_ORG_ID" \
-            --data-urlencode 'target=production' \
-            --data-urlencode 'branch=main' \
-            --data-urlencode 'limit=5' | jq '{deployments: [.deployments[] | {uid, url, state, target, created, githubCommitSha: .meta.githubCommitSha}]}'
-          exit 1
-
-      - name: Smoke test deployment
-        if: env.VERCEL_TOKEN != '' && steps.vercel.outputs.url != ''
-        shell: bash
-        run: |
-          set -euo pipefail
-          base='${{ steps.vercel.outputs.url }}'
-          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors "$base/" > /dev/null
-          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors "$base/robots.txt" | grep -qi 'user-agent'
-          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors "$base/sitemap.xml" | grep -qi '<urlset'
-          echo "Production smoke tests passed for $base"
+          echo 'The production frontend now deploys through .github/workflows/deploy-pages.yml.'
+          echo 'This workflow is retained only as a manual rollback reference.'
