@@ -32,6 +32,12 @@ export const protectLastSuperAdminRemoval = async (req, _res, next) => {
       }
     }
 
+    // Perform the guarded delete while the super-admin assignments are still locked.
+    // The controller's following DELETE is intentionally idempotent and becomes a no-op.
+    await client.query(
+      'DELETE FROM user_roles WHERE user_id = $1 AND role_id = $2',
+      [userId, roleId]
+    );
     await client.query('COMMIT');
     next();
   } catch (error) {
