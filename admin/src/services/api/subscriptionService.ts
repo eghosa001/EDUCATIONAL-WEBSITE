@@ -79,20 +79,26 @@ export const fetchAllInvoices = async (token: string, filters?: { page?: number;
 // ========== WALLET ==========
 
 export const fetchWallet = async (userId: string, token: string): Promise<{ wallet: Wallet }> => {
-  const response = await fetch(`${baseUrl}/subscriptions/wallet?userId=${userId}`, {
+  const response = await fetch(`${baseUrl}/subscriptions/wallet?userId=${encodeURIComponent(userId)}`, {
     headers: getAuthHeaders(token),
   });
-  return handleApiError(response);
+  const body = (await handleApiError(response)) as { data?: { wallet?: Wallet } };
+  if (!body.data?.wallet) throw new Error('Wallet response was missing wallet data');
+  return { wallet: body.data.wallet };
 };
 
 export const fetchWalletTransactions = async (userId: string, token: string, page = 1, limit = 20): Promise<{ transactions: WalletTransaction[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> => {
   const response = await fetch(
-    `${baseUrl}/subscriptions/wallet/transactions?userId=${userId}&page=${page}&limit=${limit}`,
+    `${baseUrl}/subscriptions/wallet/transactions?userId=${encodeURIComponent(userId)}&page=${page}&limit=${limit}`,
     {
       headers: getAuthHeaders(token),
     }
   );
-  return handleApiError(response);
+  const body = (await handleApiError(response)) as {
+    data?: { transactions?: WalletTransaction[]; pagination?: { page: number; limit: number; total: number; totalPages: number } };
+  };
+  if (!body.data?.pagination) throw new Error('Wallet transaction response was missing pagination data');
+  return { transactions: body.data.transactions ?? [], pagination: body.data.pagination };
 };
 
 export const fundWallet = async (userId: string, amount: number, gateway: string, token: string) => {
