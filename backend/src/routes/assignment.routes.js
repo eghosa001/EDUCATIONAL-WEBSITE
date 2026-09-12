@@ -1,15 +1,21 @@
 import { Router } from 'express';
 import Joi from 'joi';
-import { asyncHandler, validateRequest, authMiddleware, optionalAuthMiddleware } from '../common/middleware/index.js';
+import { asyncHandler, validateRequest, authMiddleware, optionalAuthMiddleware, requireRole } from '../common/middleware/index.js';
 import { schemas } from '../common/validators/joi.js';
 import * as assignmentController from '../assignments/controllers/assignment.controller.js';
 
 export const assignmentRoutes = Router();
+const assignmentManager = requireRole('teacher', 'content_admin', 'super_admin');
+const submissionParams = Joi.object({ id: Joi.string().uuid().required(), submissionId: Joi.string().uuid().required() });
+const assignmentListQuery = schemas.pagination.keys({
+  courseId: Joi.string().uuid().optional(),
+  teacherId: Joi.string().uuid().optional(),
+  isActive: Joi.boolean().optional(),
+});
 
 const assignmentSchema = Joi.object({
   courseId: Joi.string().uuid().required(),
   lessonId: Joi.string().uuid().optional(),
-  teacherId: Joi.string().uuid().optional(),
   title: Joi.string().min(3).max(300).required(),
   description: Joi.string().optional(),
   instructions: Joi.string().optional(),
@@ -39,7 +45,7 @@ const gradeSchema = Joi.object({
 
 assignmentRoutes.get('/',
   optionalAuthMiddleware,
-  validateRequest({ query: schemas.pagination }),
+  validateRequest({ query: assignmentListQuery }),
   asyncHandler(assignmentController.listAssignments)
 );
 
@@ -51,6 +57,7 @@ assignmentRoutes.get('/my-submissions',
 
 assignmentRoutes.post('/',
   authMiddleware,
+  assignmentManager,
   validateRequest(assignmentSchema),
   asyncHandler(assignmentController.createAssignment)
 );
@@ -63,6 +70,7 @@ assignmentRoutes.get('/:id',
 
 assignmentRoutes.patch('/:id',
   authMiddleware,
+  assignmentManager,
   validateRequest({ params: schemas.idParam }),
   validateRequest(assignmentUpdateSchema),
   asyncHandler(assignmentController.updateAssignment)
@@ -70,6 +78,7 @@ assignmentRoutes.patch('/:id',
 
 assignmentRoutes.delete('/:id',
   authMiddleware,
+  assignmentManager,
   validateRequest({ params: schemas.idParam }),
   asyncHandler(assignmentController.deleteAssignment)
 );
@@ -83,17 +92,21 @@ assignmentRoutes.post('/:id/submit',
 
 assignmentRoutes.get('/:id/submissions',
   authMiddleware,
+  assignmentManager,
   validateRequest({ params: schemas.idParam }),
   asyncHandler(assignmentController.listSubmissions)
 );
 
 assignmentRoutes.get('/:id/submissions/:submissionId',
   authMiddleware,
+  validateRequest({ params: submissionParams }),
   asyncHandler(assignmentController.getSubmission)
 );
 
 assignmentRoutes.post('/:id/submissions/:submissionId/grade',
   authMiddleware,
+  assignmentManager,
+  validateRequest({ params: submissionParams }),
   validateRequest(gradeSchema),
   asyncHandler(assignmentController.gradeSubmission)
 );
