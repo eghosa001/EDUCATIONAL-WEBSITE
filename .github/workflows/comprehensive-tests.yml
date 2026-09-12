@@ -150,3 +150,23 @@ jobs:
       - name: Build admin app
         working-directory: admin
         run: npm run build
+
+  mobile-analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Show Flutter version
+        run: flutter --version
+      - name: Install mobile dependencies
+        working-directory: mobile
+        run: flutter pub get
+      - name: Analyze mobile app
+        working-directory: mobile
+        run: flutter analyze --no-fatal-warnings --no-fatal-infos
