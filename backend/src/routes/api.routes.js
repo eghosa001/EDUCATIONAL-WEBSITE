@@ -37,6 +37,7 @@ import { advertisingRoutes } from './advertising.routes.js';
 import { bookmarkRoutes } from './bookmark.routes.js';
 import { administrationRoutes } from './administration.routes.js';
 import { authMiddleware } from '../common/middleware/index.js';
+import { auditPrivilegedMutation } from '../common/middleware/auditTrail.js';
 import authorizeUserRoute from '../common/middleware/userAuthorization.js';
 import { pool, poolReady, useSupabase, supabaseQuery } from '../common/database/index.js';
 import { config } from '../common/config/index.js';
@@ -77,6 +78,11 @@ apiRoutes.get('/health', async (_req, res) => {
     },
   });
 });
+
+// Register before route handlers. Authentication runs inside the mounted routers;
+// the finish listener records only mutations that ultimately populated req.user
+// with a privileged role and returned a successful status.
+apiRoutes.use(auditPrivilegedMutation);
 
 apiRoutes.use('/auth', authRoutes);
 apiRoutes.use('/users', authMiddleware, authorizeUserRoute, userRoutes);
