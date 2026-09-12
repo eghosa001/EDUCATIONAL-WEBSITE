@@ -85,11 +85,22 @@ test('subscription named routes are declared before the dynamic id route and leg
   const source = fs.readFileSync(path.join(REPO_ROOT, 'backend', 'src', 'routes', 'subscription.routes.js'), 'utf8');
   const dynamicIndex = source.indexOf("subscriptionRoutes.get('/:id'");
   assert.ok(dynamicIndex > 0, 'dynamic subscription route is missing');
-  for (const route of ["get('/access'", "get('/invoices'", "get('/wallet'"]) {
+  for (const route of ["get('/access'", "get('/invoices'", "get('/wallet'", "get('/wallet/transactions'"]) {
     const index = source.indexOf(`subscriptionRoutes.${route}`);
     assert.ok(index >= 0 && index < dynamicIndex, `${route} must be declared before /:id`);
   }
   assert.doesNotMatch(source, /webhook\/:gateway/);
+});
+
+test('admin billing collection and wallet funding routes require administrator roles', () => {
+  const routes = fs.readFileSync(path.join(REPO_ROOT, 'backend', 'src', 'routes', 'subscription.routes.js'), 'utf8');
+  const controller = fs.readFileSync(path.join(REPO_ROOT, 'backend', 'src', 'subscriptions', 'controllers', 'subscription.controller.js'), 'utf8');
+  assert.match(routes, /subscriptionRoutes\.get\('\/'[\s\S]*?requireRole\('admin', 'super_admin'\)[\s\S]*?listAllSubscriptions/);
+  assert.match(routes, /subscriptionRoutes\.post\('\/wallet\/fund'[\s\S]*?requireRole\('admin', 'super_admin'\)[\s\S]*?fundWalletForUser/);
+  assert.match(controller, /targetUserIdForAdminQuery/);
+  assert.match(controller, /Administrator access required/);
+  assert.match(controller, /numericAmount <= 0/);
+  assert.match(controller, /creditWalletBalance/);
 });
 
 test('paid plan page uses verified backend payment checkout rather than activating a paid subscription directly', () => {
