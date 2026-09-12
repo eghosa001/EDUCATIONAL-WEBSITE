@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import Joi from 'joi';
-import { asyncHandler, validateRequest, authMiddleware, optionalAuthMiddleware } from '../common/middleware/index.js';
+import { asyncHandler, validateRequest, authMiddleware, optionalAuthMiddleware, requireRole } from '../common/middleware/index.js';
 import { schemas } from '../common/validators/joi.js';
 import * as lessonController from '../lessons/controllers/lesson.controller.js';
 
 export const lessonRoutes = Router();
+const lessonManager = requireRole('teacher', 'content_admin', 'super_admin');
+const resourceParams = Joi.object({ id: Joi.string().uuid().required(), resourceId: Joi.string().uuid().required() });
 
 const resourceSchema = Joi.object({
   title: Joi.string().min(2).max(300).required(),
@@ -25,6 +27,7 @@ lessonRoutes.get('/',
 
 lessonRoutes.post('/',
   authMiddleware,
+  lessonManager,
   validateRequest(schemas.lesson.create),
   asyncHandler(lessonController.createLesson)
 );
@@ -36,6 +39,7 @@ lessonRoutes.get('/:slugOrId',
 
 lessonRoutes.patch('/:id',
   authMiddleware,
+  lessonManager,
   validateRequest({ params: schemas.idParam }),
   validateRequest(schemas.lesson.update),
   asyncHandler(lessonController.updateLesson)
@@ -43,6 +47,7 @@ lessonRoutes.patch('/:id',
 
 lessonRoutes.post('/:id/publish',
   authMiddleware,
+  lessonManager,
   validateRequest({ params: schemas.idParam }),
   asyncHandler(lessonController.publishLesson)
 );
@@ -55,6 +60,7 @@ lessonRoutes.post('/:id/complete',
 
 lessonRoutes.delete('/:id',
   authMiddleware,
+  lessonManager,
   validateRequest({ params: schemas.idParam }),
   asyncHandler(lessonController.deleteLesson)
 );
@@ -67,6 +73,7 @@ lessonRoutes.get('/:id/resources',
 
 lessonRoutes.post('/:id/resources',
   authMiddleware,
+  lessonManager,
   validateRequest({ params: schemas.idParam }),
   validateRequest(resourceSchema),
   asyncHandler(lessonController.createResource)
@@ -74,5 +81,7 @@ lessonRoutes.post('/:id/resources',
 
 lessonRoutes.delete('/:id/resources/:resourceId',
   authMiddleware,
+  lessonManager,
+  validateRequest({ params: resourceParams }),
   asyncHandler(lessonController.deleteResource)
 );
