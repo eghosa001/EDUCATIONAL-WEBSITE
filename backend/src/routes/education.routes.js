@@ -1,14 +1,11 @@
 import { Router } from 'express';
 import Joi from 'joi';
-import { asyncHandler } from '../common/middleware/index.js';
-import { validateRequest } from '../common/middleware/index.js';
+import { asyncHandler, validateRequest, authMiddleware, requireRole } from '../common/middleware/index.js';
 import { schemas } from '../common/validators/joi.js';
-import { authMiddleware } from '../common/middleware/index.js';
 import * as educationController from '../education/controllers/education.controller.js';
 
 export const educationRoutes = Router();
-
-educationRoutes.use(authMiddleware);
+const educationManager = [authMiddleware, requireRole('content_admin', 'super_admin')];
 
 educationRoutes.get('/systems',
   validateRequest({ query: schemas.pagination }),
@@ -16,6 +13,7 @@ educationRoutes.get('/systems',
 );
 
 educationRoutes.post('/systems',
+  ...educationManager,
   validateRequest(Joi.object({
     name: Joi.string().min(2).max(100).required(),
     code: Joi.string().min(2).max(20).required(),
@@ -36,6 +34,7 @@ educationRoutes.get('/systems/:id/levels',
 );
 
 educationRoutes.post('/systems/:id/levels',
+  ...educationManager,
   validateRequest({ params: schemas.idParam }),
   validateRequest(Joi.object({
     name: Joi.string().min(2).max(100).required(),
@@ -43,7 +42,7 @@ educationRoutes.post('/systems/:id/levels',
     description: Joi.string().optional(),
     orderIndex: Joi.number().integer().min(0).required(),
     minAge: Joi.number().integer().min(0).optional(),
-    maxAge: Joi.number().integer().min(0).optional(),
+    maxAge: Joi.number().integer().min(Joi.ref('minAge')).optional(),
   })),
   asyncHandler(educationController.createLevel)
 );
@@ -59,6 +58,7 @@ educationRoutes.get('/levels/:id/programs',
 );
 
 educationRoutes.post('/levels/:id/programs',
+  ...educationManager,
   validateRequest({ params: schemas.idParam }),
   validateRequest(Joi.object({
     name: Joi.string().min(2).max(100).required(),
@@ -81,6 +81,7 @@ educationRoutes.get('/programs/:id/classes',
 );
 
 educationRoutes.post('/programs/:id/classes',
+  ...educationManager,
   validateRequest({ params: schemas.idParam }),
   validateRequest(Joi.object({
     name: Joi.string().min(2).max(100).required(),
@@ -102,6 +103,7 @@ educationRoutes.get('/terms',
 );
 
 educationRoutes.post('/terms',
+  ...educationManager,
   validateRequest(Joi.object({
     educationSystemId: Joi.string().uuid().required(),
     name: Joi.string().min(2).max(100).required(),
