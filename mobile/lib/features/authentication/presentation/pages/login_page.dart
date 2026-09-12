@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../shared/widgets/index.dart';
-import '../../../shared/blocs/index.dart';
-import '../../../core/utils/validators.dart';
+import '../../../../shared/widgets/index.dart';
+import '../../../../shared/blocs/index.dart';
+import '../../../../core/utils/validators.dart';
 
 class LoginPage extends ConsumerWidget {
   const LoginPage({super.key});
