@@ -21,7 +21,8 @@ test.describe('Public pages', () => {
 
   test('forgot password page renders', async ({ page }) => {
     await page.goto('/forgot-password');
-    await expect(page.locator('text=forgot|reset|password').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /forgot password/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /send reset link/i })).toBeVisible();
   });
 });
 
