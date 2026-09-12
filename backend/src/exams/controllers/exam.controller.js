@@ -16,6 +16,20 @@ const normalize = (value) => {
   return String(value).toLowerCase().trim().replace(/\s+/g, ' ');
 };
 
+const roleSet = (user) => new Set([user?.role, ...(Array.isArray(user?.roles) ? user.roles : [])].filter(Boolean));
+
+const canManageExam = (user, exam) => {
+  const roles = roleSet(user);
+  if (roles.has('super_admin') || roles.has('content_admin')) return true;
+  return roles.has('teacher') && exam?.created_by === user?.id;
+};
+
+const requireExamManager = (req, exam) => {
+  if (!canManageExam(req.user, exam)) {
+    throw new AppError('Not authorized to manage this exam', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR);
+  }
+};
+
 export const listExams = async (req, res) => {
   const { page, limit, examType, subjectId, classId, isPublic } = req.query;
 
@@ -63,6 +77,7 @@ export const createExam = async (req, res) => {
 export const publishExam = async (req, res) => {
   const exam = await examModel.findById(req.params.id);
   if (!exam) notFound('Exam');
+  requireExamManager(req, exam);
 
   const updated = await examModel.update(exam.id, { isActive: true });
 
@@ -74,6 +89,10 @@ export const publishExam = async (req, res) => {
 };
 
 export const updateExam = async (req, res) => {
+  const existing = await examModel.findById(req.params.id);
+  if (!existing) notFound('Exam');
+  requireExamManager(req, existing);
+
   const exam = await examModel.update(req.params.id, req.body);
   if (!exam) notFound('Exam');
 
@@ -81,6 +100,10 @@ export const updateExam = async (req, res) => {
 };
 
 export const deleteExam = async (req, res) => {
+  const existing = await examModel.findById(req.params.id);
+  if (!existing) notFound('Exam');
+  requireExamManager(req, existing);
+
   const exam = await examModel.delete(req.params.id);
   if (!exam) notFound('Exam');
 
@@ -90,6 +113,7 @@ export const deleteExam = async (req, res) => {
 export const listExamQuestions = async (req, res) => {
   const exam = await examModel.findById(req.params.id);
   if (!exam) notFound('Exam');
+  requireExamManager(req, exam);
 
   const questions = await examQuestionModel.listByExam(exam.id);
 
@@ -102,6 +126,7 @@ export const addQuestion = async (req, res) => {
 
   const exam = await examModel.findById(id);
   if (!exam) notFound('Exam');
+  requireExamManager(req, exam);
 
   const question = await questionModel.findById(questionId);
   if (!question) notFound('Question');
@@ -122,6 +147,9 @@ export const addQuestion = async (req, res) => {
 
 export const removeQuestion = async (req, res) => {
   const { id, questionId } = req.params;
+  const exam = await examModel.findById(id);
+  if (!exam) notFound('Exam');
+  requireExamManager(req, exam);
 
   await examQuestionModel.removeQuestion(id, questionId);
 
@@ -189,6 +217,7 @@ export const submitAttempt = async (req, res) => {
 
   const attempt = await examAttemptModel.findById(attemptId);
   if (!attempt) notFound('Attempt');
+  if (attempt.exam_id !== id) notFound('Attempt');
 
   if (attempt.student_id !== req.user.id) {
     throw new AppError('Not your attempt', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR);
@@ -304,8 +333,11 @@ export const getMyAttempts = async (req, res) => {
 };
 
 export const listAttempts = async (req, res) => {
-  const { page, limit } = req.query;
+  const exam = await examModel.findById(req.params.id);
+  if (!exam) notFound('Exam');
+  requireExamManager(req, exam);
 
+  const { page, limit } = req.query;
   const { data, pagination } = await examAttemptModel.listByExam(req.params.id, { page, limit });
 
   res.json({ success: true, data: { attempts: data }, pagination });
@@ -316,16 +348,27 @@ export const getAttempt = async (req, res) => {
 
   const attempt = await examAttemptModel.findById(attemptId);
   if (!attempt) notFound('Attempt');
-
   if (attempt.exam_id !== id) notFound('Attempt');
 
-  const canView = req.user.id === attempt.student_id || req.user.role !== 'student';
-  if (!canView && attempt.status !== EXAM_ATTEMPT_STATUS.SUBMITTED) {
+  const exam = await examModel.findById(id);
+  if (!exam) notFound('Exam');
+
+  const isOwner = req.user.id === attempt.student_id;
+  const isManager = canManageExam(req.user, exam);
+  if (!isOwner && !isManager) {
     throw new AppError('Not authorized to view this attempt', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR);
   }
 
+  // Never disclose the answer key to a learner during an active attempt. After
+  // submission, reveal it only when the exam explicitly enables immediate
+  // results. Exam managers may always review the grading record.
+  const canSeeAnswerKey = isManager || (isOwner && attempt.status === EXAM_ATTEMPT_STATUS.SUBMITTED && exam.show_results_immediately);
+  const select = canSeeAnswerKey
+    ? `ea.*, q.question_text, q.question_type, q.options, q.correct_answer, q.explanation`
+    : `ea.*, q.question_text, q.question_type, q.options`;
+
   const answers = await query(
-    `SELECT ea.*, q.question_text, q.question_type, q.options, q.correct_answer, q.explanation
+    `SELECT ${select}
      FROM exam_answers ea
      JOIN questions q ON q.id = ea.question_id
      WHERE ea.attempt_id = $1
