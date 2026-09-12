@@ -3,6 +3,12 @@ import { getSupabase } from '@/lib/supabase';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseKey) {
+    return Response.json({ success: false, error: 'Course service is not configured' }, { status: 503 });
+  }
+
   const supabase = getSupabase();
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
