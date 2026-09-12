@@ -67,3 +67,23 @@ test('removing roles cannot delete the final super administrator', () => {
   assert.match(middleware, /Cannot remove the last super administrator/);
   assert.match(routes, /protectLastSuperAdminRemoval/);
 });
+
+test('Supabase mode routes mobile auth through canonical Supabase sessions', () => {
+  const routes = fs.readFileSync(new URL('./routes/auth.routes.js', import.meta.url), 'utf8');
+  const controller = fs.readFileSync(new URL('./auth/controllers/supabaseAuth.controller.js', import.meta.url), 'utf8');
+  assert.match(routes, /chooseAuthHandler\(authController\.register, supabaseAuthController\.registerWithSupabase\)/);
+  assert.match(routes, /chooseAuthHandler\(authController\.login, supabaseAuthController\.loginWithSupabase\)/);
+  assert.match(routes, /req\.body\?\.refreshToken/);
+  assert.match(controller, /auth\.signUp\(/);
+  assert.match(controller, /auth\.signInWithPassword\(/);
+  assert.match(controller, /auth\.refreshSession\(/);
+  assert.match(controller, /accessToken:\s*session\.access_token/);
+  assert.match(controller, /refreshToken:\s*session\.refresh_token/);
+});
+
+test('server Supabase clients do not persist or auto-refresh shared sessions', () => {
+  const source = fs.readFileSync(new URL('./common/supabase/index.js', import.meta.url), 'utf8');
+  assert.match(source, /persistSession:\s*false/);
+  assert.match(source, /autoRefreshToken:\s*false/);
+  assert.match(source, /detectSessionInUrl:\s*false/);
+});
