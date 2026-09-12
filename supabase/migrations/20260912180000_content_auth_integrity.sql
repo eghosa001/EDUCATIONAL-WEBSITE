@@ -3,6 +3,7 @@
 create or replace function public.enforce_lesson_publication_quality()
 returns trigger
 language plpgsql
+set search_path = public, pg_temp
 as $$
 declare
   objective_count integer := 0;
@@ -62,6 +63,7 @@ for each row execute function public.enforce_lesson_publication_quality();
 create or replace function public.enforce_active_question_quality()
 returns trigger
 language plpgsql
+set search_path = public, pg_temp
 as $$
 declare
   answer_id text;
