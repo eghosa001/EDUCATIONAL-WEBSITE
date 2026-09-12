@@ -1,7 +1,7 @@
 import { query } from '../../common/database/index.js';
 
 export const auditLogService = {
-  async logAction({ userId, action, resourceType, resourceId, changes, req }) {
+  async logAction({ userId, action, resourceType, resourceId, changes, metadata = {}, req }) {
     const result = await query(
       `INSERT INTO audit_logs (user_id, action, resource_type, resource_id, changes, ip_address, user_agent, metadata)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -14,7 +14,7 @@ export const auditLogService = {
         changes || null,
         req?.ip || null,
         req?.get?.('user-agent') || null,
-        req?.body?.metadata || {},
+        metadata || {},
       ]
     );
     return result.rows[0] || null;
