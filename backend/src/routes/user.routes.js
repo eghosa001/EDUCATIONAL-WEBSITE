@@ -17,6 +17,23 @@ userRoutes.get('/',
   asyncHandler(userController.listUsers)
 );
 
+// Stable self-service profile routes used by web/mobile clients. Keep these
+// before /:id so "profile" is never interpreted as a UUID.
+userRoutes.get('/profile',
+  asyncHandler(async (req, res) => {
+    req.params.id = req.user.id;
+    await userController.getUserById(req, res);
+  })
+);
+
+userRoutes.patch('/profile',
+  validateRequest(schemas.user.updateProfile),
+  asyncHandler(async (req, res) => {
+    req.params.id = req.user.id;
+    await userController.updateProfile(req, res);
+  })
+);
+
 userRoutes.get('/:id',
   validateRequest({ params: schemas.idParam }),
   asyncHandler(userController.getUserById)
