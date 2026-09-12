@@ -41,13 +41,15 @@ export const quizModel = {
 
   async listByCourse(courseId) {
     const result = await query(
-      'SELECT * FROM quizzes WHERE course_id = $1 AND is_active ORDER BY created_at DESC',
+      'SELECT * FROM quizzes WHERE course_id = $1 AND is_active ORDER BY created_at DESC, id',
       [courseId]
     );
     return result.rows;
   },
 
   async list({ page = 1, limit = 20, courseId, lessonId } = {}) {
+    const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+    const safeLimit = Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 20));
     const conditions = [];
     const values = [];
 
@@ -61,15 +63,25 @@ export const quizModel = {
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const offset = (page - 1) * limit;
-    values.push(limit, offset);
+    const countResult = await query(`SELECT COUNT(*)::int AS total FROM quizzes ${whereClause}`, values);
+    const total = Number(countResult.rows[0]?.total || 0);
+    const offset = (safePage - 1) * safeLimit;
+    const pageValues = [...values, safeLimit, offset];
 
     const result = await query(
-      `SELECT * FROM quizzes ${whereClause} ORDER BY created_at DESC LIMIT $${values.length - 1} OFFSET $${values.length}`,
-      values
+      `SELECT * FROM quizzes ${whereClause} ORDER BY created_at DESC, id LIMIT $${pageValues.length - 1} OFFSET $${pageValues.length}`,
+      pageValues
     );
 
-    return { data: result.rows, page, limit };
+    return {
+      data: result.rows,
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: total === 0 ? 0 : Math.ceil(total / safeLimit),
+      },
+    };
   },
 
   async delete(id) {
