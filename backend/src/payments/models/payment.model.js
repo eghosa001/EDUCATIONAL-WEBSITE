@@ -50,8 +50,6 @@ export const paymentModel = {
     return result.rows[0] || null;
   },
 
-  // Atomically transitions a pending payment to completed. If another webhook
-  // already completed it, this returns null and no downstream entitlement is granted twice.
   async markCompleted(id, { gatewayReference, paidAt = new Date() } = {}) {
     const result = await query(
       `UPDATE payments SET
@@ -69,10 +67,10 @@ export const paymentModel = {
   async list({ page = 1, limit = 20, userId, status, startDate, endDate } = {}) {
     const conditions = [];
     const values = [];
-    if (userId) { conditions.push(`user_id = $${values.length + 1}`); values.push(userId); }
-    if (status) { conditions.push(`status = $${values.length + 1}`); values.push(status); }
-    if (startDate) { conditions.push(`created_at >= $${values.length + 1}`); values.push(startDate); }
-    if (endDate) { conditions.push(`created_at <= $${values.length + 1}`); values.push(endDate); }
+    if (userId) { conditions.push(`p.user_id = $${values.length + 1}`); values.push(userId); }
+    if (status) { conditions.push(`p.status = $${values.length + 1}`); values.push(status); }
+    if (startDate) { conditions.push(`p.created_at >= $${values.length + 1}`); values.push(startDate); }
+    if (endDate) { conditions.push(`p.created_at <= $${values.length + 1}`); values.push(endDate); }
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const offset = (page - 1) * limit;
     values.push(limit, offset);
@@ -81,7 +79,10 @@ export const paymentModel = {
        ${whereClause} ORDER BY p.created_at DESC LIMIT $${values.length - 1} OFFSET $${values.length}`,
       values
     );
-    const countResult = await query(`SELECT COUNT(*)::int AS total FROM payments ${whereClause}`, values.slice(0, values.length - 2));
+    const countResult = await query(
+      `SELECT COUNT(*)::int AS total FROM payments p ${whereClause}`,
+      values.slice(0, values.length - 2)
+    );
     return { data: result.rows, pagination: { page, limit, total: countResult.rows[0].total, totalPages: Math.ceil(countResult.rows[0].total / limit) } };
   },
 
