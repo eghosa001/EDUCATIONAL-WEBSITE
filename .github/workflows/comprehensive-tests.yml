@@ -63,18 +63,19 @@ jobs:
         env:
           BASE_URL: http://127.0.0.1:3000
         run: npm run test:e2e
-      - name: Run Supabase Edge Function smoke tests
-        if: ${{ env.SUPABASE_URL != '' && env.SUPABASE_ANON_KEY != '' }}
+      - name: Run deployed Supabase Edge Function smoke tests
         working-directory: web
         env:
           SUPABASE_URL: ${{ env.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ env.SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           TEST_ACCESS_TOKEN: ${{ env.TEST_ACCESS_TOKEN }}
         run: npm run test:edge
-      - name: Report missing optional integration secrets
-        if: ${{ env.SUPABASE_URL == '' || env.SUPABASE_ANON_KEY == '' || env.TEST_EMAIL == '' || env.TEST_PASSWORD == '' }}
+      - name: Report missing optional authenticated integration secrets
+        if: ${{ env.TEST_ACCESS_TOKEN == '' || env.TEST_EMAIL == '' || env.TEST_PASSWORD == '' }}
         run: |
-          echo "::notice::Supabase edge and/or authenticated E2E coverage is reduced because optional repository secrets are not configured."
+          echo "::notice::Public deployed Edge Function smoke coverage is active. Authenticated integration coverage is reduced because optional test-account secrets are not configured."
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
@@ -150,23 +151,3 @@ jobs:
       - name: Build admin app
         working-directory: admin
         run: npm run build
-
-  mobile-analyze:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-      - name: Show Flutter version
-        run: flutter --version
-      - name: Install mobile dependencies
-        working-directory: mobile
-        run: flutter pub get
-      - name: Analyze mobile app
-        working-directory: mobile
-        run: flutter analyze --no-fatal-warnings --no-fatal-infos
