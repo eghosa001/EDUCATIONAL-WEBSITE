@@ -1,215 +1,23 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#071426" />
-  <meta name="description" content="THE GUIDE — a modern Nigerian learning platform for structured lessons, courses, practice and student progress." />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#061426">
+  <meta name="description" content="THE GUIDE — Nigerian curriculum lessons and practice, hosted on GitHub Pages.">
   <title>THE GUIDE — Learn with direction</title>
-  <style>
-    :root {
-      color-scheme: dark;
-      --bg: #071426;
-      --bg-soft: #0b1d33;
-      --card: rgba(255,255,255,.07);
-      --line: rgba(255,255,255,.13);
-      --text: #f7f9fc;
-      --muted: #a9b8cc;
-      --brand: #78a9ff;
-      --brand-2: #8df2d2;
-      --shadow: 0 24px 70px rgba(0,0,0,.35);
-    }
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(circle at 12% 10%, rgba(62,111,255,.24), transparent 28rem),
-        radial-gradient(circle at 88% 8%, rgba(71,219,186,.16), transparent 24rem),
-        linear-gradient(180deg, #071426 0%, #091a2f 48%, #071426 100%);
-    }
-    a { color: inherit; text-decoration: none; }
-    .shell { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
-    nav {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-      padding: 22px 0;
-    }
-    .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; letter-spacing: .03em; }
-    .mark {
-      width: 42px; height: 42px; display: grid; place-items: center;
-      border-radius: 13px; font-weight: 900; color: #071426;
-      background: linear-gradient(135deg, var(--brand), var(--brand-2));
-      box-shadow: 0 12px 30px rgba(83,151,255,.28);
-    }
-    .nav-links { display: flex; align-items: center; gap: 22px; color: var(--muted); font-size: .95rem; }
-    .nav-links a:hover { color: var(--text); }
-    .button {
-      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-      min-height: 48px; padding: 0 20px; border-radius: 14px; font-weight: 750;
-      border: 1px solid var(--line); transition: transform .18s ease, border-color .18s ease, background .18s ease;
-    }
-    .button:hover { transform: translateY(-2px); border-color: rgba(255,255,255,.28); }
-    .button.primary { color: #061426; border: 0; background: linear-gradient(135deg, var(--brand), var(--brand-2)); }
-    .button.secondary { background: rgba(255,255,255,.055); }
-    .hero {
-      display: grid; grid-template-columns: 1.1fr .9fr; align-items: center; gap: 56px;
-      padding: 82px 0 72px;
-    }
-    .eyebrow {
-      display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; margin-bottom: 20px;
-      border: 1px solid var(--line); border-radius: 999px; color: #c8d7eb; background: rgba(255,255,255,.045); font-size: .88rem;
-    }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brand-2); box-shadow: 0 0 0 5px rgba(141,242,210,.09); }
-    h1 { margin: 0; font-size: clamp(3rem, 7vw, 6.2rem); line-height: .94; letter-spacing: -.065em; max-width: 760px; }
-    .gradient { background: linear-gradient(100deg, #fff 12%, #9fc2ff 55%, #8df2d2); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .lead { margin: 26px 0 30px; max-width: 650px; color: var(--muted); font-size: clamp(1.04rem, 2vw, 1.2rem); line-height: 1.75; }
-    .actions { display: flex; gap: 12px; flex-wrap: wrap; }
-    .hero-card {
-      position: relative; overflow: hidden; padding: 24px; border: 1px solid var(--line); border-radius: 28px;
-      background: linear-gradient(160deg, rgba(255,255,255,.11), rgba(255,255,255,.035)); box-shadow: var(--shadow);
-      backdrop-filter: blur(16px);
-    }
-    .hero-card::before { content: ""; position: absolute; inset: -35% auto auto -15%; width: 260px; height: 260px; border-radius: 50%; background: rgba(103,146,255,.2); filter: blur(15px); }
-    .screen { position: relative; border: 1px solid var(--line); border-radius: 20px; padding: 18px; background: #0b1b2e; }
-    .screen-top { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 20px; }
-    .pill { padding: 7px 10px; border-radius: 999px; color: #a9f2d9; border: 1px solid rgba(141,242,210,.22); background: rgba(141,242,210,.07); font-size: .78rem; }
-    .lesson { display: grid; grid-template-columns: auto 1fr; gap: 13px; align-items: center; padding: 14px 0; border-top: 1px solid rgba(255,255,255,.08); }
-    .lesson:first-of-type { border-top: 0; }
-    .lesson-icon { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: rgba(120,169,255,.12); color: #b8d2ff; font-weight: 800; }
-    .lesson strong { display: block; font-size: .94rem; margin-bottom: 3px; }
-    .lesson span { color: var(--muted); font-size: .8rem; }
-    .progress { height: 8px; margin-top: 18px; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; }
-    .progress span { display: block; width: 72%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--brand), var(--brand-2)); }
-    section { padding: 76px 0; }
-    .section-head { max-width: 720px; margin-bottom: 28px; }
-    .section-head h2 { margin: 0 0 12px; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -.045em; }
-    .section-head p { margin: 0; color: var(--muted); line-height: 1.7; }
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-    .feature { padding: 24px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); }
-    .feature b { display: block; margin-bottom: 9px; font-size: 1.05rem; }
-    .feature p { margin: 0; color: var(--muted); line-height: 1.65; font-size: .95rem; }
-    .feature .icon { width: 42px; height: 42px; margin-bottom: 18px; border-radius: 12px; display: grid; place-items: center; background: rgba(120,169,255,.12); }
-    .callout { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 24px; padding: 28px; border: 1px solid var(--line); border-radius: 24px; background: linear-gradient(120deg, rgba(120,169,255,.12), rgba(141,242,210,.06)); }
-    .callout h3 { margin: 0 0 8px; font-size: 1.5rem; }
-    .callout p { margin: 0; color: var(--muted); }
-    footer { display: flex; justify-content: space-between; gap: 20px; padding: 30px 0 42px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
-    @media (max-width: 820px) {
-      .hero { grid-template-columns: 1fr; gap: 32px; padding-top: 50px; }
-      .grid { grid-template-columns: 1fr; }
-      .callout { grid-template-columns: 1fr; }
-      .nav-links a:not(.button) { display: none; }
-    }
-    @media (max-width: 520px) {
-      .shell { width: min(100% - 22px, 1120px); }
-      nav { padding-top: 14px; }
-      .brand span:last-child { font-size: .92rem; }
-      .nav-links .button { min-height: 42px; padding: 0 14px; }
-      .hero { padding: 36px 0 50px; }
-      h1 { font-size: clamp(2.8rem, 17vw, 4.7rem); }
-      section { padding: 54px 0; }
-      .hero-card { padding: 12px; border-radius: 20px; }
-    }
-  </style>
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <div class="shell">
-    <nav aria-label="Primary navigation">
-      <a class="brand" href="#top" aria-label="THE GUIDE home">
-        <span class="mark">TG</span>
-        <span>THE GUIDE</span>
-      </a>
-      <div class="nav-links">
-        <a href="#features">Features</a>
-        <a href="#about">About</a>
-        <a class="button secondary" href="https://web-ogs7.vercel.app" rel="noreferrer">Open platform</a>
-      </div>
+  <header class="topbar">
+    <nav class="shell nav" aria-label="Primary navigation">
+      <a class="brand" href="#/" aria-label="THE GUIDE home"><span class="mark">TG</span><span>THE GUIDE</span></a>
+      <div id="auth-nav" class="navlinks"><a href="#/login">Sign in</a><a class="btn primary" href="#/register">Create account</a></div>
     </nav>
-
-    <main id="top">
-      <div class="hero">
-        <div>
-          <div class="eyebrow"><span class="dot"></span> Built for focused learning</div>
-          <h1><span class="gradient">Learn with direction.</span></h1>
-          <p class="lead">THE GUIDE brings lessons, courses, practice and progress into one focused experience designed to help students move from learning objectives to confident understanding.</p>
-          <div class="actions">
-            <a class="button primary" href="https://web-ogs7.vercel.app" rel="noreferrer">Launch THE GUIDE →</a>
-            <a class="button secondary" href="#features">Explore features</a>
-          </div>
-        </div>
-
-        <div class="hero-card" aria-label="Product preview">
-          <div class="screen">
-            <div class="screen-top">
-              <div>
-                <strong>My learning</strong><br />
-                <span style="color:var(--muted);font-size:.82rem">Continue where you stopped</span>
-              </div>
-              <span class="pill">72% complete</span>
-            </div>
-            <div class="lesson">
-              <div class="lesson-icon">B</div>
-              <div><strong>Biology</strong><span>Nutrition · Types and processes</span></div>
-            </div>
-            <div class="lesson">
-              <div class="lesson-icon">C</div>
-              <div><strong>Chemistry</strong><span>Atomic structure · Core concepts</span></div>
-            </div>
-            <div class="lesson">
-              <div class="lesson-icon">M</div>
-              <div><strong>Mathematics</strong><span>Algebra · Guided practice</span></div>
-            </div>
-            <div class="progress"><span></span></div>
-          </div>
-        </div>
-      </div>
-
-      <section id="features">
-        <div class="section-head">
-          <h2>Everything organised around learning.</h2>
-          <p>A clean pathway from curriculum content to lessons, practice and visible progress, without the clutter that gets in the way of studying.</p>
-        </div>
-        <div class="grid">
-          <article class="feature">
-            <div class="icon">◫</div>
-            <b>Structured courses</b>
-            <p>Move through subjects and lessons in a clear sequence instead of jumping between disconnected resources.</p>
-          </article>
-          <article class="feature">
-            <div class="icon">✓</div>
-            <b>Practice that reinforces</b>
-            <p>Use questions and exercises to turn lesson content into recall, understanding and exam-ready confidence.</p>
-          </article>
-          <article class="feature">
-            <div class="icon">↗</div>
-            <b>Progress you can see</b>
-            <p>Keep track of where you are, what you have completed and what deserves your attention next.</p>
-          </article>
-        </div>
-      </section>
-
-      <section id="about">
-        <div class="callout">
-          <div>
-            <h3>This is the lightweight public site.</h3>
-            <p>The full learning platform remains on its application hosting, while this landing page deploys independently through GitHub Pages.</p>
-          </div>
-          <a class="button primary" href="https://web-ogs7.vercel.app" rel="noreferrer">Go to the app →</a>
-        </div>
-      </section>
-    </main>
-
-    <footer>
-      <span>© <span id="year"></span> THE GUIDE</span>
-      <span>Learning, organised.</span>
-    </footer>
-  </div>
-
-  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+  </header>
+  <div id="app" aria-live="polite"><main class="shell view"><div class="spinner"></div><div class="empty">Loading THE GUIDE…</div></main></div>
+  <footer><div class="shell row space"><span>© <span id="year"></span> THE GUIDE</span><span>Curriculum learning, organised.</span></div></footer>
+  <noscript><div class="shell view"><div class="notice error">THE GUIDE requires JavaScript to sign in and load learning content.</div></div></noscript>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>
