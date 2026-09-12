@@ -38,51 +38,15 @@ const updateQuestionSchema = Joi.object({
   marks: Joi.number().min(0).precision(2).optional(),
   isActive: Joi.boolean().optional(),
 }).min(1);
+const checkAnswerSchema = Joi.object({
+  answer: Joi.alternatives().try(Joi.string(), Joi.number(), Joi.boolean(), Joi.array(), Joi.object()).required(),
+});
 
-questionRoutes.get('/',
-  optionalAuthMiddleware,
-  validateRequest({ query: questionListQuery }),
-  asyncHandler(questionController.listQuestions)
-);
-
-questionRoutes.post('/',
-  authMiddleware,
-  questionManager,
-  validateRequest(schemas.question.create),
-  asyncHandler(questionController.createQuestion)
-);
-
-questionRoutes.post('/bulk',
-  authMiddleware,
-  questionManager,
-  validateRequest(schemas.question.bulkImport),
-  asyncHandler(questionController.bulkImportQuestions)
-);
-
-questionRoutes.get('/:id',
-  optionalAuthMiddleware,
-  validateRequest({ params: schemas.idParam }),
-  asyncHandler(questionController.getQuestion)
-);
-
-questionRoutes.patch('/:id',
-  authMiddleware,
-  questionManager,
-  validateRequest({ params: schemas.idParam }),
-  validateRequest(updateQuestionSchema),
-  asyncHandler(questionController.updateQuestion)
-);
-
-questionRoutes.post('/:id/review',
-  authMiddleware,
-  questionReviewer,
-  validateRequest({ params: schemas.idParam }),
-  asyncHandler(questionController.reviewQuestion)
-);
-
-questionRoutes.delete('/:id',
-  authMiddleware,
-  questionManager,
-  validateRequest({ params: schemas.idParam }),
-  asyncHandler(questionController.deleteQuestion)
-);
+questionRoutes.get('/', optionalAuthMiddleware, validateRequest({ query: questionListQuery }), asyncHandler(questionController.listQuestions));
+questionRoutes.post('/', authMiddleware, questionManager, validateRequest(schemas.question.create), asyncHandler(questionController.createQuestion));
+questionRoutes.post('/bulk', authMiddleware, questionManager, validateRequest(schemas.question.bulkImport), asyncHandler(questionController.bulkImportQuestions));
+questionRoutes.post('/:id/check', authMiddleware, validateRequest({ params: schemas.idParam }), validateRequest(checkAnswerSchema), asyncHandler(questionController.checkAnswer));
+questionRoutes.get('/:id', optionalAuthMiddleware, validateRequest({ params: schemas.idParam }), asyncHandler(questionController.getQuestion));
+questionRoutes.patch('/:id', authMiddleware, questionManager, validateRequest({ params: schemas.idParam }), validateRequest(updateQuestionSchema), asyncHandler(questionController.updateQuestion));
+questionRoutes.post('/:id/review', authMiddleware, questionReviewer, validateRequest({ params: schemas.idParam }), asyncHandler(questionController.reviewQuestion));
+questionRoutes.delete('/:id', authMiddleware, questionManager, validateRequest({ params: schemas.idParam }), asyncHandler(questionController.deleteQuestion));
