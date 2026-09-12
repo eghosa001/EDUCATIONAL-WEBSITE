@@ -58,3 +58,12 @@ test('user service projects user_roles into the route-guard role field', () => {
   assert.match(source, /roles,\s*role:\s*primaryRole,\s*primaryRole,\s*permissions/);
   assert.match(source, /ROLE_PRIORITY/);
 });
+
+test('removing roles cannot delete the final super administrator', () => {
+  const middleware = fs.readFileSync(new URL('./common/middleware/protectLastSuperAdmin.js', import.meta.url), 'utf8');
+  const routes = fs.readFileSync(new URL('./routes/user.routes.js', import.meta.url), 'utf8');
+  assert.match(middleware, /r\.name = 'super_admin'/);
+  assert.match(middleware, /admins\.rowCount <= 1/);
+  assert.match(middleware, /Cannot remove the last super administrator/);
+  assert.match(routes, /protectLastSuperAdminRemoval/);
+});
