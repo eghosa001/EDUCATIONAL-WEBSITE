@@ -5,6 +5,7 @@ import { validateRequest } from '../common/middleware/index.js';
 import { schemas } from '../common/validators/joi.js';
 import { authMiddleware } from '../common/middleware/index.js';
 import { protectLastSuperAdminRemoval } from '../common/middleware/protectLastSuperAdmin.js';
+import { getUserAchievements } from '../users/controllers/userAchievement.controller.js';
 import * as userController from '../users/controllers/user.controller.js';
 
 export const userRoutes = Router();
@@ -56,7 +57,7 @@ userRoutes.get('/:id/progress',
 
 userRoutes.get('/:id/achievements',
   validateRequest({ params: schemas.idParam }),
-  asyncHandler(userController.getUserAchievements)
+  asyncHandler(getUserAchievements)
 );
 
 userRoutes.post('/:id/roles',
