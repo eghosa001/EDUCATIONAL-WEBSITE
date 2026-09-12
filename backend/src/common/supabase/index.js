@@ -11,10 +11,20 @@ export const createSupabaseClient = (useServiceRole = false) => {
     return null;
   }
   const key = useServiceRole ? supabaseServiceRoleKey : supabaseAnonKey;
-  return createClient(supabaseUrl, key);
+  if (!key) {
+    console.warn(`[supabase] ${useServiceRole ? 'SUPABASE_SERVICE_ROLE_KEY' : 'SUPABASE_ANON_KEY'} not set — Supabase client unavailable`);
+    return null;
+  }
+  return createClient(supabaseUrl, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
 };
 
-export const supabase = supabaseUrl ? createSupabaseClient(false) : null;
-export const supabaseAdmin = supabaseUrl ? createSupabaseClient(true) : null;
+export const supabase = supabaseUrl && supabaseAnonKey ? createSupabaseClient(false) : null;
+export const supabaseAdmin = supabaseUrl && supabaseServiceRoleKey ? createSupabaseClient(true) : null;
 
 export default { createSupabaseClient, supabase, supabaseAdmin };
