@@ -56,7 +56,7 @@ jobs:
       name: production
       url: ${{ steps.deploy.outputs.url }}
     env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_TOKEN: ${{ secrets.deploy }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -69,8 +69,8 @@ jobs:
       - name: Require Vercel deployment token
         if: env.VERCEL_TOKEN == ''
         run: |
-          echo 'VERCEL_TOKEN is not configured in GitHub repository/environment secrets.'
-          echo 'Add it as a secret named VERCEL_TOKEN, then re-run this workflow.'
+          echo 'GitHub secret deploy is not configured or is unavailable to this workflow.'
+          echo 'Add the Vercel access token as an Actions secret named deploy, then re-run this workflow.'
           exit 1
 
       - name: Install Vercel CLI
