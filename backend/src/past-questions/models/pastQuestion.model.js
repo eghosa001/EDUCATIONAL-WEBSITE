@@ -1,10 +1,9 @@
-import { query } from '../../common/database/index.js';
-import { transaction } from '../../common/database/index.js';
+import { query, transaction } from '../../common/database/index.js';
 
 export const pastQuestionModel = {
   async findById(id) {
     const result = await query(
-      `SELECT pq.*, s.name as subject_name, s.slug as subject_slug,
+      `SELECT pq.*, s.name as subject_name, s.code as subject_code,
               t.name as topic_name
        FROM past_questions pq
        LEFT JOIN subjects s ON pq.subject_id = s.id
@@ -56,160 +55,103 @@ export const pastQuestionModel = {
   async list(params = {}) {
     const {
       page = 1, limit = 20, board, year, subjectId, topicId,
-      questionType, difficulty, search,
+      questionType, difficulty, search, isActive,
     } = params;
-
+    const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+    const safeLimit = Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 20));
     const conditions = [];
     const values = [];
+    const add = (sql, value) => { conditions.push(`${sql} $${values.length + 1}`); values.push(value); };
 
-    if (board) {
-      conditions.push(`pq.board = $${values.length + 1}`);
-      values.push(board);
-    }
-    if (year) {
-      conditions.push(`pq.year = $${values.length + 1}`);
-      values.push(year);
-    }
-    if (subjectId) {
-      conditions.push(`pq.subject_id = $${values.length + 1}`);
-      values.push(subjectId);
-    }
-    if (topicId) {
-      conditions.push(`pq.topic_id = $${values.length + 1}`);
-      values.push(topicId);
-    }
-    if (questionType) {
-      conditions.push(`pq.question_type = $${values.length + 1}`);
-      values.push(questionType);
-    }
-    if (difficulty) {
-      conditions.push(`pq.difficulty = $${values.length + 1}`);
-      values.push(difficulty);
-    }
-    if (search) {
-      conditions.push(`pq.question_text ILIKE $${values.length + 1}`);
-      values.push(`%${search}%`);
-    }
+    if (board) add('pq.board =', board);
+    if (year) add('pq.year =', year);
+    if (subjectId) add('pq.subject_id =', subjectId);
+    if (topicId) add('pq.topic_id =', topicId);
+    if (questionType) add('pq.question_type =', questionType);
+    if (difficulty) add('pq.difficulty =', difficulty);
+    if (isActive !== undefined) add('pq.is_active =', isActive);
+    if (search) add('pq.question_text ILIKE', `%${search}%`);
 
     const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const offset = (page - 1) * limit;
-    values.push(limit, offset);
+    const countResult = await query(`SELECT COUNT(*)::int AS total FROM past_questions pq ${whereClause}`, values);
+    const total = Number(countResult.rows[0]?.total || 0);
+    const offset = (safePage - 1) * safeLimit;
+    const pageValues = [...values, safeLimit, offset];
 
     const result = await query(
-      `SELECT pq.*, s.name as subject_name, s.slug as subject_slug, t.name as topic_name
+      `SELECT pq.*, s.name as subject_name, s.code as subject_code, t.name as topic_name
        FROM past_questions pq
        LEFT JOIN subjects s ON pq.subject_id = s.id
        LEFT JOIN topics t ON pq.topic_id = t.id
        ${whereClause}
        ORDER BY pq.year DESC, pq.created_at DESC
-       LIMIT $${values.length - 1} OFFSET $${values.length}`,
-      values
+       LIMIT $${pageValues.length - 1} OFFSET $${pageValues.length}`,
+      pageValues
     );
 
-    const countResult = await query(
-      `SELECT COUNT(*)::int AS total FROM past_questions pq ${whereClause}`,
-      values.slice(0, values.length - 2)
-    );
-
-    return {
-      data: result.rows,
-      pagination: {
-        page,
-        limit,
-        total: parseInt(countResult.rows[0].total),
-        totalPages: Math.ceil(parseInt(countResult.rows[0].total) / limit),
-      },
-    };
+    return { data: result.rows, pagination: { page: safePage, limit: safeLimit, total, totalPages: total === 0 ? 0 : Math.ceil(total / safeLimit) } };
   },
 
   async listByBoard(board, params = {}) {
-    const { page = 1, limit = 20, subjectId, year } = params;
-    const conditions = [`board = $1`];
+    const { page = 1, limit = 20, subjectId, year, isActive } = params;
+    const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+    const safeLimit = Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 20));
+    const conditions = ['pq.board = $1'];
     const values = [board];
-    let paramIndex = 2;
-
-    if (subjectId) {
-      conditions.push(`subject_id = $${paramIndex++}`);
-      values.push(subjectId);
-    }
-    if (year) {
-      conditions.push(`year = $${paramIndex++}`);
-      values.push(year);
-    }
-
-    const whereClause = conditions.length > 1 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const offset = (page - 1) * limit;
-    values.push(limit, offset);
-
+    if (subjectId) { conditions.push(`pq.subject_id = $${values.length + 1}`); values.push(subjectId); }
+    if (year) { conditions.push(`pq.year = $${values.length + 1}`); values.push(year); }
+    if (isActive !== undefined) { conditions.push(`pq.is_active = $${values.length + 1}`); values.push(isActive); }
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const countResult = await query(`SELECT COUNT(*)::int AS total FROM past_questions pq ${whereClause}`, values);
+    const total = Number(countResult.rows[0]?.total || 0);
+    const offset = (safePage - 1) * safeLimit;
+    const pageValues = [...values, safeLimit, offset];
     const result = await query(
-      `SELECT pq.*, s.name as subject_name, s.slug as subject_slug, t.name as topic_name
+      `SELECT pq.*, s.name as subject_name, s.code as subject_code, t.name as topic_name
        FROM past_questions pq
        LEFT JOIN subjects s ON pq.subject_id = s.id
        LEFT JOIN topics t ON pq.topic_id = t.id
        ${whereClause}
-       ORDER BY pq.year DESC
-       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-      values
+       ORDER BY pq.year DESC, pq.created_at DESC
+       LIMIT $${pageValues.length - 1} OFFSET $${pageValues.length}`,
+      pageValues
     );
-
-    const countResult = await query(
-      `SELECT COUNT(*)::int AS total FROM past_questions ${whereClause}`,
-      values.slice(0, paramIndex - 2)
-    );
-
-    return {
-      data: result.rows,
-      pagination: { page, limit, total: parseInt(countResult.rows[0].total), totalPages: Math.ceil(parseInt(countResult.rows[0].total) / limit) },
-    };
+    return { data: result.rows, pagination: { page: safePage, limit: safeLimit, total, totalPages: total === 0 ? 0 : Math.ceil(total / safeLimit) } };
   },
 
   async listBySubject(subjectId, params = {}) {
-    const { page = 1, limit = 20, board, year } = params;
-    const conditions = [`subject_id = $1`];
+    const { page = 1, limit = 20, board, year, isActive } = params;
+    const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+    const safeLimit = Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 20));
+    const conditions = ['pq.subject_id = $1'];
     const values = [subjectId];
-    let paramIndex = 2;
-
-    if (board) {
-      conditions.push(`board = $${paramIndex++}`);
-      values.push(board);
-    }
-    if (year) {
-      conditions.push(`year = $${paramIndex++}`);
-      values.push(year);
-    }
-
-    const whereClause = conditions.length > 1 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const offset = (page - 1) * limit;
-    values.push(limit, offset);
-
+    if (board) { conditions.push(`pq.board = $${values.length + 1}`); values.push(board); }
+    if (year) { conditions.push(`pq.year = $${values.length + 1}`); values.push(year); }
+    if (isActive !== undefined) { conditions.push(`pq.is_active = $${values.length + 1}`); values.push(isActive); }
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const countResult = await query(`SELECT COUNT(*)::int AS total FROM past_questions pq ${whereClause}`, values);
+    const total = Number(countResult.rows[0]?.total || 0);
+    const offset = (safePage - 1) * safeLimit;
+    const pageValues = [...values, safeLimit, offset];
     const result = await query(
-      `SELECT pq.*, s.name as subject_name, s.slug as subject_slug, t.name as topic_name
+      `SELECT pq.*, s.name as subject_name, s.code as subject_code, t.name as topic_name
        FROM past_questions pq
        LEFT JOIN subjects s ON pq.subject_id = s.id
        LEFT JOIN topics t ON pq.topic_id = t.id
        ${whereClause}
-       ORDER BY pq.year DESC
-       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-      values
+       ORDER BY pq.year DESC, pq.created_at DESC
+       LIMIT $${pageValues.length - 1} OFFSET $${pageValues.length}`,
+      pageValues
     );
-
-    const countResult = await query(
-      `SELECT COUNT(*)::int AS total FROM past_questions ${whereClause}`,
-      values.slice(0, paramIndex - 2)
-    );
-
-    return {
-      data: result.rows,
-      pagination: { page, limit, total: parseInt(countResult.rows[0].total), totalPages: Math.ceil(parseInt(countResult.rows[0].total) / limit) },
-    };
+    return { data: result.rows, pagination: { page: safePage, limit: safeLimit, total, totalPages: total === 0 ? 0 : Math.ceil(total / safeLimit) } };
   },
 
   async getTopicsByBoard(board) {
     const result = await query(
-      `SELECT DISTINCT t.id, t.name, COUNT(pq.id) as question_count
+      `SELECT t.id, t.name, COUNT(pq.id)::int as question_count
        FROM topics t
        JOIN past_questions pq ON t.id = pq.topic_id
-       WHERE pq.board = $1
+       WHERE pq.board = $1 AND pq.is_active = TRUE
        GROUP BY t.id, t.name
        ORDER BY question_count DESC`,
       [board]
@@ -219,14 +161,14 @@ export const pastQuestionModel = {
 
   async getYearsByBoard(board) {
     const result = await query(
-      `SELECT DISTINCT year FROM past_questions WHERE board = $1 ORDER BY year DESC`,
+      `SELECT DISTINCT year FROM past_questions WHERE board = $1 AND is_active = TRUE ORDER BY year DESC`,
       [board]
     );
-    return result.rows.map(r => parseInt(r.year));
+    return result.rows.map(r => Number.parseInt(r.year, 10));
   },
 
   async incrementUsage(id) {
-    await query('UPDATE past_questions SET usage_count = usage_count + 1 WHERE id = $1', [id]);
+    await query('UPDATE past_questions SET usage_count = COALESCE(usage_count, 0) + 1 WHERE id = $1', [id]);
   },
 
   async bulkImport(dataList) {
@@ -252,13 +194,12 @@ export const pastQuestionModel = {
 
   async getAnalytics(board, subjectId) {
     const result = await query(
-      `SELECT
-          COUNT(*)::int as total_questions,
-          COUNT(DISTINCT year)::int as years_covered,
-          AVG(marks)::numeric(5,2) as avg_marks,
-          jsonb_agg(DISTINCT year) as years
-        FROM past_questions
-        WHERE board = $1 ${subjectId ? 'AND subject_id = $2' : ''}`,
+      `SELECT COUNT(*)::int as total_questions,
+              COUNT(DISTINCT year)::int as years_covered,
+              AVG(marks)::numeric(5,2) as avg_marks,
+              jsonb_agg(DISTINCT year) as years
+       FROM past_questions
+       WHERE board = $1 AND is_active = TRUE ${subjectId ? 'AND subject_id = $2' : ''}`,
       subjectId ? [board, subjectId] : [board]
     );
     return result.rows[0];
