@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, apikey, content-type", "Access-Control-Allow-Methods": "POST, OPTIONS" };
+const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-worker-token", "Access-Control-Allow-Methods": "POST, OPTIONS" };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
 async function admin() {
@@ -9,6 +9,18 @@ async function admin() {
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !key) throw new Error("Supabase service configuration unavailable");
   return createClient(url, key);
+}
+
+async function requireWorkerToken(request: Request, sb: ReturnType<typeof createClient>) {
+  const supplied = request.headers.get("x-worker-token");
+  if (!supplied) return false;
+  const { data, error } = await sb.from("internal_worker_auth").select("token").eq("name", "lesson-worker").maybeSingle();
+  if (error || !data?.token) throw new Error("Worker authentication configuration unavailable");
+  const expected = String(data.token);
+  if (supplied.length !== expected.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < supplied.length; i++) mismatch |= supplied.charCodeAt(i) ^ expected.charCodeAt(i);
+  return mismatch === 0;
 }
 
 function validateLesson(content: string, topic: string) {
@@ -65,6 +77,7 @@ Deno.serve(async (request) => {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
   try {
     const sb = await admin();
+    if (!(await requireWorkerToken(request, sb))) return json({ error: "Unauthorized" }, 401);
     const body = await request.json().catch(() => ({}));
     const requestedBatch = Number(body.batch);
     const batch = Number.isFinite(requestedBatch) ? Math.min(8, Math.max(1, Math.floor(requestedBatch))) : 8;
