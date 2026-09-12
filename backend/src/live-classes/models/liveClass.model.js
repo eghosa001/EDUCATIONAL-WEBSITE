@@ -1,13 +1,11 @@
 import { query } from '../../common/database/index.js';
-import { AppError } from '../../common/errors/index.js';
-import { HTTP_STATUS } from '../../common/constants/index.js';
 
 export const liveClassModel = {
   async findById(id) {
     const result = await query(
-      `SELECT lc.*, u.first_name, u.last_name, u.avatar as teacher_avatar,
-              s.title as subject_title, s.slug as subject_slug,
-              t.title as topic_title
+      `SELECT lc.*, u.first_name, u.last_name, u.avatar_url as teacher_avatar,
+              s.name as subject_title, s.code as subject_slug,
+              t.name as topic_title
        FROM live_classes lc
        JOIN users u ON lc.teacher_id = u.id
        LEFT JOIN subjects s ON lc.subject_id = s.id
@@ -20,12 +18,13 @@ export const liveClassModel = {
 
   async findBySlug(slug) {
     const result = await query(
-      `SELECT lc.*, u.first_name, u.last_name, u.avatar as teacher_avatar,
-              s.title as subject_title, s.slug as subject_slug,
-              t.title as topic_title
+      `SELECT lc.*, u.first_name, u.last_name, u.avatar_url as teacher_avatar,
+              s.name as subject_title, s.code as subject_slug,
+              t.name as topic_title
        FROM live_classes lc
        JOIN users u ON lc.teacher_id = u.id
-       JOIN subjects s ON lc.subject_id = s.id
+       LEFT JOIN subjects s ON lc.subject_id = s.id
+       LEFT JOIN topics t ON lc.topic_id = t.id
        WHERE lc.slug = $1`,
       [slug]
     );
@@ -74,6 +73,8 @@ export const liveClassModel = {
   },
 
   async list({ page = 1, limit = 20, status, subjectId, teacherId, search } = {}) {
+    const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+    const safeLimit = Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 20));
     const conditions = [];
     const values = [];
 
@@ -95,43 +96,46 @@ export const liveClassModel = {
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const offset = (page - 1) * limit;
-    values.push(limit, offset);
+    const offset = (safePage - 1) * safeLimit;
+    const pageValues = [...values, safeLimit, offset];
 
     const result = await query(
-      `SELECT lc.*, u.first_name, u.last_name, u.avatar as teacher_avatar,
-              s.title as subject_title, s.slug as subject_slug
+      `SELECT lc.*, u.first_name, u.last_name, u.avatar_url as teacher_avatar,
+              s.name as subject_title, s.code as subject_slug
        FROM live_classes lc
        JOIN users u ON lc.teacher_id = u.id
        LEFT JOIN subjects s ON lc.subject_id = s.id
        ${whereClause}
        ORDER BY lc.scheduled_at ASC
-       LIMIT $${values.length - 1} OFFSET $${values.length}`,
-      values
+       LIMIT $${pageValues.length - 1} OFFSET $${pageValues.length}`,
+      pageValues
     );
 
     const countResult = await query(
       `SELECT COUNT(*)::int AS total FROM live_classes lc ${whereClause}`,
-      values.slice(0, values.length - 2)
+      values
     );
+    const total = Number(countResult.rows[0]?.total || 0);
 
     return {
       data: result.rows,
       pagination: {
-        page,
-        limit,
-        total: countResult.rows[0].total,
-        totalPages: Math.ceil(countResult.rows[0].total / limit),
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: total === 0 ? 0 : Math.ceil(total / safeLimit),
       },
     };
   },
 
   async listByTeacher(teacherId, { page = 1, limit = 20 } = {}) {
-    const offset = (page - 1) * limit;
+    const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+    const safeLimit = Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 20));
+    const offset = (safePage - 1) * safeLimit;
 
     const result = await query(
       `SELECT lc.*, u.first_name, u.last_name,
-              COUNT(lca.id) as participant_count
+              COUNT(lca.id)::int as participant_count
        FROM live_classes lc
        JOIN users u ON lc.teacher_id = u.id
        LEFT JOIN live_class_attendance lca ON lc.id = lca.class_id
@@ -139,21 +143,22 @@ export const liveClassModel = {
        GROUP BY lc.id, u.id
        ORDER BY lc.scheduled_at DESC
        LIMIT $2 OFFSET $3`,
-      [teacherId, limit, offset]
+      [teacherId, safeLimit, offset]
     );
 
     const countResult = await query(
       `SELECT COUNT(*)::int AS total FROM live_classes WHERE teacher_id = $1`,
       [teacherId]
     );
+    const total = Number(countResult.rows[0]?.total || 0);
 
     return {
       data: result.rows,
       pagination: {
-        page,
-        limit,
-        total: countResult.rows[0].total,
-        totalPages: Math.ceil(countResult.rows[0].total / limit),
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: total === 0 ? 0 : Math.ceil(total / safeLimit),
       },
     };
   },
@@ -174,10 +179,20 @@ export const liveClassModel = {
     return result.rows[0] || null;
   },
 
+  async countActiveParticipants(classId) {
+    const result = await query(
+      `SELECT COUNT(*)::int AS total
+       FROM live_class_attendance
+       WHERE class_id = $1 AND status IN ('joined', 'attended')`,
+      [classId]
+    );
+    return Number(result.rows[0]?.total || 0);
+  },
+
   async listAttendance(classId) {
     const result = await query(
-      `SELECT lca.*, u.first_name, u.last_name, u.avatar,
-              EXTRACT(EPOCH FROM (NOW() - lca.joined_at))::int as duration_seconds
+      `SELECT lca.*, u.first_name, u.last_name, u.avatar_url as avatar,
+              GREATEST(0, EXTRACT(EPOCH FROM (COALESCE(lca.left_at, NOW()) - lca.joined_at))::int) as duration_seconds
        FROM live_class_attendance lca
        JOIN users u ON lca.user_id = u.id
        WHERE lca.class_id = $1
@@ -189,10 +204,10 @@ export const liveClassModel = {
 
   async upsertAttendance(classId, userId, status) {
     const result = await query(
-      `INSERT INTO live_class_attendance (class_id, user_id, status)
-       VALUES ($1, $2, $3)
+      `INSERT INTO live_class_attendance (class_id, user_id, status, joined_at, left_at)
+       VALUES ($1, $2, $3, NOW(), NULL)
        ON CONFLICT (class_id, user_id)
-       DO UPDATE SET status = $3, joined_at = NOW()
+       DO UPDATE SET status = $3, joined_at = NOW(), left_at = NULL
        RETURNING *`,
       [classId, userId, status]
     );
@@ -200,32 +215,34 @@ export const liveClassModel = {
   },
 
   async leaveClass(classId, userId) {
-    await query(
+    const result = await query(
       `UPDATE live_class_attendance SET status = 'left', left_at = NOW()
-       WHERE class_id = $1 AND user_id = $2`,
+       WHERE class_id = $1 AND user_id = $2
+       RETURNING *`,
       [classId, userId]
     );
+    return result.rows[0] || null;
   },
 
   async markAttendance(classId, userId, status) {
     const result = await query(
       `UPDATE live_class_attendance
-       SET status = $3, attended_at = NOW()
+       SET status = $3, attended_at = CASE WHEN $3 = 'attended' THEN NOW() ELSE attended_at END
        WHERE class_id = $1 AND user_id = $2
        RETURNING *`,
       [classId, userId, status]
     );
-    return result.rows[0];
+    return result.rows[0] || null;
   },
 
   async getAnalytics(classId) {
     const result = await query(
       `SELECT
           COUNT(*)::int as total_participants,
-          COUNT(CASE WHEN status = 'joined' THEN 1 END)::int as present,
-          COUNT(CASE WHEN status = 'left' THEN 1 END)::int as left_early,
-          COUNT(CASE WHEN status = 'attended' THEN 1 END)::int as attended,
-          AVG(EXTRACT(EPOCH FROM (attended_at - joined_at))::int)::int as avg_duration_seconds
+          COUNT(*) FILTER (WHERE status = 'joined')::int as present,
+          COUNT(*) FILTER (WHERE status = 'left')::int as left_early,
+          COUNT(*) FILTER (WHERE status = 'attended')::int as attended,
+          AVG(EXTRACT(EPOCH FROM (COALESCE(left_at, attended_at, NOW()) - joined_at)))::int as avg_duration_seconds
        FROM live_class_attendance
        WHERE class_id = $1`,
       [classId]
