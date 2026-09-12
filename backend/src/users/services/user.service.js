@@ -1,4 +1,4 @@
-import { query } from '../../common/database/index.js';
+import { query, useSupabase, supabaseQuery, getByTable } from '../../common/database/index.js';
 import userModel from '../models/user.model.js';
 
 const ROLE_PRIORITY = ['super_admin', 'admin', 'content_admin', 'school_admin', 'teacher', 'parent', 'student'];
@@ -31,26 +31,38 @@ export const userService = {
   },
 
   async getById(id) {
-    return userModel.findById(id);
+    return useSupabase ? getByTable('users', 'id', id) : userModel.findById(id);
   },
 
   async getUserById(id) {
-    const result = await userModel.findById(id);
+    const result = useSupabase
+      ? await getByTable('users', 'id', id)
+      : await userModel.findById(id);
     if (!result) return null;
 
-    const roleResult = await query(
-      `SELECT r.name, r.permissions FROM roles r
-       JOIN user_roles ur ON ur.role_id = r.id
-       WHERE ur.user_id = $1`,
-      [id]
-    );
+    let roleRows;
+    if (useSupabase) {
+      const roleResult = await supabaseQuery('user_roles', {
+        select: 'roles!inner(name,permissions)',
+        filters: { user_id: id },
+      });
+      roleRows = (roleResult.rows || [])
+        .map((row) => row.roles)
+        .filter(Boolean);
+    } else {
+      const roleResult = await query(
+        `SELECT r.name, r.permissions FROM roles r
+         JOIN user_roles ur ON ur.role_id = r.id
+         WHERE ur.user_id = $1`,
+        [id]
+      );
+      roleRows = roleResult.rows;
+    }
 
-    const roles = normalizeRoles(roleResult.rows);
+    const roles = normalizeRoles(roleRows);
     const primaryRole = roles[0] || 'student';
-    const permissions = normalizePermissions(roleResult.rows);
+    const permissions = normalizePermissions(roleRows);
 
-    // The live users table does not contain a role column. Keep a normalized
-    // role property for route guards while retaining the full many-to-many list.
     return { ...result, roles, role: primaryRole, primaryRole, permissions };
   },
 
