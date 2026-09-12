@@ -1,11 +1,6 @@
 name: Deploy GitHub Pages landing site
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'pages/**'
-      - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
 permissions:
