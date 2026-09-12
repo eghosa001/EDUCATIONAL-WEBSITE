@@ -18,20 +18,21 @@ export interface AiTutorResponse { message: ChatMessage; sessionId: string; }
 
 /**
  * Lesson practice is structured data, not free-form chat. Preserve the existing
- * lesson-page call site while routing practice-generation through the validated
- * quiz action. Other tutor requests continue to use conversational tutoring.
+ * lesson-page call site while routing practice-generation through the dedicated
+ * lesson-grounded validator. Other tutor requests continue to use chat.
  */
 export const sendAiTutorMessage = async (data: AiTutorRequest, _token?: string): Promise<AiTutorResponse> => {
   if (data.context?.mode === 'practice-generation') {
     const lessonId = String(data.context.lessonId || '').trim();
     if (!lessonId) throw new Error('Lesson context is required for practice generation');
-    const response = await invokeAi<{ quiz: AiGeneratedQuiz }>({
-      action: 'quiz',
-      lessonId,
-      questionCount: 5,
-      difficulty: 'mixed',
+    const { data: practice, error } = await getSupabase().functions.invoke('lesson-practice', {
+      body: { lessonId, count: 5 },
     });
-    const questions = response.quiz.questions.map((question) => ({
+    if (error) throw new Error(error.message || 'Practice generation failed');
+    if (practice?.error) throw new Error(String(practice.error));
+    const quiz = practice?.quiz as AiGeneratedQuiz | undefined;
+    if (!quiz || !Array.isArray(quiz.questions)) throw new Error('Practice service returned an invalid quiz');
+    const questions = quiz.questions.map((question) => ({
       question_text: question.questionText,
       options: Object.fromEntries(question.options.map((option, index) => [String.fromCharCode(65 + index), option])),
       correct_answer: String.fromCharCode(65 + question.options.indexOf(question.correctAnswer)),
@@ -39,9 +40,9 @@ export const sendAiTutorMessage = async (data: AiTutorRequest, _token?: string):
       difficulty: question.difficulty,
     }));
     return {
-      sessionId: `practice-${response.quiz.id}`,
+      sessionId: `practice-${quiz.id}`,
       message: {
-        id: `practice-${response.quiz.id}`,
+        id: `practice-${quiz.id}`,
         role: 'assistant',
         content: JSON.stringify(questions),
       } as ChatMessage,
@@ -102,7 +103,7 @@ export const fetchMyFlashcards = async (_token?: string, params: { page?: number
   const user = (await getSupabase().auth.getUser()).data.user;
   if (!user) throw new Error('You must be signed in');
 
-  let query = getSupabase()
+  const query = getSupabase()
     .from('flashcards')
     .select('id,course_id,lesson_id,topic_id,subject_id,title,cards,created_at', { count: 'exact' })
     .eq('created_by', user.id)
