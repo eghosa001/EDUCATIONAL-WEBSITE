@@ -4,9 +4,21 @@ import { courseModel } from '../../courses/models/course.model.js';
 import { studentCourseModel } from '../../progress/models/studentCourse.model.js';
 import { AppError, HTTP_STATUS, ERROR_CODES } from '../../common/errors/index.js';
 import { slugify, isUuid } from '../../common/utils/index.js';
+import { assessLessonContent } from '../content-quality.js';
 
 const notFound = (resource) => {
   throw new AppError(`${resource} not found`, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
+};
+
+const assertLessonPublishable = (lesson) => {
+  const assessment = assessLessonContent(lesson);
+  if (!assessment.valid) {
+    throw new AppError(
+      `Lesson cannot be published: ${assessment.issues.join(' ')}`,
+      HTTP_STATUS.UNPROCESSABLE_ENTITY || 422,
+      ERROR_CODES.VALIDATION_ERROR
+    );
+  }
 };
 
 export const listLessons = async (req, res) => {
@@ -59,6 +71,12 @@ export const createLesson = async (req, res) => {
 };
 
 export const updateLesson = async (req, res) => {
+  if (req.body.isPublished === true || req.body.is_published === true) {
+    const existing = await lessonModel.findById(req.params.id);
+    if (!existing) notFound('Lesson');
+    assertLessonPublishable({ ...existing, ...req.body });
+  }
+
   const lesson = await lessonModel.update(req.params.id, req.body);
   if (!lesson) notFound('Lesson');
 
@@ -66,6 +84,10 @@ export const updateLesson = async (req, res) => {
 };
 
 export const publishLesson = async (req, res) => {
+  const existing = await lessonModel.findById(req.params.id);
+  if (!existing) notFound('Lesson');
+  assertLessonPublishable(existing);
+
   const lesson = await lessonModel.update(req.params.id, { isPublished: true });
   if (!lesson) notFound('Lesson');
 
