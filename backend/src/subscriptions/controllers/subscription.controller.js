@@ -90,6 +90,10 @@ const normalizePlanPayload = (body, { partial = false } = {}) => {
     if (typeof source.isActive !== 'boolean') validationError('isActive must be boolean');
     out.isActive = source.isActive;
   }
+  if (source.isPopular !== undefined) {
+    if (typeof source.isPopular !== 'boolean') validationError('isPopular must be boolean');
+    out.isPopular = source.isPopular;
+  }
   if (source.displayOrder !== undefined) {
     const value = Number(source.displayOrder);
     if (!Number.isInteger(value) || value < 0 || value > 10000) validationError('displayOrder must be an integer between 0 and 10000');
@@ -124,15 +128,29 @@ export const createPlan = async (req, res) => {
   const existingCode = await subscriptionPlanModel.findByCode(payload.code);
   if (existingCode) throw new AppError('Plan code already exists', HTTP_STATUS.CONFLICT, ERROR_CODES.CONFLICT);
 
-  const plan = await subscriptionPlanModel.create({
-    ...payload,
-    currency: payload.currency || 'NGN',
-    trialDays: payload.trialDays ?? 0,
-    features: payload.features || [],
-    limits: payload.limits || {},
-    isActive: payload.isActive ?? true,
-    displayOrder: payload.displayOrder ?? 0,
-  });
+  const result = await query(
+    `INSERT INTO subscription_plans (
+       name, code, description, price, currency, billing_cycle, duration_days,
+       trial_days, features, limits, is_active, is_popular, display_order
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+     RETURNING *`,
+    [
+      payload.name,
+      payload.code,
+      payload.description || null,
+      payload.price,
+      payload.currency || 'NGN',
+      payload.billingCycle,
+      payload.durationDays,
+      payload.trialDays ?? 0,
+      JSON.stringify(payload.features || []),
+      JSON.stringify(payload.limits || {}),
+      payload.isActive ?? true,
+      payload.isPopular ?? false,
+      payload.displayOrder ?? 0,
+    ]
+  );
+  const plan = result.rows[0];
   res.status(HTTP_STATUS.CREATED).json({ success: true, message: 'Subscription plan created', data: { plan } });
 };
 
@@ -148,18 +166,9 @@ export const updatePlan = async (req, res) => {
   }
 
   const columns = {
-    name: 'name',
-    code: 'code',
-    description: 'description',
-    price: 'price',
-    currency: 'currency',
-    billingCycle: 'billing_cycle',
-    durationDays: 'duration_days',
-    trialDays: 'trial_days',
-    features: 'features',
-    limits: 'limits',
-    isActive: 'is_active',
-    displayOrder: 'display_order',
+    name: 'name', code: 'code', description: 'description', price: 'price', currency: 'currency',
+    billingCycle: 'billing_cycle', durationDays: 'duration_days', trialDays: 'trial_days',
+    features: 'features', limits: 'limits', isActive: 'is_active', isPopular: 'is_popular', displayOrder: 'display_order',
   };
   const entries = Object.entries(payload);
   const values = [req.params.id];
@@ -214,11 +223,7 @@ export const listAllSubscriptions = async (req, res) => {
   const countValues = values.slice(0, -2);
   const count = await query(`SELECT COUNT(*)::int AS total FROM subscriptions s ${where}`, countValues);
   const total = count.rows[0]?.total || 0;
-  res.json({
-    success: true,
-    data: rows.rows,
-    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-  });
+  res.json({ success: true, data: rows.rows, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
 };
 
 export const getSubscriptionHandler = async (req, res) => {
@@ -239,21 +244,13 @@ export const createNewSubscription = async (req, res) => {
 
   const price = Number(plan.price || 0);
   if (price > 0) {
-    throw new AppError(
-      'Paid subscriptions must be started through the secure payment checkout.',
-      HTTP_STATUS.BAD_REQUEST,
-      ERROR_CODES.PAYMENT_ERROR
-    );
+    throw new AppError('Paid subscriptions must be started through the secure payment checkout.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.PAYMENT_ERROR);
   }
   if (couponCode) await applyCoupon(couponCode, planId);
 
   const subscription = await createSubscription(req.user.id, planId, 'free');
   const invoice = await createInvoice(req.user.id, planId, 0, plan.currency || 'NGN', null, 0);
-  res.status(HTTP_STATUS.CREATED).json({
-    success: true,
-    message: 'Free subscription activated',
-    data: { subscription, plan, invoice, amount: 0, discount: 0 },
-  });
+  res.status(HTTP_STATUS.CREATED).json({ success: true, message: 'Free subscription activated', data: { subscription, plan, invoice, amount: 0, discount: 0 } });
 };
 
 export const cancelMySubscription = async (req, res) => {
@@ -281,11 +278,7 @@ export const renewSubscriptionHandler = async (req, res) => {
   const plan = await subscriptionPlanModel.findById(subscription.plan_id);
   if (!plan) notFound('Plan');
   if (Number(plan.price || 0) > 0) {
-    throw new AppError(
-      'Paid renewals must be started through the secure payment checkout.',
-      HTTP_STATUS.BAD_REQUEST,
-      ERROR_CODES.PAYMENT_ERROR
-    );
+    throw new AppError('Paid renewals must be started through the secure payment checkout.', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.PAYMENT_ERROR);
   }
   const renewed = await renewSubscription(subscriptionId, req.user.id, 'free');
   res.json({ success: true, message: 'Subscription renewed', data: { subscription: renewed } });
@@ -308,28 +301,34 @@ export const applyCouponHandler = async (req, res) => {
   }
 };
 
-export const getInvoices = async (req, res) => {
-  const page = positiveInt(req.query.page, 1);
-  const limit = positiveInt(req.query.limit, 20);
-  const { status } = req.query;
-
-  if (!isAdmin(req.user)) {
-    const result = await invoiceModel.findByUser(req.user.id, { page, limit, status });
-    return res.json({ success: true, data: result });
-  }
-
-  const offset = (page - 1) * limit;
+const buildInvoiceQuery = ({ userId, status, page, limit }) => {
   const values = [];
   const conditions = [];
+  if (userId) {
+    values.push(userId);
+    conditions.push(`i.user_id = $${values.length}`);
+  }
   if (status) {
     values.push(status);
     conditions.push(`i.status = $${values.length}`);
   }
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const offset = (page - 1) * limit;
   values.push(limit, offset);
+  return { values, where };
+};
+
+export const getInvoices = async (req, res) => {
+  const page = positiveInt(req.query.page, 1);
+  const limit = positiveInt(req.query.limit, 20);
+  const userId = isAdmin(req.user) ? null : req.user.id;
+  const { values, where } = buildInvoiceQuery({ userId, status: req.query.status, page, limit });
   const rows = await query(
-    `SELECT i.*, u.email, u.first_name, u.last_name
+    `SELECT i.*, s.plan_id, sp.name AS plan_name, sp.code AS plan_code,
+            u.email, u.first_name, u.last_name
        FROM invoices i
+       LEFT JOIN subscriptions s ON s.id = i.subscription_id
+       LEFT JOIN subscription_plans sp ON sp.id = s.plan_id
        LEFT JOIN users u ON u.id = i.user_id
        ${where}
       ORDER BY i.created_at DESC
@@ -338,7 +337,9 @@ export const getInvoices = async (req, res) => {
   );
   const count = await query(`SELECT COUNT(*)::int AS total FROM invoices i ${where}`, values.slice(0, -2));
   const total = count.rows[0]?.total || 0;
-  return res.json({ success: true, data: rows.rows, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
+  const pagination = { page, limit, total, totalPages: Math.ceil(total / limit) };
+  if (isAdmin(req.user)) return res.json({ success: true, data: rows.rows, pagination });
+  return res.json({ success: true, data: { data: rows.rows, pagination } });
 };
 
 export const getInvoiceById = async (req, res) => {
@@ -387,11 +388,6 @@ export const fundWalletForUser = async (req, res) => {
   let wallet = await walletModel.findByUserId(userId);
   if (!wallet) wallet = await walletModel.createOrUpdate(userId);
   if (!wallet) notFound('Wallet');
-  const transaction = await creditWalletBalance(
-    userId,
-    numericAmount,
-    `Administrative wallet credit by ${req.user.id}`,
-    generateReference()
-  );
+  const transaction = await creditWalletBalance(userId, numericAmount, `Administrative wallet credit by ${req.user.id}`, generateReference());
   res.status(HTTP_STATUS.CREATED).json({ success: true, message: 'Wallet credited', data: transaction });
 };
