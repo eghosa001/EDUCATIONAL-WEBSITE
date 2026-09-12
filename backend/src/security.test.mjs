@@ -90,6 +90,15 @@ test('mobile auth uses canonical Supabase sessions and accepts body refresh toke
   assert.match(controller, /auth\.resend\(\{ type: 'signup', email \}\)/);
 });
 
+test('registration preserves only allowed self-service roles through stripping validation', () => {
+  const routes = fs.readFileSync(new URL('./routes/auth.routes.js', import.meta.url), 'utf8');
+  assert.match(routes, /SELF_SERVICE_ROLES = new Set\(\['student', 'teacher', 'parent'\]\)/);
+  assert.match(routes, /captureRegistrationRole/);
+  assert.match(routes, /restoreRegistrationRole/);
+  assert.match(routes, /req\.body\.role = req\.requestedRegistrationRole \|\| 'student'/);
+  assert.doesNotMatch(routes, /super_admin[^\n]*SELF_SERVICE_ROLES/);
+});
+
 test('server Supabase clients do not persist or auto-refresh shared sessions', () => {
   const source = fs.readFileSync(new URL('./common/supabase/index.js', import.meta.url), 'utf8');
   assert.match(source, /persistSession:\s*false/);
