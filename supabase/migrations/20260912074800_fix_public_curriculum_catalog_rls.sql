@@ -1,0 +1,40 @@
+do $$
+begin
+  execute 'drop policy if exists education_systems_admin_read on public.education_systems';
+  execute 'create policy education_systems_admin_read on public.education_systems for select to authenticated using (has_role(''super_admin'') or has_role(''content_admin''))';
+  execute 'drop policy if exists education_levels_admin_read on public.education_levels';
+  execute 'create policy education_levels_admin_read on public.education_levels for select to authenticated using (has_role(''super_admin'') or has_role(''content_admin''))';
+  execute 'drop policy if exists programs_admin_read on public.programs';
+  execute 'create policy programs_admin_read on public.programs for select to authenticated using (has_role(''super_admin'') or has_role(''content_admin''))';
+  execute 'drop policy if exists classes_admin_read on public.classes';
+  execute 'create policy classes_admin_read on public.classes for select to authenticated using (has_role(''super_admin'') or has_role(''content_admin''))';
+  execute 'drop policy if exists terms_admin_read on public.terms';
+  execute 'create policy terms_admin_read on public.terms for select to authenticated using (has_role(''super_admin'') or has_role(''content_admin''))';
+  execute 'drop policy if exists subjects_admin_read on public.subjects';
+  execute 'create policy subjects_admin_read on public.subjects for select to authenticated using (has_role(''super_admin'') or has_role(''content_admin''))';
+  execute 'drop policy if exists class_subjects_admin_read on public.class_subjects';
+  execute 'create policy class_subjects_admin_read on public.class_subjects for select to authenticated using (has_role(''super_admin'') or has_role(''content_admin''))';
+  execute 'drop policy if exists topics_admin_read on public.topics';
+  execute 'create policy topics_admin_read on public.topics for select to authenticated using (has_role(''super_admin'') or has_role(''content_admin''))';
+  execute 'drop policy if exists subtopics_admin_read on public.subtopics';
+  execute 'create policy subtopics_admin_read on public.subtopics for select to authenticated using (has_role(''super_admin'') or has_role(''content_admin''))';
+
+  execute 'drop policy if exists education_systems_public_read on public.education_systems';
+  execute 'create policy education_systems_public_read on public.education_systems for select to public using (is_active = true)';
+  execute 'drop policy if exists education_levels_public_read on public.education_levels';
+  execute 'create policy education_levels_public_read on public.education_levels for select to public using (is_active = true)';
+  execute 'drop policy if exists programs_public_read on public.programs';
+  execute 'create policy programs_public_read on public.programs for select to public using (is_active = true)';
+  execute 'drop policy if exists classes_public_read on public.classes';
+  execute 'create policy classes_public_read on public.classes for select to public using (is_active = true)';
+  execute 'drop policy if exists terms_public_read on public.terms';
+  execute 'create policy terms_public_read on public.terms for select to public using (is_active = true)';
+  execute 'drop policy if exists subjects_public_read on public.subjects';
+  execute 'create policy subjects_public_read on public.subjects for select to public using (is_active = true)';
+  execute 'drop policy if exists class_subjects_public_read on public.class_subjects';
+  execute 'create policy class_subjects_public_read on public.class_subjects for select to public using (true)';
+  execute 'drop policy if exists topics_public_read on public.topics';
+  execute 'create policy topics_public_read on public.topics for select to public using (is_active = true)';
+  execute 'drop policy if exists subtopics_public_read on public.subtopics';
+  execute 'create policy subtopics_public_read on public.subtopics for select to public using (is_active = true)';
+end $$;
