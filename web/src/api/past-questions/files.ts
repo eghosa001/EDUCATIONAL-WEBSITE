@@ -76,7 +76,8 @@ export const pastQuestionFilesAPI = {
     if (params.page) query.set('page', String(params.page));
     if (params.limit) query.set('limit', String(params.limit));
     if (params.search) query.set('search', params.search);
-    return fetchJSON(`${API_BASE}/past-questions/files?${query}`, token);
+    const suffix = query.toString();
+    return fetchJSON(`${API_BASE}/past-questions/files${suffix ? `?${suffix}` : ''}`, token);
   },
 
   async listByBoard(board: string, params: {
@@ -90,29 +91,37 @@ export const pastQuestionFilesAPI = {
     if (params.year) query.set('year', String(params.year));
     if (params.page) query.set('page', String(params.page));
     if (params.limit) query.set('limit', String(params.limit));
-    return fetchJSON(`${API_BASE}/past-questions/files/boards/${board}?${query}`, token);
+    const suffix = query.toString();
+    return fetchJSON(`${API_BASE}/past-questions/files/boards/${encodeURIComponent(board)}${suffix ? `?${suffix}` : ''}`, token);
   },
 
   async getSubjectsByBoard(board: string, token?: string): Promise<{ data: { subjects: SubjectInfo[] } }> {
-    return fetchJSON(`${API_BASE}/past-questions/files/boards/${board}/subjects`, token);
+    return fetchJSON(`${API_BASE}/past-questions/files/boards/${encodeURIComponent(board)}/subjects`, token);
   },
 
   async getYearsByBoard(board: string, token?: string): Promise<{ data: { years: number[] } }> {
-    return fetchJSON(`${API_BASE}/past-questions/files/boards/${board}/years`, token);
+    return fetchJSON(`${API_BASE}/past-questions/files/boards/${encodeURIComponent(board)}/years`, token);
   },
 
   async getFile(id: string, token?: string): Promise<{ data: { file: PastQuestionFile } }> {
-    return fetchJSON(`${API_BASE}/past-questions/files/${id}`, token);
+    return fetchJSON(`${API_BASE}/past-questions/files/${encodeURIComponent(id)}`, token);
   },
 };
 
 export function getStoragePublicUrl(bucket: string, filePath: string): string {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xanrzsszrysianxhpprk.supabase.co';
-  return `${supabaseUrl}/storage/v1/object/public/${bucket}/${encodeURIComponent(filePath)}`;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL is required to build a public storage URL');
+  }
+  const cleanBase = supabaseUrl.replace(/\/$/, '');
+  const safeBucket = encodeURIComponent(bucket);
+  const safePath = filePath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+  return `${cleanBase}/storage/v1/object/public/${safeBucket}/${safePath}`;
 }
 
 export function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
+  if (!Number.isFinite(bytes) || bytes < 0) return '0 B';
+  if (bytes < 1024) return `${Math.round(bytes)} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
