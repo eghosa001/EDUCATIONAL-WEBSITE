@@ -19,6 +19,8 @@ function isPublishableLesson(lesson: Record<string, unknown>) {
   const keyPoints = Array.isArray(lesson.key_points) ? lesson.key_points.filter(Boolean) : [];
   const combined = `${title} ${written}`;
   return Boolean(
+    lesson.is_published === true &&
+    lesson.content_quality !== 'needs_review' &&
     title &&
     written.length >= 700 &&
     objectives.length >= 2 &&
@@ -41,8 +43,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(slugOrId);
 
   const lookup = isUuid
-    ? supabase.from('courses').select('*').eq('id', slugOrId).single()
-    : supabase.from('courses').select('*').eq('slug', slugOrId).single();
+    ? supabase.from('courses').select('*').eq('id', slugOrId).eq('status', 'published').single()
+    : supabase.from('courses').select('*').eq('slug', slugOrId).eq('status', 'published').single();
   const { data: course, error: courseError } = await lookup;
   if (courseError || !course) {
     return Response.json({ success: false, error: 'Course not found' }, { status: 404 });
@@ -50,7 +52,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
 
   const [lessonResult, sectionResult] = await Promise.all([
     supabase.from('lessons').select('*').eq('course_id', course.id).eq('is_published', true).order('order_index'),
-    supabase.from('course_sections').select('*').eq('course_id', course.id).order('order_index'),
+    supabase.from('course_sections').select('*').eq('course_id', course.id).eq('is_active', true).order('order_index'),
   ]);
 
   if (lessonResult.error || sectionResult.error) {
@@ -58,8 +60,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
   }
 
   const lessons = (lessonResult.data || []).filter(lesson => isPublishableLesson(lesson));
-  return Response.json({
-    success: true,
-    data: { course: { ...course, lessons, sections: sectionResult.data || [] } },
-  });
+  return Response.json(
+    { success: true, data: { course: { ...course, lessons, sections: sectionResult.data || [] } } },
+    { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } },
+  );
 }
