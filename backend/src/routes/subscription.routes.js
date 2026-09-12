@@ -76,6 +76,19 @@ subscriptionRoutes.get('/wallet/transactions',
   subscriptionController.listWalletTransactions
 );
 
+subscriptionRoutes.post('/wallet/fund',
+  authMiddleware,
+  requireRole('admin', 'super_admin'),
+  subscriptionController.fundWalletForUser
+);
+
+// Admin-only collection endpoint used by the admin billing dashboard.
+subscriptionRoutes.get('/',
+  authMiddleware,
+  requireRole('admin', 'super_admin'),
+  subscriptionController.listAllSubscriptions
+);
+
 subscriptionRoutes.post('/',
   authMiddleware,
   subscriptionController.createNewSubscription
