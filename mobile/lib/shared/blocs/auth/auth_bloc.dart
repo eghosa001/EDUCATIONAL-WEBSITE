@@ -1,71 +1,80 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_enums.dart';
 import '../models/user/user_model.dart';
-import '../services/auth/auth_service.dart';
+import '../repositories/authentication_repository.dart';
 
 class AuthState {
   final bool isLoading;
   final bool isAuthenticated;
+  final bool requiresEmailVerification;
   final User? user;
+  final String? pendingEmail;
   final String? error;
 
   const AuthState({
     this.isLoading = false,
     this.isAuthenticated = false,
+    this.requiresEmailVerification = false,
     this.user,
+    this.pendingEmail,
     this.error,
   });
 
   AuthState copyWith({
     bool? isLoading,
     bool? isAuthenticated,
+    bool? requiresEmailVerification,
     User? user,
+    String? pendingEmail,
     String? error,
+    bool clearError = false,
+    bool clearPendingEmail = false,
   }) {
     return AuthState(
       isLoading: isLoading ?? this.isLoading,
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
+      requiresEmailVerification: requiresEmailVerification ?? this.requiresEmailVerification,
       user: user ?? this.user,
-      error: error ?? this.error,
+      pendingEmail: clearPendingEmail ? null : (pendingEmail ?? this.pendingEmail),
+      error: clearError ? null : (error ?? this.error),
     );
   }
 }
 
 class AuthNotifier extends StateNotifier<AuthState> {
-  final AuthService _authService;
+  final AuthenticationRepository _repository;
 
-  AuthNotifier(this._authService) : super(const AuthState());
+  AuthNotifier(this._repository) : super(const AuthState());
 
   Future<void> checkAuthStatus() async {
-    state = state.copyWith(isLoading: true);
-    // Check if user is already authenticated
-    state = state.copyWith(isLoading: false);
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final profile = await _repository.getProfile();
+      final rawUser = profile['user'] is Map ? profile['user'] : profile;
+      state = AuthState(
+        isAuthenticated: true,
+        user: User.fromJson(Map<String, dynamic>.from(rawUser as Map)),
+      );
+    } catch (_) {
+      state = const AuthState();
+    }
   }
 
   Future<void> login({
     required String email,
     required String password,
   }) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final response = await _authService.login(email: email, password: password);
-      if (response.success && response.data != null) {
-        state = state.copyWith(
-          isLoading: false,
-          isAuthenticated: true,
-          user: User.fromJson(response.data!['user'] ?? {}),
-        );
-      } else {
-        state = state.copyWith(
-          isLoading: false,
-          error: response.message ?? 'Login failed',
-        );
-      }
-    } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
+      final data = await _repository.login(email: email, password: password);
+      final rawUser = data['user'];
+      if (rawUser is! Map) throw StateError('Login response did not include a user');
+      state = AuthState(
+        isAuthenticated: true,
+        user: User.fromJson(Map<String, dynamic>.from(rawUser)),
       );
+    } catch (e) {
+      state = AuthState(error: e.toString());
     }
   }
 
@@ -76,57 +85,55 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String lastName,
     required UserRole role,
   }) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final response = await _authService.register(
+      final data = await _repository.register(
         email: email,
         password: password,
         firstName: firstName,
         lastName: lastName,
         role: role.name,
       );
-      if (response.success && response.data != null) {
-        state = state.copyWith(
-          isLoading: false,
-          isAuthenticated: true,
-          user: User.fromJson(response.data!['user'] ?? {}),
+      final requiresVerification = data['requiresEmailVerification'] == true || data['tokens'] == null;
+      final rawUser = data['user'];
+
+      if (requiresVerification) {
+        state = AuthState(
+          requiresEmailVerification: true,
+          pendingEmail: email.trim().toLowerCase(),
         );
-      } else {
-        state = state.copyWith(
-          isLoading: false,
-          error: response.message ?? 'Registration failed',
-        );
+        return;
       }
-    } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
+
+      if (rawUser is! Map) throw StateError('Registration response did not include a user');
+      state = AuthState(
+        isAuthenticated: true,
+        user: User.fromJson(Map<String, dynamic>.from(rawUser)),
       );
+    } catch (e) {
+      state = AuthState(error: e.toString());
     }
   }
 
   Future<void> logout() async {
-    state = state.copyWith(isLoading: true);
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
-      await _authService.logout();
+      await _repository.logout();
       state = const AuthState();
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = AuthState(error: e.toString());
     }
   }
 
   Future<void> updateProfile(Map<String, dynamic> data) async {
-    state = state.copyWith(isLoading: true);
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final response = await _authService.updateProfile(data);
-      if (response.success && response.data != null) {
-        state = state.copyWith(
-          isLoading: false,
-          user: User.fromJson(response.data!),
-        );
-      } else {
-        state = state.copyWith(isLoading: false, error: response.message);
-      }
+      final profile = await _repository.getProfile();
+      final rawUser = profile['user'] is Map ? profile['user'] : profile;
+      state = AuthState(
+        isAuthenticated: true,
+        user: User.fromJson(Map<String, dynamic>.from(rawUser as Map)),
+      );
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
@@ -134,6 +141,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
 }
 
 final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  final authService = ref.watch(authServiceProvider);
-  return AuthNotifier(authService);
+  final repository = ref.watch(authenticationRepositoryProvider);
+  return AuthNotifier(repository);
 });
