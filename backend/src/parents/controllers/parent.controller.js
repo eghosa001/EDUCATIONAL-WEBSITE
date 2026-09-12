@@ -85,6 +85,18 @@ export const generateReport = async (req, res) => {
   });
 };
 
+export const downloadReport = async (req, res) => {
+  const report = await parentService.getReport(req.user.id, req.params.reportId);
+  const safeName = String(report.title || 'parent-report')
+    .replace(/[^a-z0-9-_]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80) || 'parent-report';
+
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${safeName}.json"`);
+  res.send(JSON.stringify(report, null, 2));
+};
+
 export const listMyChildren = listChildren;
 export const getChildCourses = listChildCourses;
 export const getChildExams = listChildExams;
