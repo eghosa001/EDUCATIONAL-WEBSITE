@@ -70,13 +70,17 @@ export function useRegister() {
   const onSubmit = useCallback(async (data: RegisterFormData) => {
     setFormError(null);
     try {
-      await authRegister({
+      const result = await authRegister({
         email: data.email,
         password: data.password,
         firstName: data.firstName,
         lastName: data.lastName,
         role: data.role,
       });
+      if (result.requiresEmailVerification) {
+        router.push(`/login?registered=1&email=${encodeURIComponent(data.email.trim().toLowerCase())}`);
+        return;
+      }
       router.push('/dashboard');
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Registration failed');
