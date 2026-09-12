@@ -1,8 +1,17 @@
 class AppConfig {
   static const String appName = 'THE GUIDE';
   static const String appVersion = '1.0.0';
-  static const String apiBaseUrl = 'http://localhost:3000/api/v1';
-  static const String websocketUrl = 'http://localhost:3001';
+
+  // Supply production values with --dart-define. The Android-emulator defaults
+  // intentionally target the host machine rather than localhost inside the VM.
+  static const String apiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://10.0.2.2:3000/api/v1',
+  );
+  static const String websocketUrl = String.fromEnvironment(
+    'WEBSOCKET_URL',
+    defaultValue: 'http://10.0.2.2:3001',
+  );
   static const int apiTimeoutSeconds = 30;
 
   static const bool enableAnalytics = true;
