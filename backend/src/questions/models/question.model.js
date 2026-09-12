@@ -61,7 +61,9 @@ export const questionModel = {
     await query('UPDATE questions SET usage_count = usage_count + 1 WHERE id = $1', [id]);
   },
 
-  async list({ page = 1, limit = 20, subjectId, topicId, classId, difficulty, questionType, examName, examYear, search } = {}) {
+  async list({ page = 1, limit = 20, subjectId, topicId, classId, difficulty, questionType, examName, examYear, search, isActive } = {}) {
+    const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+    const safeLimit = Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 20));
     const conditions = [];
     const values = [];
 
@@ -97,28 +99,29 @@ export const questionModel = {
       conditions.push(`question_text ILIKE $${values.length + 1}`);
       values.push(`%${search}%`);
     }
+    if (isActive !== undefined) {
+      conditions.push(`is_active = $${values.length + 1}`);
+      values.push(Boolean(isActive));
+    }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const offset = (page - 1) * limit;
-    values.push(limit, offset);
+    const countResult = await query(`SELECT COUNT(*)::int AS total FROM questions ${whereClause}`, values);
+    const total = Number(countResult.rows[0]?.total || 0);
+    const offset = (safePage - 1) * safeLimit;
+    const pageValues = [...values, safeLimit, offset];
 
     const result = await query(
-      `SELECT * FROM questions ${whereClause} ORDER BY created_at DESC LIMIT $${values.length - 1} OFFSET $${values.length}`,
-      values
-    );
-
-    const countResult = await query(
-      `SELECT COUNT(*)::int AS total FROM questions ${whereClause}`,
-      values.slice(0, values.length - 2)
+      `SELECT * FROM questions ${whereClause} ORDER BY created_at DESC LIMIT $${pageValues.length - 1} OFFSET $${pageValues.length}`,
+      pageValues
     );
 
     return {
       data: result.rows,
       pagination: {
-        page,
-        limit,
-        total: countResult.rows[0].total,
-        totalPages: Math.ceil(countResult.rows[0].total / limit),
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: total === 0 ? 0 : Math.ceil(total / safeLimit),
       },
     };
   },
