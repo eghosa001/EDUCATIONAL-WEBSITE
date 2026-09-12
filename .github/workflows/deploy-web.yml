@@ -73,6 +73,11 @@ jobs:
           echo 'Add the Vercel access token as an Actions secret named deploy, then re-run this workflow.'
           exit 1
 
+      - name: Install website dependencies
+        if: env.VERCEL_TOKEN != ''
+        working-directory: web
+        run: npm install --no-audit --no-fund
+
       - name: Install Vercel CLI
         if: env.VERCEL_TOKEN != ''
         run: npm install --global vercel@latest
