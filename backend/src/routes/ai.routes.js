@@ -8,7 +8,15 @@ export const aiRoutes = Router();
 
 aiRoutes.use(authMiddleware);
 
-aiRoutes.post('/tutor', validateRequest(schemas.ai.chat), asyncHandler(aiController.sendTutorMessage));
+const tutorSchema = Joi.object({
+  message: Joi.string().trim().min(1).max(8000).required(),
+  subjectId: Joi.string().uuid().optional(),
+  topicId: Joi.string().uuid().optional(),
+  sessionId: Joi.string().uuid().optional(),
+  context: Joi.object().optional(),
+});
+
+aiRoutes.post('/tutor', validateRequest(tutorSchema), asyncHandler(aiController.sendTutorMessage));
 aiRoutes.get('/tutor/sessions', validateRequest({ query: schemas.pagination }), asyncHandler(aiController.listTutorSessions));
 aiRoutes.get('/tutor/sessions/:sessionId', asyncHandler(aiController.getTutorSession));
 aiRoutes.delete('/tutor/sessions/:sessionId', asyncHandler(aiController.deleteTutorSession));
