@@ -13,6 +13,14 @@ subscriptionRoutes.get('/plans',
   subscriptionController.getAllActivePlans
 );
 
+// Management listing must be declared before /plans/:id so "manage" is not
+// interpreted as a plan ID. It can include inactive plans and pagination.
+subscriptionRoutes.get('/plans/manage',
+  authMiddleware,
+  requireRole('super_admin', 'content_admin'),
+  subscriptionController.listPlans
+);
+
 subscriptionRoutes.get('/plans/:id',
   optionalAuthMiddleware,
   subscriptionController.getPlanById
