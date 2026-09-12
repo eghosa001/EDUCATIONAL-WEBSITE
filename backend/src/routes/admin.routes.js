@@ -2,12 +2,13 @@ import { Router } from 'express';
 import Joi from 'joi';
 import { asyncHandler, validateRequest, authMiddleware, requireRole } from '../common/middleware/index.js';
 import { schemas } from '../common/validators/joi.js';
+import { getDashboard } from '../admin/controllers/dashboard.controller.js';
 import * as adminController from '../admin/controllers/admin.controller.js';
 
 export const adminRoutes = Router();
 adminRoutes.use(authMiddleware, requireRole('super_admin', 'content_admin'));
 
-adminRoutes.get('/dashboard', asyncHandler(adminController.getDashboard));
+adminRoutes.get('/dashboard', asyncHandler(getDashboard));
 adminRoutes.get('/audit-logs', validateRequest({ query: schemas.pagination }), asyncHandler(adminController.listAuditLogs));
 adminRoutes.get('/settings', requireRole('super_admin'), asyncHandler(adminController.getSettings));
 adminRoutes.patch('/settings', requireRole('super_admin'), validateRequest(Joi.object({
