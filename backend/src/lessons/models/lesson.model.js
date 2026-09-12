@@ -68,22 +68,24 @@ export const lessonModel = {
   },
 
   async incrementViews(id) {
-    await query('UPDATE lessons SET view_count = view_count + 1 WHERE id = $1', [id]);
+    await query('UPDATE lessons SET view_count = COALESCE(view_count, 0) + 1 WHERE id = $1', [id]);
   },
 
   async incrementCompletions(id) {
-    await query('UPDATE lessons SET completion_count = completion_count + 1 WHERE id = $1', [id]);
+    await query('UPDATE lessons SET completion_count = COALESCE(completion_count, 0) + 1 WHERE id = $1', [id]);
   },
 
   async listByCourse(courseId) {
     const result = await query(
-      'SELECT * FROM lessons WHERE course_id = $1 ORDER BY order_index',
+      'SELECT * FROM lessons WHERE course_id = $1 ORDER BY order_index, created_at, id',
       [courseId]
     );
     return result.rows;
   },
 
   async list({ page = 1, limit = 20, courseId, sectionId, topicId, isPublished } = {}) {
+    const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+    const safeLimit = Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 20));
     const conditions = [];
     const values = [];
 
@@ -105,15 +107,27 @@ export const lessonModel = {
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const offset = (page - 1) * limit;
-    values.push(limit, offset);
+    const countResult = await query(`SELECT COUNT(*)::int AS total FROM lessons ${whereClause}`, values);
+    const total = Number(countResult.rows[0]?.total || 0);
+    const offset = (safePage - 1) * safeLimit;
+    const pageValues = [...values, safeLimit, offset];
 
     const result = await query(
-      `SELECT * FROM lessons ${whereClause} ORDER BY order_index LIMIT $${values.length - 1} OFFSET $${values.length}`,
-      values
+      `SELECT * FROM lessons ${whereClause}
+       ORDER BY order_index, created_at, id
+       LIMIT $${pageValues.length - 1} OFFSET $${pageValues.length}`,
+      pageValues
     );
 
-    return { data: result.rows, page, limit };
+    return {
+      data: result.rows,
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: total === 0 ? 0 : Math.ceil(total / safeLimit),
+      },
+    };
   },
 
   async delete(id) {
