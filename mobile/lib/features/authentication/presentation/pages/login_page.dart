@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../shared/widgets/index.dart';
-import '../../../shared/blocs/index.dart';
-import '../../../core/utils/validators.dart';
+import '../../../../shared/widgets/index.dart';
+import '../../../../shared/blocs/index.dart';
+import '../../../../core/utils/validators.dart';
 
 class LoginPage extends ConsumerWidget {
   const LoginPage({super.key});
@@ -22,34 +22,53 @@ class LoginPage extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 40),
-              // Logo
               Center(
                 child: Column(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Image.asset(
-                        'assets/images/logos/primary-logo.jfif',
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
+                    Container(
+                      width: 104,
+                      height: 104,
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(26),
+                        color: const Color(0xFFC59658),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.18),
+                            blurRadius: 22,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(23),
+                        child: Image.asset(
+                          'assets/images/logos/app-icon.jfif',
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
                     Text(
                       'THE GUIDE',
-                      style: theme.textTheme.headlineMedium?.copyWith(color: theme.colorScheme.primary),
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.1,
+                      ),
                     ),
+                    const SizedBox(height: 4),
                     Text(
                       'Your path to smarter learning',
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 48),
-
-              // Email field
               EduTextFormField(
                 labelText: 'Email',
                 hintText: 'Enter your email',
@@ -60,8 +79,6 @@ class LoginPage extends ConsumerWidget {
                 onChanged: (v) => emailController.text = v,
               ),
               const SizedBox(height: 16),
-
-              // Password field
               EduTextFormField(
                 labelText: 'Password',
                 hintText: 'Enter your password',
@@ -74,8 +91,6 @@ class LoginPage extends ConsumerWidget {
                 onChanged: (v) => passwordController.text = v,
               ),
               const SizedBox(height: 8),
-
-              // Forgot password
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
@@ -84,8 +99,6 @@ class LoginPage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
-
-              // Login button
               EduButton(
                 label: 'Sign In',
                 onPressed: () async {
@@ -101,8 +114,6 @@ class LoginPage extends ConsumerWidget {
                 },
               ),
               const SizedBox(height: 24),
-
-              // Register link
               Center(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -116,8 +127,6 @@ class LoginPage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
-
-              // Social login
               const Row(
                 children: [
                   Expanded(child: Divider()),
