@@ -6,6 +6,8 @@ import { EyeIcon, EyeOff } from 'lucide-react';
 import { useAdminAuthStore, hydrateAdminAuth } from '@/state/auth';
 import { supabase } from '@/lib/supabase';
 
+const ADMIN_ROLE_PRIORITY = ['super_admin', 'admin', 'content_admin'] as const;
+
 export default function LoginPage() {
   const router = useRouter();
   const { isAuthenticated, login } = useAdminAuthStore();
@@ -16,11 +18,15 @@ export default function LoginPage() {
     try {
       const { data, error: authError } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
       if (authError || !data.user || !data.session) throw new Error(authError?.message || 'Invalid credentials');
-      const [{ data: profile }, { data: roleRows }] = await Promise.all([supabase.from('profiles').select('*').eq('id', data.user.id).maybeSingle(), supabase.from('user_roles').select('roles(name)').eq('user_id', data.user.id)]);
-      const roles = (roleRows || []).map((r: any) => r.roles?.name).filter(Boolean) as string[];
-      const allowed = roles.some((role) => ['super_admin', 'admin', 'content_admin'].includes(role));
-      if (!allowed) { await supabase.auth.signOut(); throw new Error('Access denied. Admin account required.'); }
-      login({ id: data.user.id, email: data.user.email || '', firstName: profile?.first_name || '', lastName: profile?.last_name || '', role: (roles[0] || 'admin') as any, roles: roles as any }, data.session.access_token);
+      const [{ data: profile }, { data: roleRows, error: roleError }] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', data.user.id).maybeSingle(),
+        supabase.from('user_roles').select('roles(name)').eq('user_id', data.user.id),
+      ]);
+      if (roleError) { await supabase.auth.signOut(); throw new Error('Unable to verify administrator role.'); }
+      const roles = [...new Set((roleRows || []).map((r: any) => r.roles?.name).filter(Boolean))] as string[];
+      const primaryAdminRole = ADMIN_ROLE_PRIORITY.find((role) => roles.includes(role));
+      if (!primaryAdminRole) { await supabase.auth.signOut(); throw new Error('Access denied. Admin account required.'); }
+      login({ id: data.user.id, email: data.user.email || '', firstName: profile?.first_name || '', lastName: profile?.last_name || '', role: primaryAdminRole as any, roles: roles as any }, data.session.access_token);
       router.push('/dashboard');
     } catch (err: any) { setError(err?.message || 'Login failed. Please try again.'); } finally { setLoading(false); }
   };
