@@ -1,4 +1,4 @@
-import { initializePayment, verifyPayment, refundPayment, getPaymentById, listPayments, getPaymentStats } from '../services/payment.service.js';
+import { initializePayment, verifyPayment, refundPayment, listPayments, getPaymentStats } from '../services/payment.service.js';
 import { paymentModel } from '../models/payment.model.js';
 import { subscriptionModel, subscriptionPlanModel } from '../../subscriptions/models/subscription.model.js';
 import { studentCourseModel } from '../../progress/models/studentCourse.model.js';
@@ -8,12 +8,26 @@ import { notificationService } from '../../notifications/services/notification.s
 import crypto from 'crypto';
 
 const notFound = (resource) => { throw new AppError(`${resource} not found`, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND); };
+const isFinancialAdmin = (user) => user?.roles?.includes('admin') || user?.roles?.includes('super_admin');
+
 export const initializeNewPayment = async (req, res) => { const result = await initializePayment(req.user.id, req.body); res.status(HTTP_STATUS.CREATED).json({ success: true, message: 'Payment initialized', data: result.data }); };
 export const verifyNewPayment = async (req, res) => { res.json(await verifyPayment(req.body.reference, req.user.id)); };
-export const getPayment = async (req, res) => { res.json({ success: true, data: { payment: await getPaymentById(req.params.id, req.user.id) } }); };
+export const getPayment = async (req, res) => {
+  const payment = await paymentModel.findById(req.params.id);
+  if (!payment) notFound('Payment');
+  if (payment.user_id !== req.user.id && !isFinancialAdmin(req.user)) {
+    throw new AppError('Unauthorized', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR);
+  }
+  res.json({ success: true, data: { payment } });
+};
 export const listAllPayments = async (req, res) => { const { page, limit, status, startDate, endDate } = req.query; res.json({ success: true, data: await listPayments({ page: parseInt(page), limit: parseInt(limit), status, startDate, endDate }) }); };
 export const getPaymentStatsHandler = async (req, res) => { res.json({ success: true, data: { stats: await getPaymentStats(req.query.userId || null) } }); };
-export const refundPaymentHandler = async (req, res) => { const payment = await paymentModel.findById(req.params.id); if (!payment) notFound('Payment'); if (!req.user.roles?.includes('super_admin')) throw new AppError('Super administrator access required', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR); res.json({ success: true, message: 'Payment refunded', data: await refundPayment(req.params.id, req.user.id, req.body.reason) }); };
+export const refundPaymentHandler = async (req, res) => {
+  const payment = await paymentModel.findById(req.params.id);
+  if (!payment) notFound('Payment');
+  if (!req.user.roles?.includes('super_admin')) throw new AppError('Super administrator access required', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR);
+  res.json({ success: true, message: 'Payment refunded', data: await refundPayment(req.params.id, payment.user_id, req.body.reason) });
+};
 
 const timingSafeHexEqual = (actual, expected) => { if (!actual || !expected || !/^[a-f0-9]+$/i.test(actual) || actual.length !== expected.length) return false; return crypto.timingSafeEqual(Buffer.from(actual, 'hex'), Buffer.from(expected, 'hex')); };
 const timingSafeStringEqual = (actual, expected) => { const a = Buffer.from(String(actual || '')); const b = Buffer.from(String(expected || '')); return a.length === b.length && crypto.timingSafeEqual(a, b); };
