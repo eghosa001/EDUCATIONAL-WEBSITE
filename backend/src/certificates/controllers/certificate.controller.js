@@ -14,13 +14,23 @@ export const getCertificate = async (req, res) => {
 export const generateCertificate = async (req, res) => {
   const { courseId } = req.params;
   const certificate = await certificateService.generate(courseId, req.user.id);
-  res.status(HTTP_STATUS.CREATED).json({ success: true, data: certificate, message: 'Certificate generated' });
+  const { pdfBuffer: _pdfBuffer, ...metadata } = certificate;
+  res.status(HTTP_STATUS.CREATED).json({
+    success: true,
+    data: metadata,
+    message: 'Certificate generated',
+  });
 };
 
 export const downloadCertificate = async (req, res) => {
   const certificate = await certificateService.getCertificate(req.params.certificateId);
-  // Return metadata — actual PDF would be streamed via storage service in production
-  res.json({ success: true, data: { ...certificate, downloadUrl: `/certificates/${certificate.certificate_id}.pdf` } });
+  const pdf = certificateService.generatePDF(certificate, certificate);
+  const safeId = String(certificate.certificate_id || 'certificate').replace(/[^a-zA-Z0-9_-]/g, '');
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="THE-GUIDE-${safeId}.pdf"`);
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.send(Buffer.from(pdf));
 };
 
 export const verifyCertificate = async (req, res) => {
