@@ -2,11 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { EyeIcon, EyeOff as EyeSlashIcon, CheckCircleIcon } from 'lucide-react';
 import { getSupabase } from '@/lib/supabase';
 import { resetPassword } from '@/services/api/authService';
+import { apiConfig } from '@/services/api/config';
+
+const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,128}$/;
 
 export default function ResetPasswordPage() {
+  const searchParams = useSearchParams();
+  const resetToken = searchParams.get('token');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -15,9 +21,16 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Backend/mobile recovery links carry a one-time token and do not need a
+    // browser Supabase recovery session. The backend atomically consumes it.
+    if (resetToken) {
+      setError('');
+      setLoading(false);
+      return;
+    }
+
     let mounted = true;
     const supabase = getSupabase();
-
     const checkRecoverySession = async () => {
       const { data, error: sessionError } = await supabase.auth.getSession();
       if (!mounted) return;
@@ -37,13 +50,12 @@ export default function ResetPasswordPage() {
       }
     });
 
-    checkRecoverySession();
-
+    void checkRecoverySession();
     return () => {
       mounted = false;
       listener.subscription.unsubscribe();
     };
-  }, []);
+  }, [resetToken]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,17 +65,28 @@ export default function ResetPasswordPage() {
       setError('Passwords do not match');
       return;
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (!strongPassword.test(password)) {
+      setError('Password must be 8–128 characters and include uppercase, lowercase, and a number.');
       return;
     }
 
     setLoading(true);
     try {
-      await resetPassword({ password });
+      if (resetToken) {
+        const response = await fetch(`${apiConfig.baseUrl}/auth/reset-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: apiConfig.credentials,
+          body: JSON.stringify({ token: resetToken, password }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload?.error?.message || payload?.message || 'Failed to reset password');
+      } else {
+        await resetPassword({ password });
+      }
       setSuccess(true);
-    } catch (err: any) {
-      setError(err?.message || 'Failed to reset password');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reset password');
     } finally {
       setLoading(false);
     }
@@ -97,13 +120,13 @@ export default function ResetPasswordPage() {
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">New password</label>
               <div className="relative">
-                <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required minLength={6} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-brand-950" placeholder="••••••••" />
+                <input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required minLength={8} autoComplete="new-password" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-brand-950" placeholder="••••••••" />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-brand-600" aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}</button>
               </div>
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Confirm password</label>
-              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required minLength={6} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-brand-950" placeholder="••••••••" />
+              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required minLength={8} autoComplete="new-password" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:ring-brand-950" placeholder="••••••••" />
             </div>
             <button type="submit" disabled={loading || Boolean(error)} className="w-full rounded-lg bg-brand-600 py-2.5 font-semibold text-white shadow-brand-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50">{loading ? 'Resetting...' : 'Reset password'}</button>
           </form>
