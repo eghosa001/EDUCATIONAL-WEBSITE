@@ -6,7 +6,7 @@ import { EyeIcon, EyeOff } from 'lucide-react';
 import { useAdminAuthStore, hydrateAdminAuth } from '@/state/auth';
 import { supabase } from '@/lib/supabase';
 
-const ADMIN_ROLE_PRIORITY = ['super_admin', 'admin', 'content_admin'] as const;
+const ADMIN_ROLE_PRIORITY = ['super_admin', 'content_admin'] as const;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,7 +23,7 @@ export default function LoginPage() {
         supabase.from('user_roles').select('roles(name)').eq('user_id', data.user.id),
       ]);
       if (roleError) { await supabase.auth.signOut(); throw new Error('Unable to verify administrator role.'); }
-      const roles = [...new Set((roleRows || []).map((r: any) => r.roles?.name).filter(Boolean))] as string[];
+      const roles = Array.from(new Set((roleRows || []).map((r: any) => r.roles?.name).filter(Boolean))) as string[];
       const primaryAdminRole = ADMIN_ROLE_PRIORITY.find((role) => roles.includes(role));
       if (!primaryAdminRole) { await supabase.auth.signOut(); throw new Error('Access denied. Admin account required.'); }
       login({ id: data.user.id, email: data.user.email || '', firstName: profile?.first_name || '', lastName: profile?.last_name || '', role: primaryAdminRole as any, roles: roles as any }, data.session.access_token);
