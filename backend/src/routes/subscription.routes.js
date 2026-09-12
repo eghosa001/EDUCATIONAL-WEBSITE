@@ -39,14 +39,41 @@ subscriptionRoutes.delete('/plans/:id',
   subscriptionController.deletePlan
 );
 
+// Declare all named routes before /:id so Express cannot treat names such as
+// "access" or "invoices" as subscription IDs.
 subscriptionRoutes.get('/my',
   authMiddleware,
   subscriptionController.getMySubscription
 );
 
-subscriptionRoutes.get('/:id',
+subscriptionRoutes.get('/access',
   authMiddleware,
-  subscriptionController.getSubscriptionHandler
+  subscriptionController.validateAccess
+);
+
+subscriptionRoutes.post('/coupon/validate',
+  authMiddleware,
+  subscriptionController.applyCouponHandler
+);
+
+subscriptionRoutes.get('/invoices',
+  authMiddleware,
+  subscriptionController.getInvoices
+);
+
+subscriptionRoutes.get('/invoices/:id',
+  authMiddleware,
+  subscriptionController.getInvoiceById
+);
+
+subscriptionRoutes.get('/wallet',
+  authMiddleware,
+  subscriptionController.getWallet
+);
+
+subscriptionRoutes.get('/wallet/transactions',
+  authMiddleware,
+  subscriptionController.listWalletTransactions
 );
 
 subscriptionRoutes.post('/',
@@ -69,31 +96,10 @@ subscriptionRoutes.post('/:subscriptionId/renew',
   subscriptionController.renewSubscriptionHandler
 );
 
-subscriptionRoutes.get('/access',
+subscriptionRoutes.get('/:id',
   authMiddleware,
-  subscriptionController.validateAccess
+  subscriptionController.getSubscriptionHandler
 );
 
-subscriptionRoutes.post('/coupon/validate',
-  authMiddleware,
-  subscriptionController.applyCouponHandler
-);
-
-subscriptionRoutes.post('/webhook/:gateway',
-  subscriptionController.handleWebhook
-);
-
-subscriptionRoutes.get('/invoices',
-  authMiddleware,
-  subscriptionController.getInvoices
-);
-
-subscriptionRoutes.get('/invoices/:id',
-  authMiddleware,
-  subscriptionController.getInvoiceById
-);
-
-subscriptionRoutes.get('/wallet',
-  authMiddleware,
-  subscriptionController.getWallet
-);
+// Gateway callbacks are intentionally handled only by payment.routes.js, where
+// Paystack/Flutterwave signatures and payment amount/currency are verified.
