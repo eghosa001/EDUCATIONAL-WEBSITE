@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import Joi from 'joi';
-import { pool, supabaseQuery, useSupabase } from '../common/database/index.js';
+import { pool, useSupabase } from '../common/database/index.js';
 import { asyncHandler, authMiddleware, authRateLimiter, validateRequest } from '../common/middleware/index.js';
 import { schemas } from '../common/validators/joi.js';
 import { hashToken } from '../auth/utils/jwt.js';
@@ -14,8 +14,6 @@ export const authRoutes = Router();
 const chooseAuthHandler = (legacyHandler, supabaseHandler) => (req, res, next) =>
   (useSupabase ? supabaseHandler : legacyHandler)(req, res, next);
 
-// Browser refresh tokens may be HttpOnly cookies, while mobile sends the token
-// in the request body. Preserve Authorization-header support for older clients.
 const refreshCookieAuth = (req, _res, next) => {
   if (!req.headers.authorization) {
     const bodyRefreshToken = req.body?.refreshToken;
@@ -41,8 +39,6 @@ const refreshCookieAuth = (req, _res, next) => {
   next();
 };
 
-// Legacy/local-database verification only. Supabase Auth owns email
-// verification in production and its confirmation links update auth.users.
 const verifyEmailToken = asyncHandler(async (req, _res, next) => {
   if (useSupabase) {
     throw new AppError(
@@ -69,34 +65,11 @@ const verifyEmailToken = asyncHandler(async (req, _res, next) => {
   next();
 });
 
-authRoutes.post(
-  '/register',
-  authRateLimiter,
-  validateRequest(schemas.user.register),
-  asyncHandler(chooseAuthHandler(authController.register, supabaseAuthController.registerWithSupabase))
-);
-authRoutes.post(
-  '/login',
-  authRateLimiter,
-  validateRequest(schemas.user.login),
-  asyncHandler(chooseAuthHandler(authController.login, supabaseAuthController.loginWithSupabase))
-);
-authRoutes.post(
-  '/refresh',
-  authRateLimiter,
-  refreshCookieAuth,
-  asyncHandler(chooseAuthHandler(authController.refreshToken, supabaseAuthController.refreshWithSupabase))
-);
-authRoutes.post(
-  '/logout',
-  authMiddleware,
-  asyncHandler(chooseAuthHandler(authController.logout, supabaseAuthController.logoutWithSupabase))
-);
-authRoutes.post(
-  '/logout-all',
-  authMiddleware,
-  asyncHandler(chooseAuthHandler(authController.logoutAll, supabaseAuthController.logoutAllWithSupabase))
-);
+authRoutes.post('/register', authRateLimiter, validateRequest(schemas.user.register), asyncHandler(chooseAuthHandler(authController.register, supabaseAuthController.registerWithSupabase)));
+authRoutes.post('/login', authRateLimiter, validateRequest(schemas.user.login), asyncHandler(chooseAuthHandler(authController.login, supabaseAuthController.loginWithSupabase)));
+authRoutes.post('/refresh', authRateLimiter, refreshCookieAuth, asyncHandler(chooseAuthHandler(authController.refreshToken, supabaseAuthController.refreshWithSupabase)));
+authRoutes.post('/logout', authMiddleware, asyncHandler(chooseAuthHandler(authController.logout, supabaseAuthController.logoutWithSupabase)));
+authRoutes.post('/logout-all', authMiddleware, asyncHandler(chooseAuthHandler(authController.logoutAll, supabaseAuthController.logoutAllWithSupabase)));
 authRoutes.get('/me', authMiddleware, asyncHandler(authController.getCurrentUser));
 
 authRoutes.post(
