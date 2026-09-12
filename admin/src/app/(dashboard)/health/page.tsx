@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAdminAuthStore } from '@/state/auth';
+import { apiConfig } from '@/services/api/config';
 
 export interface HealthStatus {
   success: boolean;
@@ -14,7 +15,17 @@ export interface HealthStatus {
     supabase: string;
     mode: string;
   };
+  services: {
+    api: string;
+    database: string;
+  };
 }
+
+const statusDot = (status: string) => status === 'healthy' || status === 'ok'
+  ? 'bg-green-500'
+  : status === 'inactive'
+    ? 'bg-gray-300'
+    : 'bg-red-500';
 
 export default function HealthPage() {
   const { token } = useAdminAuthStore();
@@ -26,12 +37,15 @@ export default function HealthPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/v1/health', {
+      const res = await fetch(`${apiConfig.baseUrl}/health`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
+        cache: 'no-store',
       });
-      const data = await res.json();
+      const data = (await res.json()) as HealthStatus;
       setHealth(data);
+      if (!res.ok && !data.message) setError(`Health check failed (${res.status})`);
     } catch (err) {
+      setHealth(null);
       setError(err instanceof Error ? err.message : 'Failed to check health');
     } finally {
       setLoading(false);
@@ -66,45 +80,42 @@ export default function HealthPage() {
 
       {health && (
         <>
-          {/* Overall Status */}
           <div className={`rounded-xl border p-6 ${health.success ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
             <div className="flex items-center gap-3">
               <div className={`w-4 h-4 rounded-full ${health.success ? 'bg-green-500' : 'bg-yellow-500'}`} />
-              <span className="text-lg font-semibold">{health.success ? 'All Systems Operational' : 'Degraded Performance'}</span>
+              <span className="text-lg font-semibold">{health.success ? 'All Probed Systems Operational' : 'Degraded Performance'}</span>
             </div>
             <p className="mt-2 text-sm text-gray-600">{health.message}</p>
             <p className="mt-1 text-xs text-gray-400">Last checked: {new Date(health.timestamp).toLocaleString()}</p>
           </div>
 
-          {/* Database Status */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="font-semibold text-gray-900 mb-4">Database Connectivity</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
-                { label: 'Local PostgreSQL', status: health.database.local, detail: health.database.mode.includes('local') ? 'Active' : 'Inactive' },
-                { label: 'Supabase PostgreSQL', status: health.database.supabase, detail: health.database.mode.includes('supabase') ? 'Active' : 'Inactive' },
-                { label: 'Connection Mode', status: health.database.mode, detail: '' },
+                { label: 'Local PostgreSQL', status: health.database.local, detail: health.database.mode === 'local' ? 'Configured database' : 'Not configured' },
+                { label: 'Supabase PostgreSQL', status: health.database.supabase, detail: health.database.mode === 'supabase' ? 'Configured database' : 'Not configured' },
+                { label: 'Connection Mode', status: health.database.mode, detail: 'Active backend database mode' },
               ].map(item => (
                 <div key={item.label} className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
-                  <div className={`w-3 h-3 rounded-full ${item.status === 'ok' ? 'bg-green-500' : item.status === 'error' ? 'bg-red-500' : 'bg-yellow-500'}`} />
+                  <div className={`w-3 h-3 rounded-full ${item.label === 'Connection Mode' ? 'bg-blue-500' : statusDot(item.status)}`} />
                   <div>
                     <p className="text-sm font-medium text-gray-900">{item.label}</p>
-                    <p className="text-xs text-gray-500">{item.detail || item.status}</p>
+                    <p className="text-xs text-gray-500">{item.detail}: {item.status}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* System Info */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="font-semibold text-gray-900 mb-4">System Information</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               {[
                 { label: 'Version', value: health.version },
                 { label: 'Environment', value: health.environment },
-                { label: 'Uptime', value: 'Running' },
-                { label: 'API Prefix', value: '/api/v1' },
+                { label: 'API', value: health.services.api },
+                { label: 'Database', value: health.services.database },
               ].map(item => (
                 <div key={item.label} className="p-3 bg-gray-50 rounded-lg">
                   <p className="text-gray-500">{item.label}</p>
@@ -114,27 +125,12 @@ export default function HealthPage() {
             </div>
           </div>
 
-          {/* Services Status (mock — would check actual services) */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="font-semibold text-gray-900 mb-4">Service Status</h2>
-            <div className="space-y-3">
-              {[
-                { name: 'API Server', status: 'healthy', detail: 'Express on port 3000' },
-                { name: 'JWT Authentication', status: 'healthy', detail: 'Token validation active' },
-                { name: 'Email Service', status: 'healthy', detail: 'Nodemailer configured' },
-                { name: 'FCM Push Notifications', status: 'healthy', detail: 'Firebase Admin SDK ready' },
-                { name: 'Redis Cache', status: 'unknown', detail: 'Not connected (optional)' },
-                { name: 'BullMQ Queue', status: 'unknown', detail: 'Not connected (optional)' },
-              ].map(service => (
-                <div key={service.name} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${service.status === 'healthy' ? 'bg-green-500' : service.status === 'unknown' ? 'bg-gray-300' : 'bg-red-500'}`} />
-                    <span className="text-sm font-medium text-gray-900">{service.name}</span>
-                  </div>
-                  <span className="text-sm text-gray-500">{service.detail}</span>
-                </div>
-              ))}
-            </div>
+            <h2 className="font-semibold text-gray-900 mb-3">Probe Coverage</h2>
+            <p className="text-sm text-gray-600">
+              This page verifies the API process and its configured database connection. Email, push notifications,
+              queues, caches, and payment gateways are not shown as healthy unless they have their own live probe.
+            </p>
           </div>
         </>
       )}
