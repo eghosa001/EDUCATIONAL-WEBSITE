@@ -70,7 +70,15 @@ export const initializePayment = async (userId, data) => {
   if (gateway === PAYMENT_GATEWAYS.WALLET) await grantEntitlement(payment);
 
   if (gateway === PAYMENT_GATEWAYS.WALLET) return { success: true, data: { payment, accessCode: null, authorizationUrl: null } };
-  return { success: true, data: { payment, accessCode: gatewayResponse?.access_code || gatewayResponse?.link, authorizationUrl: gatewayResponse?.authorization_url || gatewayResponse?.link, reference } };
+  return {
+    success: true,
+    data: {
+      payment,
+      accessCode: gatewayResponse?.accessCode || gatewayResponse?.access_code || null,
+      authorizationUrl: gatewayResponse?.authorizationUrl || gatewayResponse?.authorization_url || gatewayResponse?.link || null,
+      reference,
+    },
+  };
 };
 
 export const verifyPayment = async (reference, userId) => {
@@ -84,7 +92,8 @@ export const verifyPayment = async (reference, userId) => {
     case PAYMENT_GATEWAYS.FLUTTERWAVE: verificationResult = await flutterwaveService.verifyPayment(reference); break;
     default: return { success: false, data: { payment, verified: false } };
   }
-  if (!verificationResult || verificationResult.status !== 'successful') return { success: false, data: { payment, verified: false } };
+  const verificationStatus = String(verificationResult?.status || '').toLowerCase();
+  if (!verificationResult || !['success', 'successful'].includes(verificationStatus)) return { success: false, data: { payment, verified: false } };
 
   const verifiedAmount = Number(verificationResult.amount);
   const expectedAmount = Number(payment.amount);
