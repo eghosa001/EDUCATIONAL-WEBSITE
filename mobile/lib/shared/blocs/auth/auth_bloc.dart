@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/constants/app_enums.dart';
-import '../models/user/user_model.dart';
-import '../repositories/authentication_repository.dart';
+import '../../../core/constants/app_enums.dart';
+import '../../models/user/user_model.dart';
+import '../../repositories/authentication_repository.dart';
 
 class AuthState {
   final bool isLoading;
@@ -60,10 +60,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> login({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> login({required String email, required String password}) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final data = await _repository.login(email: email, password: password);
