@@ -2,20 +2,38 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParentStore } from '@/features/parent/store/parentStore';
+import { apiConfig, getAuthHeaders, handleApiResponse } from '@/services/api/config';
 
 export function useParentDashboard() {
-  const { children, selectedChildId, dashboardData, isLoading, error, setSelectedChild, fetchDashboardData, addChild, removeChild } = useParentStore();
+  const {
+    children,
+    selectedChildId,
+    dashboardData,
+    isLoading,
+    error,
+    fetchChildren,
+    setSelectedChild,
+    fetchDashboardData,
+    addChild,
+    removeChild,
+  } = useParentStore();
   const [activeTab, setActiveTab] = useState<'overview' | 'progress' | 'courses' | 'results'>('overview');
 
   useEffect(() => {
-    if (selectedChildId || children.length > 0) {
-      fetchDashboardData(selectedChildId || children[0]?.id);
-    }
-  }, [selectedChildId, children.length]);
+    fetchChildren();
+  }, [fetchChildren]);
 
-  const handleSelectChild = useCallback((childId: string) => {
-    setSelectedChild(childId);
-  }, [setSelectedChild]);
+  useEffect(() => {
+    const childId = selectedChildId || children[0]?.userId;
+    if (childId) fetchDashboardData(childId);
+  }, [selectedChildId, children, fetchDashboardData]);
+
+  const handleSelectChild = useCallback(
+    (childId: string) => {
+      setSelectedChild(childId);
+    },
+    [setSelectedChild]
+  );
 
   return {
     children,
@@ -37,21 +55,45 @@ export function useChildMonitoring(childId: string) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     const loadActivity = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`/api/parents/children/${childId}/activity`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('edu_token')}` },
+        const token = typeof window === 'undefined' ? null : localStorage.getItem('edu_token');
+        const response = await fetch(`${apiConfig.baseUrl}/parents/children/${childId}/study-time`, {
+          headers: getAuthHeaders(token || undefined),
+          credentials: apiConfig.credentials,
         });
-        const data = await response.json();
-        setRecentActivity(data.data);
+        const payload = await handleApiResponse<{ data: { studyTime: Array<{ date: string; studyTimeSeconds: number }> } }>(response);
+        const rows = payload.data?.studyTime || [];
+        if (!cancelled) {
+          setStudyTime(Math.round(rows.reduce((sum, row) => sum + Number(row.studyTimeSeconds || 0), 0) / 60));
+          setRecentActivity(
+            rows
+              .slice()
+              .reverse()
+              .slice(0, 10)
+              .map((row) => ({
+                type: 'study',
+                title: `${Math.round(Number(row.studyTimeSeconds || 0) / 60)} minutes studied`,
+                timestamp: row.date,
+              }))
+          );
+        }
       } catch (err) {
-        console.error('Failed to load activity:', err);
+        console.error('Failed to load child study activity:', err);
+        if (!cancelled) {
+          setStudyTime(0);
+          setRecentActivity([]);
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
     loadActivity();
+    return () => {
+      cancelled = true;
+    };
   }, [childId]);
 
   return { studyTime, recentActivity, isLoading };
