@@ -18,11 +18,8 @@ class AuthenticationRepository {
       AppEndpoints.login,
       data: {'email': email, 'password': password, 'rememberMe': rememberMe},
     );
-    final data = response.data['data'] as Map<String, dynamic>? ?? {};
-    if (data['token'] != null) {
-      _storage.saveToken(data['token']);
-      _storage.saveUser(data['user'] ?? {});
-    }
+    final data = Map<String, dynamic>.from(response.data?['data'] as Map? ?? const {});
+    await _persistAuthData(data);
     return data;
   }
 
@@ -41,18 +38,33 @@ class AuthenticationRepository {
         'password': password,
         'firstName': firstName,
         'lastName': lastName,
-        'phone': phone,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
         'role': role,
       },
     );
-    return response.data['data'] as Map<String, dynamic>? ?? {};
+    final data = Map<String, dynamic>.from(response.data?['data'] as Map? ?? const {});
+    await _persistAuthData(data);
+    return data;
+  }
+
+  Future<void> _persistAuthData(Map<String, dynamic> data) async {
+    final rawTokens = data['tokens'];
+    if (rawTokens is Map) {
+      final tokens = Map<String, dynamic>.from(rawTokens);
+      await _storage.saveToken(tokens['accessToken']?.toString());
+      await _storage.saveRefreshToken(tokens['refreshToken']?.toString());
+    }
+    final rawUser = data['user'];
+    if (rawUser is Map) {
+      await _storage.saveUser(Map<String, dynamic>.from(rawUser));
+    }
   }
 
   Future<void> logout() async {
     try {
       await _apiClient.post(AppEndpoints.logout);
     } finally {
-      _storage.clearAuth();
+      await _storage.clearAuth();
     }
   }
 
@@ -61,7 +73,14 @@ class AuthenticationRepository {
       AppEndpoints.verifyEmail,
       data: {'token': token},
     );
-    return response.data['data'] as Map<String, dynamic>? ?? {};
+    return Map<String, dynamic>.from(response.data?['data'] as Map? ?? const {});
+  }
+
+  Future<void> resendVerification({required String email}) async {
+    await _apiClient.post(
+      AppEndpoints.resendVerification,
+      data: {'email': email},
+    );
   }
 
   Future<void> forgotPassword({required String email}) async {
@@ -83,7 +102,7 @@ class AuthenticationRepository {
 
   Future<Map<String, dynamic>> getProfile() async {
     final response = await _apiClient.get<Map<String, dynamic>>(AppEndpoints.usersProfile);
-    return response.data['data'] as Map<String, dynamic>? ?? {};
+    return Map<String, dynamic>.from(response.data?['data'] as Map? ?? const {});
   }
 }
 
