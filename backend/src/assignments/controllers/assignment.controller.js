@@ -9,16 +9,13 @@ const notFound = (resource) => {
 
 export const listAssignments = async (req, res) => {
   const { page, limit, courseId, teacherId } = req.query;
-
   const { data, pagination } = await assignmentModel.list({ page, limit, courseId, teacherId });
-
   res.json({ success: true, data: { assignments: data }, pagination });
 };
 
 export const getAssignment = async (req, res) => {
   const assignment = await assignmentModel.findById(req.params.id);
   if (!assignment) notFound('Assignment');
-
   res.json({ success: true, data: { assignment } });
 };
 
@@ -41,33 +38,26 @@ export const createAssignment = async (req, res) => {
 export const updateAssignment = async (req, res) => {
   const assignment = await assignmentModel.update(req.params.id, req.body);
   if (!assignment) notFound('Assignment');
-
   res.json({ success: true, message: 'Assignment updated', data: { assignment } });
 };
 
 export const deleteAssignment = async (req, res) => {
   const assignment = await assignmentModel.delete(req.params.id);
   if (!assignment) notFound('Assignment');
-
   res.json({ success: true, message: 'Assignment deleted' });
 };
 
 export const listSubmissions = async (req, res) => {
   const assignment = await assignmentModel.findById(req.params.id);
   if (!assignment) notFound('Assignment');
-
   const submissions = await submissionModel.listByAssignment(assignment.id);
-
   res.json({ success: true, data: { submissions } });
 };
 
 export const getSubmission = async (req, res) => {
   const { id, submissionId } = req.params;
-
   const submission = await submissionModel.findById(submissionId);
-  if (!submission) notFound('Submission');
-
-  if (submission.assignment_id !== id) notFound('Submission');
+  if (!submission || submission.assignment_id !== id) notFound('Submission');
 
   const isOwner = submission.student_id === req.user.id;
   if (!isOwner && req.user.role === 'student') {
@@ -89,8 +79,7 @@ export const submitAssignment = async (req, res) => {
     throw new AppError('This assignment has already been graded', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.CONFLICT);
   }
 
-  const isLate = assignment.due_date && new Date(assignment.due_date) < new Date();
-
+  const isLate = Boolean(assignment.due_date && new Date(assignment.due_date).getTime() < Date.now());
   if (isLate && !assignment.allow_late_submission) {
     throw new AppError('Assignment submission period has ended', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
   }
@@ -100,11 +89,8 @@ export const submitAssignment = async (req, res) => {
     studentId: req.user.id,
     content,
     fileUrls,
+    isLate,
   });
-
-  if (isLate) {
-    await submissionModel.markLate(submission.id);
-  }
 
   res.status(HTTP_STATUS.CREATED).json({
     success: true,
@@ -118,19 +104,18 @@ export const gradeSubmission = async (req, res) => {
   const { score, feedback } = req.body;
 
   const submission = await submissionModel.findById(submissionId);
-  if (!submission) notFound('Submission');
-
-  if (submission.assignment_id !== id) notFound('Submission');
+  if (!submission || submission.assignment_id !== id) notFound('Submission');
 
   const assignment = await assignmentModel.findById(id);
   if (!assignment) notFound('Assignment');
 
-  if (score > assignment.max_score) {
-    throw new AppError(`Score cannot exceed max score of ${assignment.max_score}`, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+  const numericScore = Number(score);
+  if (!Number.isFinite(numericScore) || numericScore < 0 || numericScore > Number(assignment.max_score)) {
+    throw new AppError(`Score must be between 0 and ${assignment.max_score}`, HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
   }
 
   const graded = await submissionModel.grade(submission.id, {
-    score,
+    score: numericScore,
     feedback,
     gradedBy: req.user.id,
   });
@@ -144,8 +129,6 @@ export const gradeSubmission = async (req, res) => {
 
 export const getMySubmissions = async (req, res) => {
   const { page, limit } = req.query;
-
   const { data, pagination } = await submissionModel.listByStudent(req.user.id, { page, limit });
-
   res.json({ success: true, data: { submissions: data }, pagination });
 };
