@@ -12,9 +12,21 @@ import * as passwordController from '../auth/controllers/password.controller.js'
 
 export const authRoutes = Router();
 const useSupabaseAuth = Boolean(supabase);
+const SELF_SERVICE_ROLES = new Set(['student', 'teacher', 'parent']);
 
 const chooseAuthHandler = (legacyHandler, supabaseHandler) => (req, res, next) =>
   (useSupabaseAuth ? supabaseHandler : legacyHandler)(req, res, next);
+
+const captureRegistrationRole = (req, _res, next) => {
+  const requested = String(req.body?.role || '').trim().toLowerCase();
+  req.requestedRegistrationRole = SELF_SERVICE_ROLES.has(requested) ? requested : 'student';
+  next();
+};
+
+const restoreRegistrationRole = (req, _res, next) => {
+  req.body.role = req.requestedRegistrationRole || 'student';
+  next();
+};
 
 const refreshCookieAuth = (req, _res, next) => {
   if (!req.headers.authorization) {
@@ -58,7 +70,14 @@ const prepareLegacyVerification = asyncHandler(async (req, _res, next) => {
   next();
 });
 
-authRoutes.post('/register', authRateLimiter, validateRequest(schemas.user.register), asyncHandler(chooseAuthHandler(authController.register, supabaseAuthController.registerWithSupabase)));
+authRoutes.post(
+  '/register',
+  authRateLimiter,
+  captureRegistrationRole,
+  validateRequest(schemas.user.register),
+  restoreRegistrationRole,
+  asyncHandler(chooseAuthHandler(authController.register, supabaseAuthController.registerWithSupabase))
+);
 authRoutes.post('/login', authRateLimiter, validateRequest(schemas.user.login), asyncHandler(chooseAuthHandler(authController.login, supabaseAuthController.loginWithSupabase)));
 authRoutes.post('/refresh', authRateLimiter, refreshCookieAuth, asyncHandler(chooseAuthHandler(authController.refreshToken, supabaseAuthController.refreshWithSupabase)));
 authRoutes.post('/logout', authMiddleware, asyncHandler(chooseAuthHandler(authController.logout, supabaseAuthController.logoutWithSupabase)));
