@@ -128,7 +128,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> updateProfile(Map<String, dynamic> data) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final profile = await _repository.getProfile();
+      final profile = await _repository.updateProfile(data);
       final rawUser = profile['user'] is Map ? profile['user'] : profile;
       state = AuthState(
         isAuthenticated: true,
