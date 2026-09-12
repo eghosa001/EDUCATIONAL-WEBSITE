@@ -117,3 +117,28 @@ test('subscription controller enforces ownership and blocks direct paid activati
   assert.match(source, /Paid subscriptions must be started through the secure payment checkout/);
   assert.match(source, /Paid renewals must be started through the secure payment checkout/);
 });
+
+test('payment service exposes admin list/stats and accepts both gateway success status spellings', () => {
+  const source = fs.readFileSync(path.join(REPO_ROOT, 'backend', 'src', 'payments', 'services', 'payment.service.js'), 'utf8');
+  assert.match(source, /export const listPayments/);
+  assert.match(source, /export const getPaymentStats/);
+  assert.match(source, /\['success', 'successful'\]\.includes/);
+  assert.match(source, /gatewayResponse\?\.authorizationUrl/);
+});
+
+test('refunds do not double-credit external gateway payments and wallet refunds restore wallet balance', () => {
+  const service = fs.readFileSync(path.join(REPO_ROOT, 'backend', 'src', 'payments', 'services', 'payment.service.js'), 'utf8');
+  const controller = fs.readFileSync(path.join(REPO_ROOT, 'backend', 'src', 'payments', 'controllers', 'payment.controller.js'), 'utf8');
+  assert.match(service, /payment\.gateway === PAYMENT_GATEWAYS\.WALLET/);
+  assert.match(service, /creditWalletBalance\(payment\.user_id, Number\(payment\.amount\)/);
+  assert.doesNotMatch(service, /payment\.gateway !== PAYMENT_GATEWAYS\.WALLET\) await creditWalletBalance/);
+  assert.match(service, /revokeEntitlementAfterRefund/);
+  assert.match(controller, /refundPayment\(req\.params\.id, payment\.user_id/);
+});
+
+test('admin payment-wide routes exclude content-only administrators', () => {
+  const routes = fs.readFileSync(path.join(REPO_ROOT, 'backend', 'src', 'routes', 'payment.routes.js'), 'utf8');
+  assert.match(routes, /get\('\/stats'.*requireRole\('admin', 'super_admin'\)/s);
+  assert.match(routes, /get\('\/'.*requireRole\('admin', 'super_admin'\)/s);
+  assert.doesNotMatch(routes, /requireRole\([^)]*content_admin[^)]*\).*getPaymentStatsHandler/s);
+});
