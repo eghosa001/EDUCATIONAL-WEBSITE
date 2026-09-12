@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import Joi from 'joi';
-import { asyncHandler, validateRequest, authMiddleware, optionalAuthMiddleware } from '../common/middleware/index.js';
+import { asyncHandler, validateRequest, authMiddleware, optionalAuthMiddleware, requireRole } from '../common/middleware/index.js';
 import { schemas } from '../common/validators/joi.js';
 import * as courseController from '../courses/controllers/course.controller.js';
 
 export const courseRoutes = Router();
+const courseManager = requireRole('teacher', 'content_admin', 'super_admin');
+const sectionParams = Joi.object({ id: Joi.string().uuid().required(), sectionId: Joi.string().uuid().required() });
 
 const sectionSchema = Joi.object({
   title: Joi.string().min(3).max(300).required(),
@@ -38,6 +40,7 @@ courseRoutes.get('/saved',
 
 courseRoutes.post('/',
   authMiddleware,
+  courseManager,
   validateRequest(schemas.course.create),
   asyncHandler(courseController.createCourse)
 );
@@ -49,6 +52,7 @@ courseRoutes.get('/:slugOrId',
 
 courseRoutes.patch('/:id',
   authMiddleware,
+  courseManager,
   validateRequest({ params: schemas.idParam }),
   validateRequest(schemas.course.update),
   asyncHandler(courseController.updateCourse)
@@ -56,12 +60,14 @@ courseRoutes.patch('/:id',
 
 courseRoutes.post('/:id/publish',
   authMiddleware,
+  courseManager,
   validateRequest({ params: schemas.idParam }),
   asyncHandler(courseController.publishCourse)
 );
 
 courseRoutes.delete('/:id',
   authMiddleware,
+  courseManager,
   validateRequest({ params: schemas.idParam }),
   asyncHandler(courseController.deleteCourse)
 );
@@ -80,12 +86,14 @@ courseRoutes.delete('/:id/enroll',
 
 courseRoutes.get('/:id/students',
   authMiddleware,
+  courseManager,
   validateRequest({ params: schemas.idParam }),
   asyncHandler(courseController.listCourseStudents)
 );
 
 courseRoutes.get('/:id/stats',
   authMiddleware,
+  courseManager,
   validateRequest({ params: schemas.idParam }),
   asyncHandler(courseController.getCourseStats)
 );
@@ -98,6 +106,7 @@ courseRoutes.get('/:id/lessons',
 
 courseRoutes.post('/:id/sections',
   authMiddleware,
+  courseManager,
   validateRequest({ params: schemas.idParam }),
   validateRequest(sectionSchema),
   asyncHandler(courseController.createSection)
@@ -105,11 +114,15 @@ courseRoutes.post('/:id/sections',
 
 courseRoutes.patch('/:id/sections/:sectionId',
   authMiddleware,
+  courseManager,
+  validateRequest({ params: sectionParams }),
   validateRequest(sectionUpdateSchema),
   asyncHandler(courseController.updateSection)
 );
 
 courseRoutes.delete('/:id/sections/:sectionId',
   authMiddleware,
+  courseManager,
+  validateRequest({ params: sectionParams }),
   asyncHandler(courseController.deleteSection)
 );
