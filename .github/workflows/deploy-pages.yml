@@ -1,6 +1,11 @@
-name: Deploy GitHub Pages landing site
+name: Deploy GitHub Pages production app
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'pages/**'
+      - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -9,7 +14,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-production
   cancel-in-progress: true
 
 jobs:
@@ -22,10 +27,35 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Validate static production app
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s pages/index.html
+          test -s pages/app.js
+          test -s pages/styles.css
+          test -f pages/.nojekyll
+          node --check pages/app.js
+          grep -q 'THE GUIDE' pages/index.html
+          grep -q 'createClient' pages/app.js
+          grep -q 'signInWithPassword' pages/app.js
+          grep -q "from('topics')" pages/app.js
+          grep -q "from('lessons')" pages/app.js
+          grep -q "from('questions')" pages/app.js
+          if grep -Rqi 'web-ogs7\.vercel\.app' pages; then
+            echo 'Pages production app still references the retired Vercel frontend.'
+            exit 1
+          fi
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload static site
+      - name: Upload production app
         uses: actions/upload-pages-artifact@v3
         with:
           path: pages
