@@ -49,23 +49,15 @@ jobs:
         run: npm run build
 
   deploy:
-    name: Deploy production
+    name: Verify production deployment
     needs: validate
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: ${{ steps.deploy.outputs.url }}
+      url: ${{ steps.vercel.outputs.url }}
     env:
       VERCEL_TOKEN: ${{ secrets.deploy }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
       - name: Require Vercel deployment token
         if: env.VERCEL_TOKEN == ''
         run: |
@@ -73,38 +65,57 @@ jobs:
           echo 'Add the Vercel access token as an Actions secret named deploy, then re-run this workflow.'
           exit 1
 
-      - name: Install Vercel CLI
-        if: env.VERCEL_TOKEN != ''
-        run: npm install --global vercel@latest
-
-      - name: Deploy production on Vercel
-        id: deploy
+      - name: Wait for matching Vercel production deployment
+        id: vercel
         if: env.VERCEL_TOKEN != ''
         shell: bash
         run: |
-          set +e
-          output=$(vercel deploy --prod --yes --token="$VERCEL_TOKEN" --scope=ogs7 --cwd=web 2>&1)
-          status=$?
-          set -e
+          set -euo pipefail
 
-          printf '%s\n' "$output"
+          api='https://api.vercel.com/v7/deployments'
+          deployment_url=''
 
-          if [ "$status" -ne 0 ]; then
-            echo "Vercel deploy exited with status $status"
-            exit "$status"
-          fi
+          for attempt in $(seq 1 60); do
+            response=$(curl --fail --silent --show-error --get "$api" \
+              -H "Authorization: Bearer $VERCEL_TOKEN" \
+              --data-urlencode "projectId=$VERCEL_PROJECT_ID" \
+              --data-urlencode "teamId=$VERCEL_ORG_ID" \
+              --data-urlencode 'target=production' \
+              --data-urlencode 'state=READY' \
+              --data-urlencode "sha=$GITHUB_SHA" \
+              --data-urlencode 'limit=1')
 
-          url=$(printf '%s\n' "$output" | grep -Eo 'https://[^[:space:]]+\.vercel\.app' | tail -n 1)
-          if [ -z "$url" ]; then
-            echo 'Vercel deployment succeeded but no deployment URL was detected.'
-            exit 1
-          fi
+            deployment_url=$(printf '%s' "$response" | jq -r '.deployments[0].url // empty')
+            deployment_sha=$(printf '%s' "$response" | jq -r '.deployments[0].meta.githubCommitSha // empty')
 
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-          echo "Deployed to $url"
+            if [ -n "$deployment_url" ] && [ "$deployment_sha" = "$GITHUB_SHA" ]; then
+              deployment_url="https://$deployment_url"
+              echo "Found READY Vercel production deployment for $GITHUB_SHA: $deployment_url"
+              echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            echo "Attempt $attempt/60: matching READY deployment not available yet."
+            sleep 5
+          done
+
+          echo "No READY Vercel production deployment was found for commit $GITHUB_SHA."
+          echo 'Recent matching deployment data:'
+          curl --fail --silent --show-error --get "$api" \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            --data-urlencode "projectId=$VERCEL_PROJECT_ID" \
+            --data-urlencode "teamId=$VERCEL_ORG_ID" \
+            --data-urlencode "sha=$GITHUB_SHA" \
+            --data-urlencode 'limit=5' | jq '{deployments: [.deployments[] | {uid, url, state, target, created, githubCommitSha: .meta.githubCommitSha}]}'
+          exit 1
 
       - name: Smoke test deployment
-        if: env.VERCEL_TOKEN != '' && steps.deploy.outputs.url != ''
+        if: env.VERCEL_TOKEN != '' && steps.vercel.outputs.url != ''
+        shell: bash
         run: |
-          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors "${{ steps.deploy.outputs.url }}/" > /dev/null
-          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors "${{ steps.deploy.outputs.url }}/robots.txt" > /dev/null
+          set -euo pipefail
+          base='${{ steps.vercel.outputs.url }}'
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors "$base/" > /dev/null
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors "$base/robots.txt" | grep -qi 'user-agent'
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors "$base/sitemap.xml" | grep -qi '<urlset'
+          echo "Production smoke tests passed for $base"
