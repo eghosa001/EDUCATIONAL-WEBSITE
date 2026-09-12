@@ -8,6 +8,37 @@ SET is_active = false,
 WHERE is_active = true
   AND source = 'SYLLABUS_GENERATED';
 
+-- Retire synthetic "past questions" whose stems/distractors are curriculum
+-- placeholders rather than real assessment items.
+UPDATE public.past_questions
+SET is_active = false,
+    updated_at = now()
+WHERE is_active = true
+  AND question_text ~* '^Which of the following best relates to';
+
+-- Seeded exams/quizzes that reference retired questions must not remain
+-- publicly usable: otherwise they would bypass the question quality gate.
+UPDATE public.exams
+SET is_active = false,
+    is_public = false,
+    updated_at = now()
+WHERE id IN (
+  SELECT DISTINCT eq.exam_id
+  FROM public.exam_questions eq
+  JOIN public.questions q ON q.id = eq.question_id
+  WHERE q.is_active = false
+);
+
+UPDATE public.quizzes
+SET is_active = false,
+    updated_at = now()
+WHERE id IN (
+  SELECT DISTINCT qq.quiz_id
+  FROM public.quiz_questions qq
+  JOIN public.questions q ON q.id = qq.question_id
+  WHERE q.is_active = false
+);
+
 -- Repair the remaining published pie-chart lessons whose older curriculum
 -- metadata contained only one generic objective/key point.
 UPDATE public.lessons
