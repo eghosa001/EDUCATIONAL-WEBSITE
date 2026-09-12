@@ -19,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
+      NEXT_PUBLIC_SUPABASE_URL: https://xanrzsszrysianxhpprk.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_-b8MMXYbJQKauBFjYVJ0vg_SG0GMpFs
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
       TEST_ACCESS_TOKEN: ${{ secrets.TEST_ACCESS_TOKEN }}
@@ -66,9 +68,7 @@ jobs:
         working-directory: web
         env:
           SUPABASE_URL: ${{ env.SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ env.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ env.SUPABASE_ANON_KEY }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.SUPABASE_ANON_KEY }}
           TEST_ACCESS_TOKEN: ${{ env.TEST_ACCESS_TOKEN }}
         run: npm run test:edge
       - name: Report missing optional integration secrets
