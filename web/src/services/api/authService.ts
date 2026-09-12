@@ -48,6 +48,18 @@ export interface AuthMessageResponse {
   message: string;
 }
 
+const ROLE_PRIORITY = ['super_admin', 'admin', 'content_admin', 'school_admin', 'teacher', 'parent', 'student'];
+
+const choosePrimaryRole = (roles: string[], fallback?: string) => {
+  const unique = [...new Set(roles.filter(Boolean))];
+  unique.sort((a, b) => {
+    const ai = ROLE_PRIORITY.indexOf(a);
+    const bi = ROLE_PRIORITY.indexOf(b);
+    return (ai === -1 ? ROLE_PRIORITY.length : ai) - (bi === -1 ? ROLE_PRIORITY.length : bi);
+  });
+  return unique[0] || fallback || 'student';
+};
+
 const mapUser = async (authUser: any): Promise<User> => {
   const supabase = getSupabase();
   const { data: profile } = await supabase
@@ -61,7 +73,8 @@ const mapUser = async (authUser: any): Promise<User> => {
     .select('roles(name)')
     .eq('user_id', authUser.id);
 
-  const role = ((roleRows || []).map((row: any) => row.roles?.name).find(Boolean) || authUser.user_metadata?.role || 'student') as User['role'];
+  const roleNames = (roleRows || []).map((row: any) => row.roles?.name).filter(Boolean) as string[];
+  const role = choosePrimaryRole(roleNames, authUser.user_metadata?.role) as User['role'];
   const createdAt = profile?.created_at || authUser.created_at || new Date().toISOString();
 
   return {
