@@ -21,7 +21,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   refreshToken: null,
   isAuthenticated: false,
-  isLoading: false,
+  // AuthProvider restores the Supabase session after hydration. Starting in a
+  // loading state prevents protected routes from redirecting before that
+  // restoration has had a chance to complete.
+  isLoading: true,
   setUser: (user) => set({ user, isAuthenticated: Boolean(user) }),
   setToken: (token) => set({ token }),
   setRefreshToken: (refreshToken) => set({ refreshToken }),
