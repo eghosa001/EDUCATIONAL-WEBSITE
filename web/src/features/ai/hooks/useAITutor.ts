@@ -1,6 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  sendAiTutorMessage,
+  generateAiQuiz,
+  generateAiSummary,
+  generateAiFlashcards,
+} from '@/services/api/aiService';
 
 interface Message {
   id: string;
@@ -10,6 +16,8 @@ interface Message {
 }
 
 interface AIContext {
+  subjectId?: string;
+  topicId?: string;
   studentLevel?: string;
   currentSubject?: string;
   currentTopic?: string;
@@ -21,6 +29,7 @@ export function useAITutor() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [context, setContext] = useState<AIContext>({});
+  const [sessionId, setSessionId] = useState<string | undefined>();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -32,60 +41,48 @@ export function useAITutor() {
   }, [messages, scrollToBottom]);
 
   const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim()) return;
+    const text = content.trim();
+    if (!text || isLoading) return;
 
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: `user-${Date.now()}`,
       role: 'user',
-      content,
+      content: text,
       timestamp: new Date(),
     };
-
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
     setError(null);
 
     try {
-      // In production, call the AI API
-      const response = await fetch('/api/v1/ai/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('edu_token')}`,
+      const data = await sendAiTutorMessage({
+        message: text,
+        subjectId: context.subjectId,
+        topicId: context.topicId,
+        sessionId,
+        context: {
+          studentLevel: context.studentLevel,
+          currentSubject: context.currentSubject,
+          currentTopic: context.currentTopic,
+          learningHistory: context.learningHistory,
         },
-        body: JSON.stringify({
-          message: content,
-          context,
-        }),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to get AI response');
-      }
-
-      const data = await response.json();
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: data.data?.response || 'I\'m here to help you learn!',
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
+      setSessionId(data.sessionId);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: data.message?.content || 'No response was returned.',
+          timestamp: new Date(),
+        },
+      ]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to get response');
-      // Add fallback response
-      const fallbackMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: getFallbackResponse(content),
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, fallbackMessage]);
+      setError(err instanceof Error ? err.message : 'Failed to get AI response');
     } finally {
       setIsLoading(false);
     }
-  }, [context]);
+  }, [context, isLoading, sessionId]);
 
   const updateContext = useCallback((newContext: Partial<AIContext>) => {
     setContext((prev) => ({ ...prev, ...newContext }));
@@ -93,22 +90,26 @@ export function useAITutor() {
 
   const clearConversation = useCallback(() => {
     setMessages([]);
+    setSessionId(undefined);
     setError(null);
   }, []);
 
-  const generateQuiz = useCallback(async (topic: string, difficulty: string, count: number = 5) => {
+  const generateQuiz = useCallback(async (
+    subjectId: string,
+    difficulty: string,
+    count: number = 5,
+    topicId?: string
+  ) => {
     setIsLoading(true);
+    setError(null);
     try {
-      const response = await fetch('/api/v1/ai/generate-quiz', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('edu_token')}`,
-        },
-        body: JSON.stringify({ topic, difficulty, count }),
+      const data = await generateAiQuiz({
+        subjectId,
+        topicId,
+        difficulty,
+        questionCount: count,
       });
-      const data = await response.json();
-      return data.data;
+      return data.quiz;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate quiz');
       return null;
@@ -119,17 +120,10 @@ export function useAITutor() {
 
   const generateSummary = useCallback(async (content: string) => {
     setIsLoading(true);
+    setError(null);
     try {
-      const response = await fetch('/api/v1/ai/summary', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('edu_token')}`,
-        },
-        body: JSON.stringify({ content }),
-      });
-      const data = await response.json();
-      return data.data;
+      const data = await generateAiSummary({ content, type: 'lesson', length: 'medium' });
+      return data.summary;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate summary');
       return null;
@@ -138,19 +132,12 @@ export function useAITutor() {
     }
   }, []);
 
-  const generateFlashcards = useCallback(async (topic: string) => {
+  const generateFlashcards = useCallback(async (subjectId: string, topicId?: string, count: number = 10) => {
     setIsLoading(true);
+    setError(null);
     try {
-      const response = await fetch('/api/v1/ai/flashcards', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('edu_token')}`,
-        },
-        body: JSON.stringify({ topic }),
-      });
-      const data = await response.json();
-      return data.data;
+      const data = await generateAiFlashcards({ subjectId, topicId, count });
+      return data.flashcards;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate flashcards');
       return null;
@@ -164,6 +151,7 @@ export function useAITutor() {
     isLoading,
     error,
     context,
+    sessionId,
     sendMessage,
     updateContext,
     clearConversation,
@@ -172,14 +160,4 @@ export function useAITutor() {
     generateFlashcards,
     messagesEndRef,
   };
-}
-
-function getFallbackResponse(userMessage: string): string {
-  const responses = [
-    `That's a great question about "${userMessage.slice(0, 50)}"... Let me help you understand this concept better.`,
-    `I can help with that! Here's what you need to know about this topic...`,
-    `Great question! Let me break this down for you in simple terms.`,
-    `I understand you're asking about this. Here's a helpful explanation...`,
-  ];
-  return responses[Math.floor(Math.random() * responses.length)];
 }
