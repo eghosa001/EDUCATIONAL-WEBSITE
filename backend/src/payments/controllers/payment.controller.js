@@ -5,6 +5,7 @@ import { studentCourseModel } from '../../progress/models/studentCourse.model.js
 import { AppError, HTTP_STATUS, ERROR_CODES } from '../../common/errors/index.js';
 import { NOTIFICATION_TYPES } from '../../common/constants/index.js';
 import { notificationService } from '../../notifications/services/notification.service.js';
+import { query } from '../../common/database/index.js';
 import crypto from 'crypto';
 
 const notFound = (resource) => { throw new AppError(`${resource} not found`, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND); };
@@ -97,7 +98,24 @@ async function activateSubscription(payment) {
   const plan = await subscriptionPlanModel.findById(payment.purpose_id); if (!plan) return;
   const existingSub = await subscriptionModel.findByUser(payment.user_id);
   const now = new Date(); const periodEnd = new Date(now); periodEnd.setDate(periodEnd.getDate() + Number(plan.durationDays || plan.duration_days || 0));
-  if (existingSub && ['active', 'trialing'].includes(existingSub.status)) { await subscriptionModel.update(existingSub.id, { currentPeriodStart: now, currentPeriodEnd: periodEnd, status: 'active', cancelAtPeriodEnd: false, gatewaySubscriptionId: payment.gateway_reference, gateway: payment.gateway }); return; }
+  if (existingSub && ['active', 'trialing'].includes(existingSub.status)) {
+    await query(
+      `UPDATE subscriptions
+          SET plan_id = $2,
+              gateway_subscription_id = $3,
+              gateway = $4,
+              status = 'active',
+              current_period_start = $5,
+              current_period_end = $6,
+              cancel_at_period_end = FALSE,
+              canceled_at = NULL,
+              ended_at = NULL,
+              updated_at = NOW()
+        WHERE id = $1`,
+      [existingSub.id, payment.purpose_id, payment.gateway_reference, payment.gateway, now, periodEnd]
+    );
+    return;
+  }
   await subscriptionModel.create({ userId: payment.user_id, planId: payment.purpose_id, gatewaySubscriptionId: payment.gateway_reference, gateway: payment.gateway, status: 'active', currentPeriodStart: now, currentPeriodEnd: periodEnd });
 }
 async function grantCourseAccess(payment) { const enrollment = await studentCourseModel.findByStudentAndCourse(payment.user_id, payment.purpose_id); if (!enrollment) await studentCourseModel.create({ studentId: payment.user_id, courseId: payment.purpose_id }); }
