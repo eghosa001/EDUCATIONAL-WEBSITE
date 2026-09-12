@@ -80,3 +80,29 @@ test('obsolete lesson regenerator is fail-closed', () => {
   assert.match(source, /process\.exit\(1\)/);
   assert.doesNotMatch(source, /from\('lessons'\)\.update/);
 });
+
+test('subscription named routes are declared before the dynamic id route and legacy webhook is absent', () => {
+  const source = fs.readFileSync(path.join(REPO_ROOT, 'backend', 'src', 'routes', 'subscription.routes.js'), 'utf8');
+  const dynamicIndex = source.indexOf("subscriptionRoutes.get('/:id'");
+  assert.ok(dynamicIndex > 0, 'dynamic subscription route is missing');
+  for (const route of ["get('/access'", "get('/invoices'", "get('/wallet'"]) {
+    const index = source.indexOf(`subscriptionRoutes.${route}`);
+    assert.ok(index >= 0 && index < dynamicIndex, `${route} must be declared before /:id`);
+  }
+  assert.doesNotMatch(source, /webhook\/:gateway/);
+});
+
+test('paid plan page uses verified backend payment checkout rather than activating a paid subscription directly', () => {
+  const page = fs.readFileSync(path.join(ROOT, 'src', 'app', 'dashboard', 'subscriptions', 'plans', 'page.tsx'), 'utf8');
+  assert.match(page, /createPayment\(/);
+  assert.match(page, /Continue to secure payment/);
+  assert.match(page, /authorizationUrl/);
+  assert.match(page, /price <= 0/);
+});
+
+test('subscription controller enforces ownership and blocks direct paid activation', () => {
+  const source = fs.readFileSync(path.join(REPO_ROOT, 'backend', 'src', 'subscriptions', 'controllers', 'subscription.controller.js'), 'utf8');
+  assert.match(source, /subscription\.user_id !== req\.user\.id/);
+  assert.match(source, /Paid subscriptions must be started through the secure payment checkout/);
+  assert.match(source, /Paid renewals must be started through the secure payment checkout/);
+});
