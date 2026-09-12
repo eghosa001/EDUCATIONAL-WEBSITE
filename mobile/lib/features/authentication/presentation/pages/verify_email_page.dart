@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/widgets/index.dart';
 import '../../../shared/repositories/authentication_repository.dart';
-import '../../../di/providers.dart';
+import '../../../shared/blocs/index.dart';
 
 class VerifyEmailPage extends ConsumerStatefulWidget {
   const VerifyEmailPage({super.key});
@@ -15,37 +15,36 @@ class VerifyEmailPage extends ConsumerStatefulWidget {
 class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
   bool _isLoading = false;
   String? _error;
+  String? _success;
 
-  @override
-  void initState() {
-    super.initState();
-    _resendEmail();
-  }
-
-  String? get _userEmail {
-    final user = ref.read(userProvider);
-    return user?['email'] as String?;
-  }
+  String? get _userEmail => ref.read(authNotifierProvider).pendingEmail;
 
   Future<void> _resendEmail() async {
     final email = _userEmail;
-    if (email == null) return;
+    if (email == null || email.isEmpty) {
+      setState(() => _error = 'Your pending email address is unavailable. Please register again.');
+      return;
+    }
 
     setState(() {
       _isLoading = true;
       _error = null;
+      _success = null;
     });
 
     try {
-      await ref.read(authenticationRepositoryProvider).forgotPassword(email: email);
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    } catch (e) {
+      await ref.read(authenticationRepositoryProvider).resendVerification(email: email);
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _error = 'Failed to resend. Please try again.';
+          _success = 'A new verification email has been sent.';
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _error = 'Failed to resend the verification email. Please try again.';
         });
       }
     }
@@ -54,6 +53,8 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final email = ref.watch(authNotifierProvider).pendingEmail;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Verify Email')),
       body: SingleChildScrollView(
@@ -63,13 +64,10 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
           children: [
             Icon(Icons.mail_outline, size: 64, color: theme.colorScheme.primary),
             const SizedBox(height: 16),
-            Text(
-              'Check your email',
-              style: theme.textTheme.headlineSmall,
-            ),
+            Text('Check your email', style: theme.textTheme.headlineSmall),
             const SizedBox(height: 8),
             Text(
-              'We\'ve sent a verification link to your email address${_userEmail != null ? ' (${_userEmail!})' : ''}. Please check your inbox and click the link to verify your account.',
+              'We sent a verification link${email != null ? ' to $email' : ''}. Open that link to verify your account, then return here and sign in.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -80,15 +78,15 @@ class _VerifyEmailPageState extends ConsumerState<VerifyEmailPage> {
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
               ),
-            EduButton(
-              label: 'Open Email App',
-              onPressed: () {},
-            ),
-            const SizedBox(height: 16),
+            if (_success != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Text(_success!, style: TextStyle(color: theme.colorScheme.primary)),
+              ),
             Center(
               child: TextButton(
                 onPressed: _isLoading ? null : _resendEmail,
-                child: Text(_isLoading ? 'Sending...' : 'Resend Email'),
+                child: Text(_isLoading ? 'Sending...' : 'Resend verification email'),
               ),
             ),
             const SizedBox(height: 8),
