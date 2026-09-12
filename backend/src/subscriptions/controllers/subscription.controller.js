@@ -139,7 +139,40 @@ export const createPlan = async (req, res) => {
 export const updatePlan = async (req, res) => {
   const payload = normalizePlanPayload(req.body, { partial: true });
   if (Object.keys(payload).length === 0) validationError('No valid plan fields were provided');
-  const plan = await subscriptionPlanModel.update(req.params.id, payload);
+
+  if (payload.code) {
+    const existingCode = await subscriptionPlanModel.findByCode(payload.code);
+    if (existingCode && existingCode.id !== req.params.id) {
+      throw new AppError('Plan code already exists', HTTP_STATUS.CONFLICT, ERROR_CODES.CONFLICT);
+    }
+  }
+
+  const columns = {
+    name: 'name',
+    code: 'code',
+    description: 'description',
+    price: 'price',
+    currency: 'currency',
+    billingCycle: 'billing_cycle',
+    durationDays: 'duration_days',
+    trialDays: 'trial_days',
+    features: 'features',
+    limits: 'limits',
+    isActive: 'is_active',
+    displayOrder: 'display_order',
+  };
+  const entries = Object.entries(payload);
+  const values = [req.params.id];
+  const assignments = entries.map(([key, value]) => {
+    const dbValue = ['features', 'limits'].includes(key) ? JSON.stringify(value) : value;
+    values.push(dbValue);
+    return `${columns[key]} = $${values.length}`;
+  });
+  const result = await query(
+    `UPDATE subscription_plans SET ${assignments.join(', ')}, updated_at = NOW() WHERE id = $1 RETURNING *`,
+    values
+  );
+  const plan = result.rows[0] || null;
   if (!plan) notFound('Subscription plan');
   res.json({ success: true, message: 'Subscription plan updated', data: { plan } });
 };
