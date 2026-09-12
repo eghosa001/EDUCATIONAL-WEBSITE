@@ -60,13 +60,15 @@ export const fetchCourseByIdOrSlug = async (idOrSlug: string, _token?: string): 
   const topicIds = [...new Set(mappedLessons.map((l: any) => l.topic_id).filter(Boolean))];
   let topics: any[] = [];
   if (topicIds.length) {
-    const { data, error } = await supabase.from('topics').select('id,title,name,description,order_index,subject_id,class_id,term_id').in('id', topicIds);
-    if (!error) topics = data || [];
+    const { data, error } = await supabase.from('topics').select('id,name,description,order_index,subject_id,class_id,term_id').in('id', topicIds);
+    if (error) throw new Error(`Unable to load course topics: ${error.message}`);
+    topics = data || [];
   }
   const topicMap = new Map(topics.map((t: any) => [t.id, t]));
   const topicGroups = topicIds.map(topicId => ({
-    id: `topic-${topicId}`,
-    title: topicMap.get(topicId)?.title || topicMap.get(topicId)?.name || 'Topic',
+    id: topicId,
+    title: topicMap.get(topicId)?.name || 'Topic',
+    name: topicMap.get(topicId)?.name || 'Topic',
     description: topicMap.get(topicId)?.description || '',
     order_index: topicMap.get(topicId)?.order_index ?? 999,
     is_active: true,
