@@ -30,6 +30,23 @@ function levelCodeToClassSlug(code: string | null) {
   return null;
 }
 
+function cleanTopicName(name: string) {
+  const raw = name.replace(/\s+/g, ' ').trim();
+  const mainHeading = raw.split('•')[0]?.trim() || raw;
+  const cleaned = mainHeading.replace(/[,:;\-]+$/g, '').replace(/\s+/g, ' ').trim();
+  return cleaned || raw;
+}
+
+function dedupeTopics(topics: Topic[]) {
+  const seen = new Set<string>();
+  return topics.filter(topic => {
+    const key = cleanTopicName(topic.name).toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export default function CurriculumPage() {
   const { token } = useAuthStore();
   const authToken = token ?? undefined;
@@ -38,6 +55,7 @@ export default function CurriculumPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [topicsByTerm, setTopicsByTerm] = useState<Record<string, Topic[]>>({});
+  const [rawTopicCount, setRawTopicCount] = useState(0);
   const [subjectSearch, setSubjectSearch] = useState('');
   const [topicSearch, setTopicSearch] = useState('');
   const [loadingLevels, setLoadingLevels] = useState(true);
@@ -56,6 +74,7 @@ export default function CurriculumPage() {
     setSelectedLevel(levelCode);
     setSelectedSubject(null);
     setTopicsByTerm({});
+    setRawTopicCount(0);
     setSubjectSearch('');
     setTopicSearch('');
     setLoadingSubjects(true);
@@ -75,11 +94,13 @@ export default function CurriculumPage() {
     if (!selectedLevel) return;
     setSelectedSubject(subject);
     setTopicsByTerm({});
+    setRawTopicCount(0);
     setTopicSearch('');
     setLoadingTopics(true);
     setError(null);
     try {
       const data = await fetchSubjectTopics(subject.id, selectedLevel, authToken);
+      setRawTopicCount(data.length);
       const grouped: Record<string, Topic[]> = {};
       for (const topic of data) {
         const term = topic.term_name || 'Other';
@@ -87,6 +108,7 @@ export default function CurriculumPage() {
       }
       for (const term of Object.keys(grouped)) {
         grouped[term].sort((a, b) => a.order_index - b.order_index || a.name.localeCompare(b.name));
+        grouped[term] = dedupeTopics(grouped[term]);
       }
       setTopicsByTerm(grouped);
     } catch {
@@ -106,7 +128,7 @@ export default function CurriculumPage() {
     if (!q) return topicsByTerm;
     return Object.fromEntries(
       Object.entries(topicsByTerm)
-        .map(([term, topics]) => [term, topics.filter(topic => `${topic.name} ${topic.description || ''}`.toLowerCase().includes(q))])
+        .map(([term, topics]) => [term, topics.filter(topic => `${cleanTopicName(topic.name)} ${topic.name} ${topic.description || ''}`.toLowerCase().includes(q))])
         .filter(([, topics]) => (topics as Topic[]).length > 0),
     );
   }, [topicsByTerm, topicSearch]);
@@ -118,6 +140,7 @@ export default function CurriculumPage() {
   const selectedLevelName = levels.find(level => level.code === selectedLevel)?.name;
   const totalTopics = Object.values(topicsByTerm).reduce((sum, topics) => sum + topics.length, 0);
   const visibleTopics = Object.values(filteredTopicsByTerm).reduce((sum, topics) => sum + topics.length, 0);
+  const duplicateCount = Math.max(0, rawTopicCount - totalTopics);
 
   return (
     <div className="space-y-6">
@@ -182,7 +205,7 @@ export default function CurriculumPage() {
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white"><BookOpenIcon className="h-5 w-5 text-blue-600" />3. {selectedSubject.name} topics</h2>
-              <p className="mt-1 text-sm text-gray-500">{selectedLevelName} · {topicSearch ? `${visibleTopics} of ${totalTopics}` : totalTopics} topics</p>
+              <p className="mt-1 text-sm text-gray-500">{selectedLevelName} · {topicSearch ? `${visibleTopics} of ${totalTopics}` : totalTopics} unique topics{duplicateCount ? ` · ${duplicateCount} repeated headings collapsed` : ''}</p>
             </div>
             <div className="relative w-full sm:w-80">
               <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -202,8 +225,8 @@ export default function CurriculumPage() {
                   </div>
                   <ol className="grid gap-2 md:grid-cols-2">
                     {filteredTopicsByTerm[term].map((topic, index) => (
-                      <li key={topic.id} className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:bg-slate-800 dark:text-slate-200">
-                        <span className="mr-2 font-semibold text-gray-400">{index + 1}.</span>{topic.name}
+                      <li key={topic.id} className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:bg-slate-800 dark:text-slate-200" title={topic.name}>
+                        <span className="mr-2 font-semibold text-gray-400">{index + 1}.</span>{cleanTopicName(topic.name)}
                       </li>
                     ))}
                   </ol>
