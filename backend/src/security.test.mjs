@@ -57,6 +57,7 @@ test('user service projects user_roles into the route-guard role field', () => {
   assert.match(source, /role:\s*primaryRole/);
   assert.match(source, /roles,\s*role:\s*primaryRole,\s*primaryRole,\s*permissions/);
   assert.match(source, /ROLE_PRIORITY/);
+  assert.match(source, /useSupabase[\s\S]*getByTable\('users'/);
 });
 
 test('removing roles cannot delete the final super administrator', () => {
@@ -68,7 +69,13 @@ test('removing roles cannot delete the final super administrator', () => {
   assert.match(routes, /protectLastSuperAdminRemoval/);
 });
 
-test('Supabase mode routes mobile auth through canonical Supabase sessions', () => {
+test('configured Supabase Auth, not DB transport mode, selects the mobile auth provider', () => {
+  const routes = fs.readFileSync(new URL('./routes/auth.routes.js', import.meta.url), 'utf8');
+  assert.match(routes, /const useSupabaseAuth = Boolean\(supabase\)/);
+  assert.doesNotMatch(routes, /useSupabase \? supabaseHandler : legacyHandler/);
+});
+
+test('mobile auth uses canonical Supabase sessions and accepts body refresh tokens', () => {
   const routes = fs.readFileSync(new URL('./routes/auth.routes.js', import.meta.url), 'utf8');
   const controller = fs.readFileSync(new URL('./auth/controllers/supabaseAuth.controller.js', import.meta.url), 'utf8');
   assert.match(routes, /chooseAuthHandler\(authController\.register, supabaseAuthController\.registerWithSupabase\)/);
@@ -79,6 +86,8 @@ test('Supabase mode routes mobile auth through canonical Supabase sessions', () 
   assert.match(controller, /auth\.refreshSession\(/);
   assert.match(controller, /accessToken:\s*session\.access_token/);
   assert.match(controller, /refreshToken:\s*session\.refresh_token/);
+  assert.match(controller, /auth\.verifyOtp\(\{ type: 'email', token_hash: token \}\)/);
+  assert.match(controller, /auth\.resend\(\{ type: 'signup', email \}\)/);
 });
 
 test('server Supabase clients do not persist or auto-refresh shared sessions', () => {
@@ -86,4 +95,12 @@ test('server Supabase clients do not persist or auto-refresh shared sessions', (
   assert.match(source, /persistSession:\s*false/);
   assert.match(source, /autoRefreshToken:\s*false/);
   assert.match(source, /detectSessionInUrl:\s*false/);
+});
+
+test('Supabase password flows never rely on nullable public password hashes', () => {
+  const source = fs.readFileSync(new URL('./auth/controllers/password.controller.js', import.meta.url), 'utf8');
+  assert.match(source, /supabaseAdmin\.rpc\('consume_password_reset'/);
+  assert.match(source, /auth\.admin\.updateUserById\(userId, \{ password \}\)/);
+  assert.match(source, /auth\.signInWithPassword\(/);
+  assert.match(source, /auth\.admin\.updateUserById\(req\.user\.id, \{ password: newPassword \}\)/);
 });
