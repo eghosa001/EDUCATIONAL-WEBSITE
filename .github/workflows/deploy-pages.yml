@@ -1,11 +1,6 @@
 name: Deploy GitHub Pages landing site
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'pages/**'
-      - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -29,8 +24,6 @@ jobs:
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload static site
         uses: actions/upload-pages-artifact@v3

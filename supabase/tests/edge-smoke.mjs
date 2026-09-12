@@ -1,14 +1,25 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const anonKey =
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+  '';
 const token = process.env.TEST_ACCESS_TOKEN;
-const functionsRoot = path.resolve(process.cwd(), 'functions');
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const functionsRoot = path.resolve(scriptDir, '..', 'functions');
 
 if (!supabaseUrl) {
   console.error('Missing SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL.');
+  process.exit(2);
+}
+
+if (!anonKey) {
+  console.error('Missing a Supabase anon/publishable key.');
   process.exit(2);
 }
 
