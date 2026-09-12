@@ -27,10 +27,11 @@ test('structural curriculum seeding never publishes placeholder lessons', () => 
 
 test('database migration blocks weak published lessons and malformed active curriculum questions', () => {
   assert.match(migration, /enforce_lesson_publication_quality/);
-  assert.match(migration, /written_content, ''\)\) < 700/);
+  assert.match(migration, /Published lesson requires at least 700 characters of written content/);
   assert.match(migration, /at least two learning objectives/);
   assert.match(migration, /at least two key points/);
   assert.match(migration, /Template\/generic lesson content cannot be published/);
+  assert.match(migration, /set search_path = public, pg_temp/);
   assert.match(migration, /enforce_active_question_quality/);
   assert.match(migration, /Active curriculum questions must be linked to a topic/);
   assert.match(migration, /correct answer must reference one of its option IDs/);
