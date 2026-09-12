@@ -31,9 +31,45 @@ export interface PaymentStats {
   completed: { total: number; total_amount: number };
 }
 
+type RawPayment = Record<string, unknown> & {
+  id?: string;
+  user_id?: string;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  amount?: number | string;
+  currency?: string;
+  status?: string;
+  gateway?: string;
+  method?: string;
+  reference?: string;
+  description?: string;
+  metadata?: Record<string, unknown>;
+  created_at?: string;
+  updated_at?: string;
+};
+
+const mapPayment = (row: RawPayment): Payment => ({
+  id: String(row.id || ''),
+  userId: String(row.user_id || ''),
+  email: row.email,
+  first_name: row.first_name,
+  last_name: row.last_name,
+  amount: Number(row.amount || 0),
+  currency: String(row.currency || 'NGN'),
+  status: String(row.status || ''),
+  method: String(row.gateway || row.method || ''),
+  reference: String(row.reference || ''),
+  description: row.description,
+  metadata: row.metadata,
+  createdAt: String(row.created_at || ''),
+  updatedAt: String(row.updated_at || ''),
+});
+
 export const fetchPaymentGateways = async (): Promise<{ gateways: PaymentGateway[] }> => {
   const response = await fetch(`${baseUrl}/payments/gateways`);
-  return handleApiError(response);
+  const body = (await handleApiError(response)) as { data?: { gateways?: PaymentGateway[] } };
+  return { gateways: body.data?.gateways ?? [] };
 };
 
 export const fetchPayments = async (
@@ -50,11 +86,15 @@ export const fetchPayments = async (
   const response = await fetch(`${baseUrl}/payments?${params.toString()}`, {
     headers: getAuthHeaders(token),
   });
-  return handleApiError(response);
+  const body = (await handleApiError(response)) as {
+    data?: { data?: RawPayment[]; pagination?: { page: number; limit: number; total: number; totalPages: number } };
+  };
+  const pagination = body.data?.pagination ?? { page: filters?.page || 1, limit: filters?.limit || 20, total: 0, totalPages: 0 };
+  return { data: { data: (body.data?.data ?? []).map(mapPayment), pagination } };
 };
 
 export const fetchPaymentStats = async (token: string, userId?: string): Promise<{ data: { stats: PaymentStats } }> => {
-  const params = userId ? `?userId=${userId}` : '';
+  const params = userId ? `?userId=${encodeURIComponent(userId)}` : '';
   const response = await fetch(`${baseUrl}/payments/stats${params}`, {
     headers: getAuthHeaders(token),
   });
