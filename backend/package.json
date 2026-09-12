@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "test": "node --test src/*.test.mjs",
+    "test": "node --test src/administration.test.mjs src/payments.test.mjs src/phase7.test.mjs src/security.test.mjs src/contentQuality.test.mjs",
+    "test:integration": "RUN_DB_INTEGRATION=1 node --test src/coreServices.test.mjs",
     "lint": "eslint src/",
     "db:migrate": "node scripts/migrate.js",
     "db:seed": "node scripts/seed.js"
