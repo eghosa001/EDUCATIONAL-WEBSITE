@@ -71,7 +71,7 @@ export const fetchSubscriptionPlans = async (token: string, filters?: { isActive
   if (filters?.page) params.append('page', String(filters.page));
   if (filters?.limit) params.append('limit', String(filters.limit));
 
-  const response = await fetch(`${baseUrl}/subscriptions/plans?${params.toString()}`, {
+  const response = await fetch(`${baseUrl}/subscriptions/plans/manage?${params.toString()}`, {
     headers: getAuthHeaders(token),
   });
   const body = (await handleApiError(response)) as {
