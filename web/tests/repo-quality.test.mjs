@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT = process.cwd();
+const REPO_ROOT = path.resolve(ROOT, '..');
 const APP_ROOT = path.join(ROOT, 'src', 'app');
 
 function walk(dir) {
@@ -50,4 +51,32 @@ test('web source contains no committed private-key shaped values', () => {
     assert.doesNotMatch(source, /SUPABASE_SERVICE_ROLE_KEY\s*=\s*['\"][^'\"]+['\"]/i, path.relative(ROOT, file));
     assert.doesNotMatch(source, /sk_live_[A-Za-z0-9]+/, path.relative(ROOT, file));
   }
+});
+
+test('analytics privileged datasets remain administrator-only', () => {
+  const source = fs.readFileSync(path.join(REPO_ROOT, 'supabase', 'functions', 'analytics', 'index.ts'), 'utf8');
+  assert.match(source, /adminOnlyActions/);
+  assert.match(source, /Administrator access required/);
+  assert.match(source, /roles\(name\)/);
+});
+
+test('lesson worker requires its private worker token', () => {
+  const source = fs.readFileSync(path.join(REPO_ROOT, 'supabase', 'functions', 'lesson-worker', 'index.ts'), 'utf8');
+  assert.match(source, /x-worker-token/);
+  assert.match(source, /requireWorkerToken/);
+  assert.match(source, /internal_worker_auth/);
+});
+
+test('paid subscriptions are not activated before payment', () => {
+  const source = fs.readFileSync(path.join(REPO_ROOT, 'supabase', 'functions', 'payments', 'index.ts'), 'utf8');
+  assert.match(source, /if \(price > 0\) return json/);
+  assert.match(source, /paymentRequired:\s*true/);
+  assert.doesNotMatch(source, /status:\s*'trialing'.*insert/s);
+});
+
+test('obsolete lesson regenerator is fail-closed', () => {
+  const source = fs.readFileSync(path.join(REPO_ROOT, 'backend', 'scripts', 'ai-regenerate-lessons.js'), 'utf8');
+  assert.match(source, /intentionally disabled/);
+  assert.match(source, /process\.exit\(1\)/);
+  assert.doesNotMatch(source, /from\('lessons'\)\.update/);
 });
