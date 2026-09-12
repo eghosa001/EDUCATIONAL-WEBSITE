@@ -3,9 +3,7 @@ import {
   authMiddleware,
   requireRole,
   optionalAuthMiddleware,
-  validateRequest,
 } from '../common/middleware/index.js';
-import { schemas } from '../common/validators/joi.js';
 import * as subscriptionController from '../subscriptions/controllers/subscription.controller.js';
 
 export const subscriptionRoutes = Router();
@@ -23,7 +21,6 @@ subscriptionRoutes.get('/plans/:id',
 subscriptionRoutes.post('/plans',
   authMiddleware,
   requireRole('super_admin', 'content_admin'),
-  validateRequest(schemas.subscription.createPlan),
   subscriptionController.createPlan
 );
 
