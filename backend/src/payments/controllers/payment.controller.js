@@ -41,7 +41,7 @@ export const handlePaystackWebhook = async (req, res) => {
     if (!timingSafeHexEqual(signature, expected)) return res.status(HTTP_STATUS.FORBIDDEN).json({ success: false, error: 'Webhook authentication failed' });
     const payload = req.body;
     if (!payload || !payload.event || !payload.data) return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, error: 'Invalid payload' });
-    if (payload.event === 'charge.success') await processSuccessfulPayment({ reference: payload.data.reference, gateway: 'paystack', gatewayReference: payload.data.transaction?.toString(), amount: Number(payload.data.amount) / 100, currency: payload.data.currency });
+    if (payload.event === 'charge.success') await processSuccessfulPayment({ reference: payload.data.reference, gateway: 'paystack', gatewayReference: payload.data.id?.toString() || payload.data.transaction?.toString(), amount: Number(payload.data.amount) / 100, currency: payload.data.currency });
     else if (payload.event === 'charge.failed') { const payment = await paymentModel.findByReference(payload.data.reference); if (payment?.status === 'pending') await paymentModel.update(payment.id, { status: 'failed', failureReason: 'Payment failed at gateway' }); }
     return res.json({ success: true });
   } catch (error) { console.error('[Paystack Webhook] Error:', error); return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, error: 'Internal server error' }); }
@@ -50,12 +50,30 @@ export const handlePaystackWebhook = async (req, res) => {
 export const handleFlutterwaveWebhook = async (req, res) => {
   try {
     const secretHash = process.env.FLUTTERWAVE_WEBHOOK_SECRET || process.env.FLUTTERWAVE_ENCRYPTION_KEY;
-    const signature = req.headers['verif-hash'];
-    if (!secretHash || typeof signature !== 'string' || !timingSafeStringEqual(signature, secretHash)) return res.status(HTTP_STATUS.FORBIDDEN).json({ success: false, error: 'Webhook authentication failed' });
+    if (!secretHash || !req.rawBody) return res.status(HTTP_STATUS.FORBIDDEN).json({ success: false, error: 'Webhook authentication failed' });
+
+    const modernSignature = req.headers['flutterwave-signature'];
+    const legacySignature = req.headers['verif-hash'];
+    let authenticated = false;
+    if (typeof modernSignature === 'string') {
+      const expected = crypto.createHmac('sha256', secretHash).update(req.rawBody).digest('base64');
+      authenticated = timingSafeStringEqual(modernSignature, expected);
+    } else if (typeof legacySignature === 'string') {
+      authenticated = timingSafeStringEqual(legacySignature, secretHash);
+    }
+    if (!authenticated) return res.status(HTTP_STATUS.FORBIDDEN).json({ success: false, error: 'Webhook authentication failed' });
+
     const payload = req.body;
     if (!payload?.data) return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, error: 'Invalid payload' });
-    if (payload?.event?.type === 'complete') await processSuccessfulPayment({ reference: payload.data.tx_ref, gateway: 'flutterwave', gatewayReference: payload.data.id?.toString(), amount: Number(payload.data.amount), currency: payload.data.currency });
-    else if (payload?.event?.type === 'failed') { const payment = await paymentModel.findByReference(payload.data.tx_ref); if (payment?.status === 'pending') await paymentModel.update(payment.id, { status: 'failed', failureReason: 'Payment failed at gateway' }); }
+    const eventType = String(payload.type || payload.event?.type || payload.event || '').toLowerCase();
+    const status = String(payload.data.status || '').toLowerCase();
+    const reference = payload.data.reference || payload.data.tx_ref;
+    if (eventType === 'charge.completed' && ['succeeded', 'successful', 'success', 'completed'].includes(status)) {
+      await processSuccessfulPayment({ reference, gateway: 'flutterwave', gatewayReference: payload.data.id?.toString(), amount: Number(payload.data.amount), currency: payload.data.currency });
+    } else if (eventType === 'charge.failed' || status === 'failed') {
+      const payment = reference ? await paymentModel.findByReference(reference) : null;
+      if (payment?.status === 'pending') await paymentModel.update(payment.id, { status: 'failed', failureReason: 'Payment failed at gateway' });
+    }
     return res.json({ success: true });
   } catch (error) { console.error('[Flutterwave Webhook] Error:', error); return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, error: 'Internal server error' }); }
 };
