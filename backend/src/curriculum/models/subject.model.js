@@ -44,6 +44,8 @@ export const subjectModel = {
   },
 
   async list({ page = 1, limit = 20, educationSystemId, classId, levelCode } = {}) {
+    const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+    const safeLimit = Math.min(100, Math.max(1, Number.parseInt(limit, 10) || 20));
     const conditions = [];
     const values = [];
     let joins = '';
@@ -69,15 +71,30 @@ export const subjectModel = {
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const offset = (page - 1) * limit;
-    values.push(limit, offset);
-
-    const result = await query(
-      `SELECT DISTINCT subjects.* FROM subjects ${joins} ${whereClause} ORDER BY subjects.name LIMIT $${values.length - 1} OFFSET $${values.length}`,
+    const countResult = await query(
+      `SELECT COUNT(DISTINCT subjects.id)::int AS total FROM subjects ${joins} ${whereClause}`,
       values
     );
+    const total = Number(countResult.rows[0]?.total || 0);
+    const offset = (safePage - 1) * safeLimit;
+    const pageValues = [...values, safeLimit, offset];
 
-    return { data: result.rows, page, limit };
+    const result = await query(
+      `SELECT DISTINCT subjects.* FROM subjects ${joins} ${whereClause}
+       ORDER BY subjects.name, subjects.id
+       LIMIT $${pageValues.length - 1} OFFSET $${pageValues.length}`,
+      pageValues
+    );
+
+    return {
+      data: result.rows,
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: total === 0 ? 0 : Math.ceil(total / safeLimit),
+      },
+    };
   },
 
   async delete(id) {
