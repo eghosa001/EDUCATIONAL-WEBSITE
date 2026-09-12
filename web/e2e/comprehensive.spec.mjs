@@ -40,6 +40,43 @@ function isRisky(label) {
   return /\b(delete|remove|logout|sign out|pay|purchase|subscribe|cancel|submit|save|create|enroll|start exam|finish|generate|reset|send|post|publish)\b/i.test(label);
 }
 
+async function waitForSettledDocument(page) {
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+  let previousUrl = page.url();
+  for (let i = 0; i < 4; i++) {
+    await page.waitForTimeout(250);
+    const currentUrl = page.url();
+    if (currentUrl === previousUrl) return;
+    previousUrl = currentUrl;
+    await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {});
+  }
+}
+
+async function inspectRenderedDocument(page) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await page.evaluate(() => {
+        const bodyText = document.body?.innerText?.trim() || '';
+        const images = Array.from(document.querySelectorAll('img')).filter(img => {
+          const style = window.getComputedStyle(img);
+          const rect = img.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+        }).map(img => ({ complete: img.complete, naturalWidth: img.naturalWidth, src: img.currentSrc || img.src }));
+        return {
+          bodyText,
+          images,
+          overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        };
+      });
+    } catch (error) {
+      if (attempt === 2) throw error;
+      await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {});
+      await page.waitForTimeout(250);
+    }
+  }
+  throw new Error('Unable to inspect settled document');
+}
+
 const pageFiles = walk(APP_ROOT).filter(f => /\/page\.(tsx|ts|jsx|js)$/.test(f));
 const routes = [...new Set(pageFiles.map(routeFromPageFile).filter(Boolean))];
 const staticRoutes = routes.filter(r => !isDynamic(r));
@@ -64,20 +101,16 @@ test.describe('THE GUIDE comprehensive route and UI smoke suite', () => {
       const response = await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 30000 });
       expect(response, `No response for ${route}`).not.toBeNull();
       expect(response.status(), `${route} returned HTTP ${response.status()}`).toBeLessThan(500);
-      await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
-      await expect(page.locator('body')).not.toBeEmpty();
-      const bodyText = (await page.locator('body').innerText()).trim();
-      expect(bodyText.length, `${route} appears blank`).toBeGreaterThan(10);
-      expect(bodyText).not.toMatch(/Application error: a client-side exception has occurred/i);
+      await waitForSettledDocument(page);
+      const snapshot = await inspectRenderedDocument(page);
+      expect(snapshot.bodyText.length, `${route} appears blank`).toBeGreaterThan(10);
+      expect(snapshot.bodyText).not.toMatch(/Application error: a client-side exception has occurred/i);
       expect(fatal, `Fatal browser errors on ${route}`).toEqual([]);
-      const images = page.locator('img:visible');
-      for (let i = 0; i < await images.count(); i++) {
-        await expect(images.nth(i)).toHaveJSProperty('complete', true);
-        const width = await images.nth(i).evaluate(img => img.naturalWidth);
-        expect(width, `Broken image on ${route}`).toBeGreaterThan(0);
+      for (const image of snapshot.images) {
+        expect(image.complete, `Image did not finish loading on ${route}: ${image.src}`).toBe(true);
+        expect(image.naturalWidth, `Broken image on ${route}: ${image.src}`).toBeGreaterThan(0);
       }
-      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-      expect(overflow, `Horizontal overflow on ${route}`).toBeLessThanOrEqual(8);
+      expect(snapshot.overflow, `Horizontal overflow on ${route}`).toBeLessThanOrEqual(8);
     });
   }
 
@@ -92,6 +125,7 @@ test.describe('THE GUIDE comprehensive route and UI smoke suite', () => {
       seen.add(key);
       const response = await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => null);
       if (!response || response.status() >= 500) { failures.push(`${route} -> ${response?.status() ?? 'navigation failed'}`); continue; }
+      await waitForSettledDocument(page);
       for (const href of await page.locator('a[href]').evaluateAll(as => as.map(a => a.getAttribute('href')).filter(Boolean))) {
         if (!isInternal(href)) continue;
         const target = new URL(href, BASE);
@@ -111,7 +145,7 @@ test.describe('THE GUIDE comprehensive route and UI smoke suite', () => {
     const errors = [];
     page.on('pageerror', err => errors.push(err.message));
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+    await waitForSettledDocument(page);
     const buttons = page.locator('button:visible');
     const count = await buttons.count();
     for (let i = 0; i < count; i++) {
@@ -129,8 +163,9 @@ test.describe('THE GUIDE comprehensive route and UI smoke suite', () => {
     const page = await context.newPage();
     for (const route of staticRoutes.slice(0, 30)) {
       await page.goto(route, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
-      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-      expect(overflow, `Mobile horizontal overflow on ${route}`).toBeLessThanOrEqual(8);
+      await waitForSettledDocument(page);
+      const snapshot = await inspectRenderedDocument(page);
+      expect(snapshot.overflow, `Mobile horizontal overflow on ${route}`).toBeLessThanOrEqual(8);
     }
     await context.close();
   });
@@ -148,7 +183,9 @@ test.describe('THE GUIDE comprehensive route and UI smoke suite', () => {
     for (const href of hrefs) {
       const response = await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => null);
       expect(response?.status() ?? 599).toBeLessThan(500);
-      await expect(page.locator('body')).not.toBeEmpty();
+      await waitForSettledDocument(page);
+      const snapshot = await inspectRenderedDocument(page);
+      expect(snapshot.bodyText.length).toBeGreaterThan(10);
     }
     expect(errors).toEqual([]);
   });
