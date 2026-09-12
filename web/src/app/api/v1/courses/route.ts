@@ -11,16 +11,24 @@ export async function GET(request: Request) {
 
   const supabase = getSupabase();
   const { searchParams } = new URL(request.url);
-  const status = searchParams.get('status');
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)));
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  let query = supabase.from('courses').select('*', { count: 'exact' }).order('created_at', { ascending: false });
-  if (status) query = query.eq('status', status);
-  const { data, error, count } = await query.range(from, to);
-  if (error) return Response.json({ success: false, error: error.message }, { status: 500 });
+  // This route is a public catalog endpoint. Draft/archived courses belong in
+  // authenticated author/admin flows and must never be selectable here.
+  const query = supabase
+    .from('courses')
+    .select('*', { count: 'exact' })
+    .eq('status', 'published')
+    .order('created_at', { ascending: false });
 
-  return Response.json({ success: true, data: data || [], pagination: { page, limit, total: count || 0, totalPages: Math.ceil((count || 0) / limit) } });
+  const { data, error, count } = await query.range(from, to);
+  if (error) return Response.json({ success: false, error: 'Unable to load courses' }, { status: 500 });
+
+  return Response.json(
+    { success: true, data: data || [], pagination: { page, limit, total: count || 0, totalPages: Math.ceil((count || 0) / limit) } },
+    { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } },
+  );
 }
