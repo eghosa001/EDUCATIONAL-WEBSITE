@@ -1,6 +1,6 @@
 import { createSupabaseClient, supabaseAdmin } from '../../common/supabase/index.js';
 import userService from '../../users/services/user.service.js';
-import { query } from '../../common/database/index.js';
+import { supabaseUpdate } from '../../common/database/index.js';
 import { AppError, HTTP_STATUS, ERROR_CODES } from '../../common/errors/index.js';
 
 const SECURE = process.env.NODE_ENV === 'production';
@@ -99,8 +99,6 @@ export const registerWithSupabase = async (req, res) => {
     throw new AppError('Registration failed', HTTP_STATUS.SERVICE_UNAVAILABLE, 'SERVICE_UNAVAILABLE');
   }
 
-  // The auth.users insert trigger creates public.users/profile/user_roles. Load
-  // that canonical application identity so all clients receive one role model.
   const user = await loadActiveUser(data.user.id);
   const tokens = data.session ? tokensFromSession(data.session) : null;
   if (tokens) setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
@@ -131,7 +129,7 @@ export const loginWithSupabase = async (req, res) => {
   }
 
   const user = await loadActiveUser(data.user.id);
-  await query('UPDATE public.users SET last_login_at = now(), updated_at = now() WHERE id = $1', [user.id]);
+  await supabaseUpdate('users', { last_login_at: new Date().toISOString(), updated_at: new Date().toISOString() }, { id: user.id });
 
   const tokens = tokensFromSession(data.session);
   setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
@@ -144,8 +142,8 @@ export const loginWithSupabase = async (req, res) => {
 
 export const refreshWithSupabase = async (req, res) => {
   const token = req.body?.refreshToken
-    || req.headers.authorization?.replace(/^Bearer\s+/i, '')
-    || req.supabaseRefreshToken;
+    || req.supabaseRefreshToken
+    || req.headers.authorization?.replace(/^Bearer\s+/i, '');
   if (!token) {
     throw new AppError('No refresh token provided', HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.AUTHENTICATION_ERROR);
   }
