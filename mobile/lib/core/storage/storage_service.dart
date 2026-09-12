@@ -13,21 +13,60 @@ class StorageService {
   late Box _settingsBox;
   late Box _cacheBox;
   final _secureStorage = const FlutterSecureStorage();
+  bool _initialized = false;
 
-  String? get token => _authBox.get(AppConfig.tokenKey);
-  set token(String? value) => _authBox.put(AppConfig.tokenKey, value);
+  bool get isInitialized => _initialized;
 
-  String? get refreshToken => _authBox.get(AppConfig.refreshTokenKey);
-  set refreshToken(String? value) => _authBox.put(AppConfig.refreshTokenKey, value);
+  // User/profile metadata may remain in Hive. Access and refresh tokens are
+  // secrets and are stored only in platform secure storage.
+  Map<String, dynamic>? get user {
+    final value = _authBox.get(AppConfig.userKey);
+    if (value == null) return null;
+    return Map<String, dynamic>.from(value as Map);
+  }
 
-  Map<String, dynamic>? get user => _authBox.get(AppConfig.userKey) as Map<String, dynamic>?;
-  set user(Map<String, dynamic>? value) => _authBox.put(AppConfig.userKey, value);
+  set user(Map<String, dynamic>? value) {
+    if (value == null) {
+      _authBox.delete(AppConfig.userKey);
+    } else {
+      _authBox.put(AppConfig.userKey, value);
+    }
+  }
 
-  bool get isAuthenticated => token != null && token!.isNotEmpty;
+  Future<void> saveUser(Map<String, dynamic>? value) async {
+    user = value;
+  }
+
+  Future<String?> readToken() => _secureStorage.read(key: AppConfig.tokenKey);
+  Future<String?> readRefreshToken() => _secureStorage.read(key: AppConfig.refreshTokenKey);
+
+  Future<void> saveToken(String? value) async {
+    if (value == null || value.isEmpty) {
+      await _secureStorage.delete(key: AppConfig.tokenKey);
+    } else {
+      await _secureStorage.write(key: AppConfig.tokenKey, value: value);
+    }
+  }
+
+  Future<void> saveRefreshToken(String? value) async {
+    if (value == null || value.isEmpty) {
+      await _secureStorage.delete(key: AppConfig.refreshTokenKey);
+    } else {
+      await _secureStorage.write(key: AppConfig.refreshTokenKey, value: value);
+    }
+  }
+
+  Future<bool> get isAuthenticated async {
+    final value = await readToken();
+    return value != null && value.isNotEmpty;
+  }
 
   Future<void> clearAuth() async {
-    _authBox.clear();
-    await _secureStorage.deleteAll();
+    if (_initialized) {
+      await _authBox.delete(AppConfig.userKey);
+    }
+    await _secureStorage.delete(key: AppConfig.tokenKey);
+    await _secureStorage.delete(key: AppConfig.refreshTokenKey);
   }
 
   String? getSetting(String key) => _settingsBox.get(key) as String?;
@@ -36,17 +75,17 @@ class StorageService {
   Future<String?> getCache(String key) async {
     final data = _cacheBox.get(key);
     if (data == null) return null;
-    final cache = data as Map<String, dynamic>;
-    final expiresAt = DateTime.tryParse(cache['expiresAt'] ?? '');
+    final cache = Map<String, dynamic>.from(data as Map);
+    final expiresAt = DateTime.tryParse(cache['expiresAt']?.toString() ?? '');
     if (expiresAt != null && expiresAt.isBefore(DateTime.now())) {
-      _cacheBox.delete(key);
+      await _cacheBox.delete(key);
       return null;
     }
     return cache['value'] as String?;
   }
 
   Future<void> setCache(String key, String value, {Duration ttl = const Duration(hours: 1)}) async {
-    _cacheBox.put(key, {
+    await _cacheBox.put(key, {
       'value': value,
       'expiresAt': DateTime.now().add(ttl).toIso8601String(),
     });
@@ -59,16 +98,28 @@ class StorageService {
     return '${dir?.path ?? ''}/downloads/$filename';
   }
 
-  Future<File> getFile(String path) async {
-    return File(path);
-  }
+  Future<File> getFile(String path) async => File(path);
 
   Future<void> init() async {
+    if (_initialized) return;
     final appDocDir = await getApplicationDocumentsDirectory();
     await Hive.initFlutter(appDocDir.path);
-
     _authBox = await Hive.openBox(AppConfig.authBoxName);
     _settingsBox = await Hive.openBox(AppConfig.settingsBoxName);
     _cacheBox = await Hive.openBox(AppConfig.cacheBoxName);
+
+    // Migrate any legacy Hive-stored tokens into secure storage once, then
+    // delete the plaintext copies from Hive.
+    final legacyToken = _authBox.get(AppConfig.tokenKey)?.toString();
+    final legacyRefresh = _authBox.get(AppConfig.refreshTokenKey)?.toString();
+    if (legacyToken != null && legacyToken.isNotEmpty && await readToken() == null) {
+      await saveToken(legacyToken);
+    }
+    if (legacyRefresh != null && legacyRefresh.isNotEmpty && await readRefreshToken() == null) {
+      await saveRefreshToken(legacyRefresh);
+    }
+    await _authBox.delete(AppConfig.tokenKey);
+    await _authBox.delete(AppConfig.refreshTokenKey);
+    _initialized = true;
   }
 }
