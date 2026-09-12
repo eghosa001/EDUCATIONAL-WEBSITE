@@ -8,6 +8,11 @@ import { paystackService } from './paystack.service.js';
 import { flutterwaveService } from './flutterwave.service.js';
 
 const notFound = (resource) => { throw new AppError(`${resource} not found`, HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND); };
+const positiveInt = (value, fallback, max = 200) => {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, max);
+};
 
 export const initializePayment = async (userId, data) => {
   const { currency = 'NGN', gateway, planId, courseId, examId, redirectUrl, metadata = {} } = data;
@@ -17,7 +22,6 @@ export const initializePayment = async (userId, data) => {
   let purpose = metadata.purpose || 'general';
   let purposeId = planId || courseId || examId || null;
 
-  // Never trust a client-supplied amount for an entitlement-bearing payment.
   if (planId) {
     const plan = await subscriptionPlanModel.findById(planId);
     if (!plan || !plan.is_active) throw new AppError('Subscription plan not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
@@ -63,8 +67,6 @@ export const initializePayment = async (userId, data) => {
     purpose, purposeId, metadata: { ...metadata, redirectUrl, gatewayResponse },
   });
 
-  // Wallet payments are already settled. Grant only the entitlement attached to
-  // this exact payment, rather than relying on a client-controlled callback.
   if (gateway === PAYMENT_GATEWAYS.WALLET) await grantEntitlement(payment);
 
   if (gateway === PAYMENT_GATEWAYS.WALLET) return { success: true, data: { payment, accessCode: null, authorizationUrl: null } };
@@ -128,6 +130,35 @@ const grantEntitlement = async (payment) => {
   }
 };
 
+const hasOtherCompletedEntitlementPayment = async (payment) => {
+  if (!payment.purpose_id || !['subscription', 'course'].includes(payment.purpose)) return false;
+  const result = await query(
+    `SELECT 1 FROM payments
+      WHERE user_id = $1
+        AND purpose = $2
+        AND purpose_id = $3
+        AND status = $4
+        AND id <> $5
+      LIMIT 1`,
+    [payment.user_id, payment.purpose, payment.purpose_id, PAYMENT_STATUS.COMPLETED, payment.id]
+  );
+  return result.rows.length > 0;
+};
+
+const revokeEntitlementAfterRefund = async (payment) => {
+  if (await hasOtherCompletedEntitlementPayment(payment)) return;
+  if (payment.purpose === 'subscription' && payment.purpose_id) {
+    await query(
+      `UPDATE subscriptions
+          SET status = 'cancelled', cancel_at_period_end = FALSE, canceled_at = NOW(), ended_at = NOW(), updated_at = NOW()
+        WHERE user_id = $1 AND plan_id = $2 AND status IN ('active', 'trialing')`,
+      [payment.user_id, payment.purpose_id]
+    );
+  } else if (payment.purpose === 'course' && payment.purpose_id) {
+    await query('DELETE FROM student_courses WHERE student_id = $1 AND course_id = $2', [payment.user_id, payment.purpose_id]);
+  }
+};
+
 export const deductWallet = async (userId, amount, description, reference) => {
   const wallet = await walletModel.findByUserId(userId);
   if (!wallet) throw new AppError('Wallet not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
@@ -141,17 +172,28 @@ export const deductWallet = async (userId, amount, description, reference) => {
   return { walletBalance: balanceAfter, transactionRef: reference };
 };
 
-export const refundPayment = async (paymentId, userId, reason) => {
+export const refundPayment = async (paymentId, customerUserId, reason) => {
   const payment = await paymentModel.findById(paymentId);
   if (!payment) notFound('Payment');
   if (payment.status !== PAYMENT_STATUS.COMPLETED) throw new AppError('Only completed payments can be refunded', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
-  if (payment.user_id !== userId) throw new AppError('Unauthorized', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR);
-  return transaction(async () => {
-    const refundResult = await performRefund(payment);
-    await paymentModel.update(paymentId, { status: PAYMENT_STATUS.REFUNDED, metadata: { ...payment.metadata, refundReason: reason, refundAmount: refundResult?.amount } });
-    if (refundResult && payment.gateway !== PAYMENT_GATEWAYS.WALLET) await creditWalletBalance(userId, refundResult.amount, `Refund: ${reason}`, payment.reference);
-    return refundResult;
+  if (payment.user_id !== customerUserId) throw new AppError('Payment customer mismatch', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+
+  let refundResult;
+  if (payment.gateway === PAYMENT_GATEWAYS.WALLET) {
+    await creditWalletBalance(payment.user_id, Number(payment.amount), `Refund: ${reason || 'Administrative refund'}`, `${payment.reference}-REFUND`);
+    refundResult = { amount: Number(payment.amount), gateway: PAYMENT_GATEWAYS.WALLET };
+  } else {
+    refundResult = await performRefund(payment);
+    if (!refundResult) throw new AppError('Payment gateway does not support refunds', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.PAYMENT_ERROR);
+  }
+
+  const refundAmount = Number(refundResult?.amount ?? payment.amount);
+  await paymentModel.update(paymentId, {
+    status: PAYMENT_STATUS.REFUNDED,
+    metadata: { ...payment.metadata, refundReason: reason || null, refundAmount },
   });
+  await revokeEntitlementAfterRefund(payment);
+  return refundResult;
 };
 
 const performRefund = async (payment) => {
@@ -165,10 +207,12 @@ const performRefund = async (payment) => {
 const creditWalletBalance = async (userId, amount, description, reference) => {
   const wallet = await walletModel.findByUserId(userId);
   if (!wallet) throw new AppError('Wallet not found', HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
+  const numericAmount = Number(amount);
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) throw new AppError('Invalid wallet credit amount', HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
   const balanceBefore = Number(wallet.balance);
-  const balanceAfter = balanceBefore + amount;
+  const balanceAfter = balanceBefore + numericAmount;
   await walletModel.updateBalance(wallet.id, balanceAfter);
-  await walletTransactionModel.create({ walletId: wallet.id, userId, type: 'credit', amount, balanceBefore, balanceAfter, reference: reference || generateReference(), description });
+  await walletTransactionModel.create({ walletId: wallet.id, userId, type: 'credit', amount: numericAmount, balanceBefore, balanceAfter, reference: reference || generateReference(), description });
 };
 
 export const getPaymentById = async (paymentId, userId) => {
@@ -177,3 +221,14 @@ export const getPaymentById = async (paymentId, userId) => {
   if (payment.user_id !== userId) throw new AppError('Unauthorized', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR);
   return payment;
 };
+
+export const listPayments = async ({ page = 1, limit = 20, userId, status, startDate, endDate } = {}) => paymentModel.list({
+  page: positiveInt(page, 1),
+  limit: positiveInt(limit, 20),
+  userId,
+  status,
+  startDate,
+  endDate,
+});
+
+export const getPaymentStats = async (userId = null) => paymentModel.getStats(userId || null);
