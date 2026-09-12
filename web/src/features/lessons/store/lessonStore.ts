@@ -9,6 +9,7 @@ interface LessonState {
   currentLesson: Lesson | null;
   lessons: Lesson[];
   completedLessons: Set<string>;
+  inProgressLessons: Set<string>;
   isCompleted: (lessonId: string) => boolean;
   markCompleted: (lessonId: string) => void;
   markInProgress: (lessonId: string) => void;
@@ -26,29 +27,33 @@ export const useLessonStore = create<LessonState>((set, get) => ({
   currentLesson: null,
   lessons: [],
   completedLessons: new Set(),
+  inProgressLessons: new Set(),
   currentLessonIndex: 0,
   videoProgress: {},
 
   isCompleted: (lessonId) => get().completedLessons.has(lessonId),
 
   markCompleted: (lessonId) => {
-    set((state) => ({
-      completedLessons: new Set([...state.completedLessons, lessonId]),
-    }));
+    set((state) => {
+      const inProgressLessons = new Set(state.inProgressLessons);
+      inProgressLessons.delete(lessonId);
+      return {
+        completedLessons: new Set([...state.completedLessons, lessonId]),
+        inProgressLessons,
+      };
+    });
   },
 
   markInProgress: (lessonId) => {
+    if (get().completedLessons.has(lessonId)) return;
     set((state) => ({
-      completedLessons: new Set([...state.completedLessons, lessonId]),
+      inProgressLessons: new Set([...state.inProgressLessons, lessonId]),
     }));
   },
 
   setCurrentCourse: (course) => set({ currentCourse: course }),
-
   setCurrentLesson: (lesson) => set({ currentLesson: lesson }),
-
   setLessons: (lessons) => set({ lessons }),
-
   setCurrentLessonIndex: (index) => set({ currentLessonIndex: index }),
 
   setVideoProgress: (lessonId, progress) => {
