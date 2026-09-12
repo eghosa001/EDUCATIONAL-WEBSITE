@@ -113,3 +113,59 @@ test('Supabase password flows never rely on nullable public password hashes', ()
   assert.match(source, /auth\.signInWithPassword\(/);
   assert.match(source, /auth\.admin\.updateUserById\(req\.user\.id, \{ password: newPassword \}\)/);
 });
+
+test('exam management and attempts are protected by role and ownership checks', () => {
+  const routes = fs.readFileSync(new URL('./routes/exam.routes.js', import.meta.url), 'utf8');
+  const controller = fs.readFileSync(new URL('./exams/controllers/exam.controller.js', import.meta.url), 'utf8');
+  assert.match(routes, /requireRole\('teacher', 'content_admin', 'super_admin'\)/);
+  assert.match(routes, /examManager/);
+  assert.match(controller, /assertExamManager/);
+  assert.match(controller, /attempt\.exam_id !== id/);
+  assert.match(controller, /show_results_immediately/);
+});
+
+test('course and lesson management require manager roles and ownership', () => {
+  const courseRoutes = fs.readFileSync(new URL('./routes/course.routes.js', import.meta.url), 'utf8');
+  const courseController = fs.readFileSync(new URL('./courses/controllers/course.controller.js', import.meta.url), 'utf8');
+  const lessonRoutes = fs.readFileSync(new URL('./routes/lesson.routes.js', import.meta.url), 'utf8');
+  const lessonController = fs.readFileSync(new URL('./lessons/controllers/lesson.controller.js', import.meta.url), 'utf8');
+  assert.match(courseRoutes, /requireRole\('teacher', 'content_admin', 'super_admin'\)/);
+  assert.match(courseController, /assertCourseManager/);
+  assert.match(courseController, /COURSE_STATUS\.PUBLISHED/);
+  assert.match(lessonRoutes, /requireRole\('teacher', 'content_admin', 'super_admin'\)/);
+  assert.match(lessonController, /assertLessonManager/);
+  assert.match(lessonController, /progressService\.completeLesson/);
+});
+
+test('question bank does not expose answer keys to ordinary readers', () => {
+  const routes = fs.readFileSync(new URL('./routes/question.routes.js', import.meta.url), 'utf8');
+  const controller = fs.readFileSync(new URL('./questions/controllers/question.controller.js', import.meta.url), 'utf8');
+  assert.match(routes, /questionManager/);
+  assert.match(routes, /questionReviewer/);
+  assert.match(controller, /includeAnswers/);
+  assert.match(controller, /is_active/);
+  assert.match(controller, /assertQuestionManager/);
+});
+
+test('assignment management is course-owner or content-admin only', () => {
+  const routes = fs.readFileSync(new URL('./routes/assignment.routes.js', import.meta.url), 'utf8');
+  const controller = fs.readFileSync(new URL('./assignments/controllers/assignment.controller.js', import.meta.url), 'utf8');
+  assert.match(routes, /requireRole\('teacher', 'content_admin', 'super_admin'\)/);
+  assert.match(controller, /assertCourseManager/);
+  assert.match(controller, /findByStudentAndCourse/);
+  assert.doesNotMatch(controller, /teacherId:\s*req\.body\.teacherId/);
+});
+
+test('curriculum mutation is restricted to content administrators', () => {
+  const routes = fs.readFileSync(new URL('./routes/curriculum.routes.js', import.meta.url), 'utf8');
+  assert.match(routes, /requireRole\('content_admin', 'super_admin'\)/);
+  assert.match(routes, /curriculumManager/);
+});
+
+test('mobile self-profile route exists before dynamic user-id routes', () => {
+  const routes = fs.readFileSync(new URL('./routes/user.routes.js', import.meta.url), 'utf8');
+  const selfRoute = routes.indexOf("userRoutes.get('/profile'");
+  const dynamicRoute = routes.indexOf("userRoutes.get('/:id'");
+  assert.ok(selfRoute >= 0 && dynamicRoute >= 0 && selfRoute < dynamicRoute);
+  assert.match(routes, /userRoutes\.patch\('\/profile'/);
+});
