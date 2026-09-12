@@ -4,6 +4,7 @@ import { asyncHandler } from '../common/middleware/index.js';
 import { validateRequest } from '../common/middleware/index.js';
 import { schemas } from '../common/validators/joi.js';
 import { authMiddleware } from '../common/middleware/index.js';
+import { protectLastSuperAdminRemoval } from '../common/middleware/protectLastSuperAdmin.js';
 import * as userController from '../users/controllers/user.controller.js';
 
 export const userRoutes = Router();
@@ -71,5 +72,6 @@ userRoutes.delete('/:id/roles/:roleId',
     id: Joi.string().uuid().required(),
     roleId: Joi.string().uuid().required(),
   }) }),
+  asyncHandler(protectLastSuperAdminRemoval),
   asyncHandler(userController.removeRole)
 );
