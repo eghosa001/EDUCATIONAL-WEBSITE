@@ -7,10 +7,6 @@ const notFound = (resource) => {
 };
 
 const roleSet = (user) => new Set([user?.role, ...(Array.isArray(user?.roles) ? user.roles : [])].filter(Boolean));
-const isQuestionReader = (user) => {
-  const roles = roleSet(user);
-  return roles.has('teacher') || roles.has('content_admin') || roles.has('super_admin');
-};
 const isGlobalQuestionManager = (user) => {
   const roles = roleSet(user);
   return roles.has('content_admin') || roles.has('super_admin');
@@ -20,6 +16,18 @@ const requireQuestionManager = (req, question) => {
   if (!canManageQuestion(req.user, question)) {
     throw new AppError('Not authorized to manage this question', HTTP_STATUS.FORBIDDEN, ERROR_CODES.AUTHORIZATION_ERROR);
   }
+};
+const normalizeAnswer = (value) => {
+  if (value === null || value === undefined) return '';
+  if (Array.isArray(value)) return value.map(normalizeAnswer).sort().join('|');
+  if (typeof value === 'object') {
+    if ('id' in value) return normalizeAnswer(value.id);
+    if ('label' in value) return normalizeAnswer(value.label);
+    if ('answer' in value) return normalizeAnswer(value.answer);
+    if ('value' in value) return normalizeAnswer(value.value);
+    return JSON.stringify(value, Object.keys(value).sort()).toLowerCase().trim();
+  }
+  return String(value).toLowerCase().trim().replace(/\s+/g, ' ');
 };
 
 const serialize = (q, includeAnswerKey = false) => ({
@@ -60,21 +68,41 @@ export const listQuestions = async (req, res) => {
     isActive: effectiveActive,
   });
 
-  const includeAnswerKey = isQuestionReader(req.user);
-  res.json({ success: true, data: { questions: data.map((q) => serialize(q, includeAnswerKey)) }, pagination });
+  res.json({
+    success: true,
+    data: { questions: data.map((q) => serialize(q, canManageQuestion(req.user, q))) },
+    pagination,
+  });
 };
 
 export const getQuestion = async (req, res) => {
   const question = await questionModel.findById(req.params.id);
   if (!question) notFound('Question');
   if (!question.is_active && !canManageQuestion(req.user, question)) notFound('Question');
+  res.json({ success: true, data: { question: serialize(question, canManageQuestion(req.user, question)) } });
+};
 
-  res.json({ success: true, data: { question: serialize(question, isQuestionReader(req.user)) } });
+export const checkAnswer = async (req, res) => {
+  const question = await questionModel.findById(req.params.id);
+  if (!question || !question.is_active) notFound('Question');
+  const submitted = normalizeAnswer(req.body.answer);
+  const expected = normalizeAnswer(question.correct_answer);
+  const isCorrect = Boolean(expected) && submitted === expected;
+  res.json({
+    success: true,
+    data: {
+      result: {
+        isCorrect,
+        correctAnswer: question.correct_answer,
+        explanation: question.explanation || null,
+        explanationImageUrl: question.explanation_image_url || null,
+      },
+    },
+  });
 };
 
 export const createQuestion = async (req, res) => {
   const question = await questionModel.create({ ...req.body, createdBy: req.user.id });
-
   res.status(HTTP_STATUS.CREATED).json({
     success: true,
     message: 'Question created',
@@ -84,7 +112,6 @@ export const createQuestion = async (req, res) => {
 
 export const bulkImportQuestions = async (req, res) => {
   const { questions } = req.body;
-
   const created = await transaction(async (client) => {
     const rows = [];
     for (const question of questions) {
@@ -121,10 +148,8 @@ export const updateQuestion = async (req, res) => {
   const existing = await questionModel.findById(req.params.id);
   if (!existing) notFound('Question');
   requireQuestionManager(req, existing);
-
   const question = await questionModel.update(req.params.id, req.body);
   if (!question) notFound('Question');
-
   res.json({ success: true, message: 'Question updated', data: { question: serialize(question, true) } });
 };
 
@@ -134,7 +159,6 @@ export const reviewQuestion = async (req, res) => {
   }
   const question = await questionModel.review(req.params.id, req.user.id);
   if (!question) notFound('Question');
-
   res.json({ success: true, message: 'Question reviewed', data: { question: serialize(question, true) } });
 };
 
@@ -142,9 +166,7 @@ export const deleteQuestion = async (req, res) => {
   const existing = await questionModel.findById(req.params.id);
   if (!existing) notFound('Question');
   requireQuestionManager(req, existing);
-
   const question = await questionModel.delete(req.params.id);
   if (!question) notFound('Question');
-
   res.json({ success: true, message: 'Question deleted' });
 };
