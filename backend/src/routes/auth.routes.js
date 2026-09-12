@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import Joi from 'joi';
-import { pool, useSupabase } from '../common/database/index.js';
+import { pool } from '../common/database/index.js';
+import { supabase } from '../common/supabase/index.js';
 import { asyncHandler, authMiddleware, authRateLimiter, validateRequest } from '../common/middleware/index.js';
 import { schemas } from '../common/validators/joi.js';
 import { hashToken } from '../auth/utils/jwt.js';
@@ -10,9 +11,10 @@ import * as supabaseAuthController from '../auth/controllers/supabaseAuth.contro
 import * as passwordController from '../auth/controllers/password.controller.js';
 
 export const authRoutes = Router();
+const useSupabaseAuth = Boolean(supabase);
 
 const chooseAuthHandler = (legacyHandler, supabaseHandler) => (req, res, next) =>
-  (useSupabase ? supabaseHandler : legacyHandler)(req, res, next);
+  (useSupabaseAuth ? supabaseHandler : legacyHandler)(req, res, next);
 
 const refreshCookieAuth = (req, _res, next) => {
   if (!req.headers.authorization) {
@@ -40,7 +42,7 @@ const refreshCookieAuth = (req, _res, next) => {
 };
 
 const verifyEmailToken = asyncHandler(async (req, _res, next) => {
-  if (useSupabase) {
+  if (useSupabaseAuth) {
     throw new AppError(
       'Email verification is handled by the verification link sent to your email address',
       HTTP_STATUS.BAD_REQUEST,
