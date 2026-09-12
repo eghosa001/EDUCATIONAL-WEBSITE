@@ -5,13 +5,15 @@ import { useAuthStore } from '@/state/auth/authStore';
 import { getSupabase } from '@/lib/supabase';
 import type { User } from '@/types/models/user';
 
+type RegisterResult = { requiresEmailVerification: boolean };
+
 interface AuthContextType {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: { email: string; password: string }) => Promise<void>;
-  register: (data: { email: string; password: string; firstName: string; lastName: string; role: 'student' | 'teacher' | 'parent' }) => Promise<void>;
+  register: (data: { email: string; password: string; firstName: string; lastName: string; role: 'student' | 'teacher' | 'parent' }) => Promise<RegisterResult>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
 }
@@ -147,7 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (data: { email: string; password: string; firstName: string; lastName: string; role: 'student' | 'teacher' | 'parent' }) => {
+  const register = async (data: { email: string; password: string; firstName: string; lastName: string; role: 'student' | 'teacher' | 'parent' }): Promise<RegisterResult> => {
     const supabase = getClient();
     setLoading(true);
     try {
@@ -160,9 +162,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!result.user) throw new Error('Registration failed');
       if (result.session) {
         await applySession(result.session);
-      } else {
-        throw new Error('Registration succeeded, but email verification is required before signing in.');
+        return { requiresEmailVerification: false };
       }
+      return { requiresEmailVerification: true };
     } finally {
       setLoading(false);
     }
