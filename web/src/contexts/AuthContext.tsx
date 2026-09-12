@@ -17,6 +17,17 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
+const ROLE_PRIORITY = ['super_admin', 'admin', 'content_admin', 'school_admin', 'teacher', 'parent', 'student'];
+
+function primaryRole(roleNames: string[], fallback?: string) {
+  const unique = [...new Set(roleNames.filter(Boolean))];
+  unique.sort((a, b) => {
+    const ai = ROLE_PRIORITY.indexOf(a);
+    const bi = ROLE_PRIORITY.indexOf(b);
+    return (ai === -1 ? ROLE_PRIORITY.length : ai) - (bi === -1 ? ROLE_PRIORITY.length : bi);
+  });
+  return unique[0] || fallback || 'student';
+}
 
 export function useAuth() {
   const context = useContext(AuthContext);
@@ -36,8 +47,8 @@ async function loadProfile(supabase: ReturnType<typeof getSupabase>, authUser: a
     .select('roles(name, permissions)')
     .eq('user_id', authUser.id);
 
-  const roles = (roleRows || []).map((row: any) => row.roles?.name).filter(Boolean) as string[];
-  const role = (roles[0] || authUser.user_metadata?.role || 'student') as User['role'];
+  const roleNames = (roleRows || []).map((row: any) => row.roles?.name).filter(Boolean) as string[];
+  const role = primaryRole(roleNames, authUser.user_metadata?.role) as User['role'];
   const createdAt = profile?.created_at || authUser.created_at || new Date().toISOString();
 
   return {
@@ -56,9 +67,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { user, token, isAuthenticated, isLoading, setUser, setToken, setRefreshToken, setLoading, logout: storeLogout } = useAuthStore();
   const [, setInitialized] = useState(false);
 
-  // Next.js can render client components during static generation. Keep the
-  // Supabase client completely lazy so build-time rendering never requires
-  // browser runtime environment variables.
   const getClient = () => getSupabase();
 
   const clearLocalAuth = () => {
@@ -66,8 +74,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('edu_user');
       localStorage.removeItem('edu_token');
     }
-    // Supabase owns persistence and refresh-token storage. Do not duplicate
-    // access/refresh tokens in application-managed localStorage keys.
     storeLogout();
   };
 
