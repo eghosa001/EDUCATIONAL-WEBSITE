@@ -16,7 +16,40 @@ export interface AiTutorMessage { role: 'user' | 'assistant'; content: string; }
 export interface AiTutorRequest { message: string; subjectId?: string; topicId?: string; context?: Record<string, unknown>; sessionId?: string; }
 export interface AiTutorResponse { message: ChatMessage; sessionId: string; }
 
-export const sendAiTutorMessage = (data: AiTutorRequest, _token?: string) => invokeAi<AiTutorResponse>({ action: 'tutor', ...data });
+/**
+ * Lesson practice is structured data, not free-form chat. Preserve the existing
+ * lesson-page call site while routing practice-generation through the dedicated
+ * lesson-grounded validator. Other tutor requests continue to use chat.
+ */
+export const sendAiTutorMessage = async (data: AiTutorRequest, _token?: string): Promise<AiTutorResponse> => {
+  if (data.context?.mode === 'practice-generation') {
+    const lessonId = String(data.context.lessonId || '').trim();
+    if (!lessonId) throw new Error('Lesson context is required for practice generation');
+    const { data: practice, error } = await getSupabase().functions.invoke('lesson-practice', {
+      body: { lessonId, count: 5 },
+    });
+    if (error) throw new Error(error.message || 'Practice generation failed');
+    if (practice?.error) throw new Error(String(practice.error));
+    const quiz = practice?.quiz as AiGeneratedQuiz | undefined;
+    if (!quiz || !Array.isArray(quiz.questions)) throw new Error('Practice service returned an invalid quiz');
+    const questions = quiz.questions.map((question) => ({
+      question_text: question.questionText,
+      options: Object.fromEntries(question.options.map((option, index) => [String.fromCharCode(65 + index), option])),
+      correct_answer: String.fromCharCode(65 + question.options.indexOf(question.correctAnswer)),
+      explanation: question.explanation || '',
+      difficulty: question.difficulty,
+    }));
+    return {
+      sessionId: `practice-${quiz.id}`,
+      message: {
+        id: `practice-${quiz.id}`,
+        role: 'assistant',
+        content: JSON.stringify(questions),
+      } as ChatMessage,
+    };
+  }
+  return invokeAi<AiTutorResponse>({ action: 'tutor', ...data });
+};
 
 export const fetchAiTutorSessions = async (page = 1, limit = 20, _token?: string): Promise<PaginatedResponse<AiTutorSession>> => {
   const supabase = getSupabase();
@@ -39,8 +72,8 @@ export const deleteAiTutorSession = async (sessionId: string, _token?: string) =
   return { success: true };
 };
 
-export interface AiQuizRequest { subjectId: string; topicId?: string; difficulty?: string; questionCount: number; questionTypes?: string[]; }
-export interface AiGeneratedQuiz { id: string; questions: Array<{ questionText: string; questionType: string; options?: string[]; correctAnswer: string; explanation?: string; difficulty: string; }>; createdAt: string; }
+export interface AiQuizRequest { subjectId?: string; topicId?: string; lessonId?: string; difficulty?: string; questionCount: number; questionTypes?: string[]; }
+export interface AiGeneratedQuiz { id: string; questions: Array<{ questionText: string; questionType: string; options: string[]; correctAnswer: string; explanation?: string; difficulty: string; }>; createdAt: string; }
 export const generateAiQuiz = (data: AiQuizRequest, _token?: string) => invokeAi<{ quiz: AiGeneratedQuiz }>({ action: 'quiz', ...data });
 
 export interface AiStudyPlanRequest { subjectId: string; targetScore?: number; availableHoursPerDay: number; examDate?: string; }
@@ -70,7 +103,7 @@ export const fetchMyFlashcards = async (_token?: string, params: { page?: number
   const user = (await getSupabase().auth.getUser()).data.user;
   if (!user) throw new Error('You must be signed in');
 
-  let query = getSupabase()
+  const query = getSupabase()
     .from('flashcards')
     .select('id,course_id,lesson_id,topic_id,subject_id,title,cards,created_at', { count: 'exact' })
     .eq('created_by', user.id)
