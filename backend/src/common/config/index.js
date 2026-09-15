@@ -8,6 +8,12 @@ const configuredCorsOrigins = (process.env.CORS_ORIGINS || '')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+const publicSupabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xanrzsszrysianxhpprk.supabase.co';
+// Supabase publishable keys are intentionally safe to ship to clients. Keep this
+// public project key as a final compatibility fallback so legacy Vercel env sets
+// cannot crash server startup merely because SUPABASE_ANON_KEY was renamed.
+const publicSupabaseKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_-b8MMXYbJQKauBFjYVJ0vg_SG0GMpFs';
+
 if (isProduction && (!jwtSecret || jwtSecret.length < 32)) {
   throw new Error('JWT_SECRET must be set to a random value of at least 32 characters in production.');
 }
@@ -26,11 +32,11 @@ export const config = {
     pool: { min: parseInt(process.env.DB_POOL_MIN || '2', 10), max: parseInt(process.env.DB_POOL_MAX || '10', 10) },
   },
   supabase: {
-    url: process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    anonKey: process.env.SUPABASE_ANON_KEY || '',
+    url: publicSupabaseUrl,
+    anonKey: publicSupabaseKey,
     serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
     dbPassword: process.env.SUPABASE_DB_PASSWORD || '',
-    projectId: process.env.SUPABASE_URL?.match(/https:\/\/([^/.]+)\.supabase/)?.[1] || '',
+    projectId: publicSupabaseUrl.match(/https:\/\/([^/.]+)\.supabase/)?.[1] || '',
   },
   redis: {
     host: process.env.REDIS_HOST || 'localhost',
@@ -49,7 +55,6 @@ export const config = {
     origin: (requestOrigin, callback) => {
       if (!requestOrigin) return callback(null, true);
       if (configuredCorsOrigins.length > 0) return callback(null, configuredCorsOrigins.includes(requestOrigin));
-      // Development remains permissive; production should always define CORS_ORIGINS.
       return callback(null, !isProduction);
     },
     credentials: true,
@@ -92,7 +97,7 @@ export const config = {
     openai: { apiKey: process.env.OPENAI_API_KEY },
     defaultModel: process.env.AI_DEFAULT_MODEL || 'agnes-2.5-flash',
     maxTokens: parseInt(process.env.AI_MAX_TOKENS || '2048', 10),
-    temperature: parseFloat(process.env.AI_TEMPERATURE || '0.7', 10),
+    temperature: parseFloat(process.env.AI_TEMPERATURE || '0.7'),
   },
   fileUpload: {
     maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '104857600', 10),

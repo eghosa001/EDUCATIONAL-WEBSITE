@@ -46,13 +46,12 @@ test.describe('Dashboard pages require authentication', () => {
   ];
 
   for (const path of dashboardPages) {
-    test(`unauthenticated user on ${path} is redirected to login`, async ({ page }) => {
+    test(`unauthenticated user on ${path} cannot access protected content`, async ({ page }) => {
       await page.goto(path);
-      await page.waitForTimeout(2000);
-      const url = page.url();
-      const isOnLogin = url.includes('/login');
-      const isOnDashboard = url.includes('/dashboard');
-      expect(isOnLogin || isOnDashboard).toBeTruthy();
+      await page.waitForTimeout(1500);
+      const onLogin = page.url().includes('/login');
+      const signInVisible = await page.locator('input[type="email"], button:has-text("Sign In"), button:has-text("Login")').first().isVisible().catch(() => false);
+      expect(onLogin || signInVisible, `${path} remained accessible without authentication`).toBeTruthy();
     });
   }
 });
@@ -87,21 +86,23 @@ test.describe('Auth page navigation', () => {
 });
 
 test.describe('Auth form validation', () => {
-  test('login form shows validation for empty submission', async ({ page }) => {
+  test('login form rejects empty submission', async ({ page }) => {
     await page.goto('/login');
     const submitBtn = page.locator('button:has-text("Sign In"), button:has-text("Login"), button[type="submit"]').first();
     await submitBtn.click();
-    await page.waitForTimeout(500);
-    const hasError = await page.locator('[class*="error"], [role="alert"], .text-red, .text-destructive').count();
-    expect(hasError).toBeGreaterThanOrEqual(0);
+    await page.waitForTimeout(250);
+    const invalidFields = await page.locator('input:invalid').count();
+    const visibleErrors = await page.locator('[class*="error"], [role="alert"], .text-red, .text-destructive').count();
+    expect(invalidFields + visibleErrors, 'Empty login submission produced no validation state').toBeGreaterThan(0);
   });
 
-  test('register form shows validation for empty submission', async ({ page }) => {
+  test('register form rejects empty submission', async ({ page }) => {
     await page.goto('/register');
     const submitBtn = page.locator('button:has-text("Create"), button:has-text("Register"), button[type="submit"]').first();
     await submitBtn.click();
-    await page.waitForTimeout(500);
-    const hasError = await page.locator('[class*="error"], [role="alert"], .text-red, .text-destructive').count();
-    expect(hasError).toBeGreaterThanOrEqual(0);
+    await page.waitForTimeout(250);
+    const invalidFields = await page.locator('input:invalid').count();
+    const visibleErrors = await page.locator('[class*="error"], [role="alert"], .text-red, .text-destructive').count();
+    expect(invalidFields + visibleErrors, 'Empty registration submission produced no validation state').toBeGreaterThan(0);
   });
 });
