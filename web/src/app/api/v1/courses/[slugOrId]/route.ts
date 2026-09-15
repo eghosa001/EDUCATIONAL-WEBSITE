@@ -31,22 +31,29 @@ function isPublishableLesson(lesson: Record<string, unknown>) {
 
 export async function GET(_request: Request, { params }: { params: Promise<{ slugOrId: string }> }) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceRoleKey) {
+  const publicKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !publicKey) {
     return Response.json({ success: false, error: 'Course service is not configured' }, { status: 503 });
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+  // Use the same public Supabase project/key as the catalogue and browser learning flows.
+  // The previous service-role-only lookup could point at a mismatched/missing project key,
+  // which made a course visible in /api/v1/courses but 404 in the detail route.
+  const supabase = createClient(supabaseUrl, publicKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { slugOrId } = await params;
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(slugOrId);
 
-  const lookup = isUuid
-    ? supabase.from('courses').select('*').eq('id', slugOrId).eq('status', 'published').single()
-    : supabase.from('courses').select('*').eq('slug', slugOrId).eq('status', 'published').single();
-  const { data: course, error: courseError } = await lookup;
-  if (courseError || !course) {
+  const { slugOrId } = await params;
+  const decoded = decodeURIComponent(slugOrId);
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(decoded);
+
+  let lookup = supabase.from('courses').select('*').eq('status', 'published').limit(1);
+  lookup = isUuid ? lookup.eq('id', decoded) : lookup.eq('slug', decoded);
+  const { data: course, error: courseError } = await lookup.maybeSingle();
+  if (courseError) {
+    return Response.json({ success: false, error: 'Unable to load course' }, { status: 502 });
+  }
+  if (!course) {
     return Response.json({ success: false, error: 'Course not found' }, { status: 404 });
   }
 
@@ -55,13 +62,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     supabase.from('course_sections').select('*').eq('course_id', course.id).eq('is_active', true).order('order_index'),
   ]);
 
-  if (lessonResult.error || sectionResult.error) {
-    return Response.json({ success: false, error: 'Unable to load course content' }, { status: 502 });
+  if (lessonResult.error) {
+    return Response.json({ success: false, error: 'Unable to load course lessons' }, { status: 502 });
   }
 
+  // Sections are legacy/optional for newer topic-driven curriculum courses.
+  const sections = sectionResult.error ? [] : (sectionResult.data || []);
   const lessons = (lessonResult.data || []).filter(lesson => isPublishableLesson(lesson));
+
   return Response.json(
-    { success: true, data: { course: { ...course, lessons, sections: sectionResult.data || [] } } },
+    { success: true, data: { course: { ...course, lessons, sections } } },
     { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } },
   );
 }
