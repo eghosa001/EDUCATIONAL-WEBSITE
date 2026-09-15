@@ -1,4 +1,4 @@
-name: Legacy Vercel Website Deployment
+name: Vercel deployment reference
 
 on:
   workflow_dispatch:
@@ -7,10 +7,11 @@ permissions:
   contents: read
 
 jobs:
-  legacy:
+  reference:
     runs-on: ubuntu-latest
     steps:
-      - name: Legacy deployment disabled
+      - name: Explain production deployment ownership
         run: |
-          echo 'The production frontend now deploys through .github/workflows/deploy-pages.yml.'
-          echo 'This workflow is retained only as a manual rollback reference.'
+          echo 'The canonical Next.js frontend is deployed by the Vercel Git integration.'
+          echo 'This workflow intentionally does not deploy anything, preventing duplicate production releases.'
+          echo 'GitHub Pages remains a manual fallback through deploy-pages.yml.'

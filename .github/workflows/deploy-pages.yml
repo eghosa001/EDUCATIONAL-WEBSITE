@@ -1,11 +1,6 @@
-name: Deploy GitHub Pages production app
+name: Deploy GitHub Pages fallback
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'pages/**'
-      - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -14,7 +9,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages-production
+  group: pages-fallback
   cancel-in-progress: true
 
 jobs:
@@ -32,7 +27,7 @@ jobs:
         with:
           node-version: 24
 
-      - name: Validate static production app
+      - name: Validate fallback application
         shell: bash
         run: |
           set -euo pipefail
@@ -47,21 +42,17 @@ jobs:
           grep -q "from('topics')" pages/app.js
           grep -q "from('lessons')" pages/app.js
           grep -q "from('questions')" pages/app.js
-          if grep -Rqi 'web-ogs7\.vercel\.app' pages; then
-            echo 'Pages production app still references the retired Vercel frontend.'
-            exit 1
-          fi
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
         with:
           enablement: true
 
-      - name: Upload production app
+      - name: Upload fallback app
         uses: actions/upload-pages-artifact@v3
         with:
           path: pages
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy fallback
         id: deployment
         uses: actions/deploy-pages@v4
