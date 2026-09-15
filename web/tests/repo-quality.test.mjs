@@ -69,7 +69,7 @@ test('lesson worker requires its private worker token', () => {
 
 test('paid subscriptions are not activated before payment', () => {
   const source = fs.readFileSync(path.join(REPO_ROOT, 'supabase', 'functions', 'payments', 'index.ts'), 'utf8');
-  assert.match(source, /if \(price > 0\) return json/);
+  assert.match(source, /if\s*\(\s*price\s*>\s*0\s*\)\s*return\s+json/);
   assert.match(source, /paymentRequired:\s*true/);
   assert.doesNotMatch(source, /status:\s*'trialing'.*insert/s);
 });

@@ -1,6 +1,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const configuredOrigins = (Deno.env.get('PAYMENT_ALLOWED_ORIGINS') || '').split(',').map((x) => x.trim()).filter(Boolean);
+const configuredOrigins = (Deno.env.get('PAYMENT_ALLOWED_ORIGINS') || '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
+
 const corsHeadersFor = (request: Request) => {
   const origin = request.headers.get('Origin');
   const allowed = origin && (configuredOrigins.length === 0 || configuredOrigins.includes(origin));
@@ -11,8 +15,30 @@ const corsHeadersFor = (request: Request) => {
     'Vary': 'Origin',
   };
 };
-const json = (request: Request, body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeadersFor(request), 'Content-Type': 'application/json' } });
-const uuid = (value: unknown) => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
+const json = (request: Request, body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeadersFor(request), 'Content-Type': 'application/json' },
+  });
+
+const uuid = (value: unknown) =>
+  typeof value === 'string' &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
+const createReference = () => `TG-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+
+const safeRedirectUrl = (value: unknown) => {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  try {
+    const url = new URL(value.slice(0, 500));
+    if (!['https:', 'http:'].includes(url.protocol)) return undefined;
+    if (configuredOrigins.length > 0 && !configuredOrigins.includes(url.origin)) return undefined;
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+};
 
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeadersFor(request) });
@@ -38,51 +64,353 @@ Deno.serve(async (request) => {
     if (!body || typeof body !== 'object' || Array.isArray(body)) return json(request, { error: 'Invalid request body' }, 400);
     const action = String(body.action || '');
 
+    const paystackSecret = Deno.env.get('PAYSTACK_SECRET_KEY') || '';
+    const flutterwaveSecret = Deno.env.get('FLUTTERWAVE_SECRET_KEY') || '';
+
+    const syncSubscriptionEntitlement = async (payment: any, gatewayReference: string | null) => {
+      if (payment.purpose !== 'subscription' || !uuid(payment.purpose_id)) return null;
+
+      const { data: plan, error: planError } = await admin
+        .from('subscription_plans')
+        .select('id,duration_days,is_active')
+        .eq('id', payment.purpose_id)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (planError || !plan) throw new Error('Subscription plan is no longer available');
+
+      const start = new Date();
+      const end = new Date(start);
+      end.setDate(end.getDate() + Number(plan.duration_days || 30));
+      const entitlement = {
+        plan_id: plan.id,
+        gateway: payment.gateway,
+        gateway_subscription_id: gatewayReference,
+        status: 'active',
+        current_period_start: start.toISOString(),
+        current_period_end: end.toISOString(),
+        cancel_at_period_end: false,
+        canceled_at: null,
+        cancellation_reason: null,
+        ended_at: null,
+        started_at: start.toISOString(),
+        updated_at: start.toISOString(),
+      };
+
+      const { data: existing, error: existingError } = await admin
+        .from('subscriptions')
+        .select('id')
+        .eq('user_id', user.id)
+        .in('status', ['active', 'trialing'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (existingError) throw existingError;
+
+      if (existing?.id) {
+        const { data, error } = await admin
+          .from('subscriptions')
+          .update(entitlement)
+          .eq('id', existing.id)
+          .eq('user_id', user.id)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
+
+      const { data, error } = await admin
+        .from('subscriptions')
+        .insert({ user_id: user.id, ...entitlement })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    };
+
+    if (action === 'get-gateways') {
+      const gateways = [];
+      if (paystackSecret) gateways.push({ id: 'paystack', name: 'Paystack', code: 'paystack', isActive: true });
+      if (flutterwaveSecret) gateways.push({ id: 'flutterwave', name: 'Flutterwave', code: 'flutterwave', isActive: true });
+      return json(request, { gateways });
+    }
+
+    if (action === 'create-payment') {
+      const gateway = String(body.gateway || '');
+      if (!['paystack', 'flutterwave'].includes(gateway)) return json(request, { error: 'Unsupported gateway' }, 400);
+
+      let purpose = 'general';
+      let purposeId: string | null = null;
+      let amount = Number(body.amount || 0);
+      let currency = String(body.currency || 'NGN').toUpperCase();
+
+      if (uuid(body.planId)) {
+        const { data: plan, error } = await admin
+          .from('subscription_plans')
+          .select('id,price,currency,is_active')
+          .eq('id', body.planId)
+          .eq('is_active', true)
+          .maybeSingle();
+        if (error || !plan) return json(request, { error: 'Plan not found' }, 404);
+        purpose = 'subscription';
+        purposeId = plan.id;
+        amount = Number(plan.price || 0);
+        currency = String(plan.currency || 'NGN').toUpperCase();
+      }
+
+      if (!Number.isFinite(amount) || amount <= 0) return json(request, { error: 'Invalid payment amount' }, 400);
+      const reference = createReference();
+      const redirectUrl = safeRedirectUrl(body.redirectUrl);
+      const metadata = {
+        ...(typeof body.metadata === 'object' && body.metadata ? body.metadata : {}),
+        planId: uuid(body.planId) ? body.planId : null,
+        purpose,
+        purposeId,
+      };
+
+      let authorizationUrl = '';
+      let gatewayReference = reference;
+      let accessCode: string | null = null;
+
+      if (gateway === 'paystack') {
+        if (!paystackSecret) return json(request, { error: 'Paystack is not configured' }, 503);
+        const response = await fetch('https://api.paystack.co/transaction/initialize', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${paystackSecret}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: Math.round(amount * 100),
+            currency,
+            email: user.email,
+            reference,
+            metadata,
+            callback_url: redirectUrl,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result?.status || !result?.data?.authorization_url) {
+          return json(request, { error: result?.message || 'Unable to initialize Paystack payment' }, 400);
+        }
+        authorizationUrl = result.data.authorization_url;
+        gatewayReference = result.data.reference || reference;
+        accessCode = result.data.access_code || null;
+      } else {
+        if (!flutterwaveSecret) return json(request, { error: 'Flutterwave is not configured' }, 503);
+        const response = await fetch('https://api.flutterwave.com/v3/payments', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${flutterwaveSecret}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tx_ref: reference,
+            amount,
+            currency,
+            redirect_url: redirectUrl,
+            customer: { email: user.email },
+            customizations: { title: 'THE GUIDE', description: 'Educational subscription' },
+            meta: metadata,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok || result?.status !== 'success' || !result?.data?.link) {
+          return json(request, { error: result?.message || 'Unable to initialize Flutterwave payment' }, 400);
+        }
+        authorizationUrl = result.data.link;
+      }
+
+      const { data: payment, error: insertError } = await admin
+        .from('payments')
+        .insert({
+          reference,
+          user_id: user.id,
+          amount,
+          currency,
+          gateway,
+          gateway_reference: gatewayReference,
+          status: 'pending',
+          purpose,
+          purpose_id: purposeId,
+          metadata,
+        })
+        .select()
+        .single();
+      if (insertError) return json(request, { error: 'Unable to create payment record' }, 500);
+      return json(request, { success: true, data: { payment, authorizationUrl, accessCode, reference } });
+    }
+
+    if (action === 'verify-payment') {
+      const reference = String(body.reference || '').trim().slice(0, 200);
+      if (!reference) return json(request, { error: 'Payment reference is required' }, 400);
+
+      const { data: payment, error: readError } = await admin
+        .from('payments')
+        .select('*')
+        .eq('reference', reference)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (readError || !payment) return json(request, { error: 'Payment not found' }, 404);
+
+      if (payment.status === 'completed') {
+        try {
+          const subscription = await syncSubscriptionEntitlement(payment, payment.gateway_reference || reference);
+          return json(request, { success: true, payment, subscription, verified: true });
+        } catch (error) {
+          console.error('Completed payment entitlement sync failed:', error instanceof Error ? error.message : 'unknown error');
+          return json(request, { error: 'Payment is verified but access could not be synchronized yet. Please retry.' }, 500);
+        }
+      }
+
+      let verified = false;
+      let gatewayReference = payment.gateway_reference || reference;
+
+      if (payment.gateway === 'paystack') {
+        if (!paystackSecret) return json(request, { error: 'Paystack is not configured' }, 503);
+        const response = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+          headers: { Authorization: `Bearer ${paystackSecret}` },
+        });
+        const result = await response.json();
+        const data = result?.data;
+        verified = Boolean(
+          response.ok &&
+          result?.status &&
+          data?.status === 'success' &&
+          Number(data.amount) / 100 === Number(payment.amount) &&
+          String(data.currency).toUpperCase() === String(payment.currency).toUpperCase()
+        );
+        gatewayReference = data?.reference || gatewayReference;
+      } else if (payment.gateway === 'flutterwave') {
+        if (!flutterwaveSecret) return json(request, { error: 'Flutterwave is not configured' }, 503);
+        const transactionId = String(body.transactionId || '').trim();
+        if (!transactionId) return json(request, { error: 'Flutterwave transaction id is required' }, 400);
+        const response = await fetch(`https://api.flutterwave.com/v3/transactions/${encodeURIComponent(transactionId)}/verify`, {
+          headers: { Authorization: `Bearer ${flutterwaveSecret}` },
+        });
+        const result = await response.json();
+        const data = result?.data;
+        verified = Boolean(
+          response.ok &&
+          result?.status === 'success' &&
+          data?.status === 'successful' &&
+          String(data.tx_ref) === reference &&
+          Number(data.amount) >= Number(payment.amount) &&
+          String(data.currency).toUpperCase() === String(payment.currency).toUpperCase()
+        );
+        gatewayReference = String(data?.id || gatewayReference);
+      }
+
+      if (!verified) {
+        await admin
+          .from('payments')
+          .update({ status: 'failed', failed_at: new Date().toISOString(), failure_reason: 'Gateway verification failed' })
+          .eq('id', payment.id)
+          .eq('user_id', user.id);
+        return json(request, { error: 'Payment could not be verified' }, 400);
+      }
+
+      const { data: completed, error: updateError } = await admin
+        .from('payments')
+        .update({
+          status: 'completed',
+          paid_at: new Date().toISOString(),
+          gateway_reference: gatewayReference,
+          failure_reason: null,
+        })
+        .eq('id', payment.id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+      if (updateError) return json(request, { error: 'Unable to finalize payment' }, 500);
+
+      try {
+        const subscription = await syncSubscriptionEntitlement(completed, gatewayReference);
+        return json(request, { success: true, payment: completed, subscription, verified: true });
+      } catch (error) {
+        console.error('Verified payment entitlement sync failed:', error instanceof Error ? error.message : 'unknown error');
+        return json(request, { error: 'Payment was verified but access could not be synchronized. Please retry verification.' }, 500);
+      }
+    }
+
     if (action === 'create-subscription') {
       if (!uuid(body.planId)) return json(request, { error: 'Invalid planId' }, 400);
-      const { data: plan, error: planError } = await admin.from('subscription_plans').select('id,name,price,currency,duration_days,is_active').eq('id', body.planId).eq('is_active', true).maybeSingle();
+      const { data: plan, error: planError } = await admin
+        .from('subscription_plans')
+        .select('id,name,price,currency,duration_days,is_active')
+        .eq('id', body.planId)
+        .eq('is_active', true)
+        .maybeSingle();
       if (planError || !plan) return json(request, { error: 'Subscription plan not found' }, 404);
-      const { data: existing } = await admin.from('subscriptions').select('id,status').eq('user_id', user.id).in('status', ['active', 'trialing']).maybeSingle();
+
+      const { data: existing } = await admin
+        .from('subscriptions')
+        .select('id,status')
+        .eq('user_id', user.id)
+        .in('status', ['active', 'trialing'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       if (existing) return json(request, { error: 'You already have an active subscription' }, 409);
 
       const price = Number(plan.price || 0);
-      if (!Number.isFinite(price) || price < 0) return json(request, { error: 'Invalid subscription price' }, 500);
-
-      // A paid plan is never activated by this endpoint. The payment gateway must
-      // create a payment and the verified webhook will activate the subscription.
       if (price > 0) return json(request, {
         paymentRequired: true,
-        plan: { id: plan.id, name: plan.name, amount: price, currency: plan.currency || 'NGN', durationDays: Number(plan.duration_days || 0) },
+        plan: {
+          id: plan.id,
+          name: plan.name,
+          amount: price,
+          currency: plan.currency || 'NGN',
+          durationDays: Number(plan.duration_days || 0),
+        },
       });
 
       const start = new Date();
       const end = new Date(start);
       end.setDate(end.getDate() + Number(plan.duration_days || 0));
-      const { data: subscription, error } = await admin.from('subscriptions').insert({
-        user_id: user.id, plan_id: plan.id, gateway: 'free', gateway_subscription_id: null,
-        status: 'active', current_period_start: start.toISOString(), current_period_end: end.toISOString(), cancel_at_period_end: false,
-      }).select().single();
+      const { data: subscription, error } = await admin
+        .from('subscriptions')
+        .insert({
+          user_id: user.id,
+          plan_id: plan.id,
+          gateway: 'free',
+          gateway_subscription_id: null,
+          status: 'active',
+          current_period_start: start.toISOString(),
+          current_period_end: end.toISOString(),
+          cancel_at_period_end: false,
+          started_at: start.toISOString(),
+        })
+        .select()
+        .single();
       if (error) return json(request, { error: 'Unable to create subscription' }, 400);
       return json(request, { subscription, paymentRequired: false });
     }
 
     if (action === 'cancel-subscription') {
       if (!uuid(body.subscriptionId)) return json(request, { error: 'Invalid subscriptionId' }, 400);
-      // Cancellation is scheduled. Do not revoke already-paid access immediately.
-      const { data, error } = await admin.from('subscriptions')
-        .update({ cancel_at_period_end: true })
-        .eq('id', body.subscriptionId).eq('user_id', user.id).in('status', ['active', 'trialing']).select().maybeSingle();
+      const { data, error } = await admin
+        .from('subscriptions')
+        .update({ cancel_at_period_end: true, canceled_at: new Date().toISOString() })
+        .eq('id', body.subscriptionId)
+        .eq('user_id', user.id)
+        .in('status', ['active', 'trialing'])
+        .select()
+        .maybeSingle();
       if (error || !data) return json(request, { error: error?.message || 'Subscription not found' }, 404);
       return json(request, { subscription: data });
     }
 
     if (action === 'resume-subscription') {
       if (!uuid(body.subscriptionId)) return json(request, { error: 'Invalid subscriptionId' }, 400);
-      const { data: current, error: readError } = await admin.from('subscriptions').select('*').eq('id', body.subscriptionId).eq('user_id', user.id).maybeSingle();
+      const { data: current, error: readError } = await admin
+        .from('subscriptions')
+        .select('*')
+        .eq('id', body.subscriptionId)
+        .eq('user_id', user.id)
+        .maybeSingle();
       if (readError || !current) return json(request, { error: readError?.message || 'Subscription not found' }, 404);
       if (!['active', 'trialing'].includes(current.status)) return json(request, { error: 'Only an active subscription can be resumed' }, 400);
-      if (!current.cancel_at_period_end) return json(request, { subscription: current });
-      const { data, error } = await admin.from('subscriptions').update({ cancel_at_period_end: false, canceled_at: null }).eq('id', current.id).select().single();
+      const { data, error } = await admin
+        .from('subscriptions')
+        .update({ cancel_at_period_end: false, canceled_at: null, cancellation_reason: null })
+        .eq('id', current.id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
       if (error) return json(request, { error: 'Unable to resume subscription' }, 400);
       return json(request, { subscription: data });
     }
@@ -90,19 +418,37 @@ Deno.serve(async (request) => {
     if (action === 'validate-coupon') {
       const code = String(body.couponCode || '').trim().toUpperCase().slice(0, 100);
       if (!code || !uuid(body.planId)) return json(request, { error: 'couponCode and planId are required' }, 400);
-      const { data: coupon, error } = await admin.from('coupons').select('id,code,discount_type,discount_value,max_discount_amount,valid_from,valid_until,is_active').eq('code', code).eq('is_active', true).maybeSingle();
+      const { data: coupon, error } = await admin
+        .from('coupons')
+        .select('id,code,discount_type,discount_value,max_discount_amount,valid_from,valid_until,is_active')
+        .eq('code', code)
+        .eq('is_active', true)
+        .maybeSingle();
       if (error || !coupon) return json(request, { error: 'Invalid coupon code' }, 400);
-      const { data: plan } = await admin.from('subscription_plans').select('id,price,currency').eq('id', body.planId).eq('is_active', true).maybeSingle();
+      const { data: plan } = await admin
+        .from('subscription_plans')
+        .select('id,price,currency')
+        .eq('id', body.planId)
+        .eq('is_active', true)
+        .maybeSingle();
       if (!plan) return json(request, { error: 'Plan not found' }, 404);
+
       const now = Date.now();
       if (coupon.valid_from && now < new Date(coupon.valid_from).getTime()) return json(request, { error: 'Coupon is not yet valid' }, 400);
       if (coupon.valid_until && now > new Date(coupon.valid_until).getTime()) return json(request, { error: 'Coupon has expired' }, 400);
+
       const price = Number(plan.price || 0);
-      let discount = coupon.discount_type === 'percentage' ? price * Number(coupon.discount_value || 0) / 100 : Number(coupon.discount_value || 0);
-      if (!Number.isFinite(discount) || discount < 0) return json(request, { error: 'Invalid coupon configuration' }, 400);
+      let discount = coupon.discount_type === 'percentage'
+        ? price * Number(coupon.discount_value || 0) / 100
+        : Number(coupon.discount_value || 0);
       if (coupon.max_discount_amount != null) discount = Math.min(discount, Number(coupon.max_discount_amount));
-      discount = Math.min(discount, price);
-      return json(request, { coupon: { id: coupon.id, code: coupon.code }, discountAmount: discount, finalAmount: price - discount, currency: plan.currency || 'NGN' });
+      discount = Math.min(Math.max(discount, 0), price);
+      return json(request, {
+        coupon: { id: coupon.id, code: coupon.code },
+        discountAmount: discount,
+        finalAmount: price - discount,
+        currency: plan.currency || 'NGN',
+      });
     }
 
     return json(request, { error: 'Unsupported payment action' }, 400);

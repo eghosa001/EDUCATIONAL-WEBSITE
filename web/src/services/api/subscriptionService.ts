@@ -2,90 +2,26 @@ import { getSupabase } from '@/lib/supabase';
 import type { Subscription, SubscriptionPlan, Invoice } from '@/types/models/subscription';
 import type { PaginatedResponse } from '@/types/api/api';
 
-/**
- * Normal subscription reads use Supabase + RLS directly.
- * Payment creation/webhooks and other privileged mutations will be handled by
- * Supabase Edge Functions; no payment secret is exposed to this client.
- */
+const mapPlan=(row:any):SubscriptionPlan=>({id:row.id,name:row.name,code:row.code,description:row.description||undefined,price:Number(row.price||0),currency:row.currency,billingCycle:row.billing_cycle,durationDays:Number(row.duration_days||0),trialDays:row.trial_days==null?undefined:Number(row.trial_days),features:Array.isArray(row.features)?row.features:[],limits:row.limits||{},isActive:Boolean(row.is_active),isPopular:Boolean(row.is_popular),displayOrder:Number(row.display_order||0),createdAt:row.created_at,updatedAt:row.updated_at});
+const mapSubscription=(row:any):Subscription=>({id:row.id,userId:row.user_id,planId:row.plan_id,planName:row.subscription_plans?.name||undefined,planCode:row.subscription_plans?.code||undefined,gatewaySubscriptionId:row.gateway_subscription_id||undefined,gateway:row.gateway,status:row.status,currentPeriodStart:row.current_period_start,currentPeriodEnd:row.current_period_end,cancelAtPeriodEnd:Boolean(row.cancel_at_period_end),createdAt:row.created_at,updatedAt:row.updated_at});
+const mapInvoice=(row:any):Invoice=>({id:row.id,invoiceNumber:row.invoice_number,userId:row.user_id,subscriptionId:row.subscription_id||undefined,paymentId:row.payment_id||undefined,amount:Number(row.amount||0),currency:row.currency,taxAmount:Number(row.tax_amount||0),discountAmount:Number(row.discount_amount||0),status:row.status,dueDate:row.due_date,paidAt:row.paid_at||undefined,createdAt:row.created_at});
 
-const mapPlan = (row: any): SubscriptionPlan => ({
-  id: row.id, name: row.name, code: row.code, description: row.description,
-  price: Number(row.price || 0), currency: row.currency, billingCycle: row.billing_cycle,
-  durationDays: row.duration_days, trialDays: row.trial_days, features: row.features || [],
-  limits: row.limits || {}, isActive: row.is_active, isPopular: row.is_popular, displayOrder: row.display_order,
-} as SubscriptionPlan);
-
-export const fetchSubscriptionPlans = async (_token?: string): Promise<{ plans: SubscriptionPlan[] }> => {
-  const { data, error } = await getSupabase().from('subscription_plans').select('*').eq('is_active', true).order('display_order');
-  if (error) throw new Error(error.message);
-  return { plans: (data || []).map(mapPlan) };
-};
-
-export const fetchSubscriptionPlanById = async (planId: string, _token?: string): Promise<{ plan: SubscriptionPlan }> => {
-  const { data, error } = await getSupabase().from('subscription_plans').select('*').eq('id', planId).eq('is_active', true).maybeSingle();
-  if (error || !data) throw new Error(error?.message || 'Subscription plan not found');
-  return { plan: mapPlan(data) };
-};
-
-export interface CreateSubscriptionData { planId: string; paymentMethodId?: string; couponCode?: string; }
-export interface CreateSubscriptionResponse { data?: { authorizationUrl?: string } }
-
-export const fetchMySubscription = async (_token?: string): Promise<{ subscription: Subscription | null }> => {
-  const user = (await getSupabase().auth.getUser()).data.user;
-  if (!user) return { subscription: null };
-  const { data, error } = await getSupabase().from('subscriptions').select('*, subscription_plans(*)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
-  if (error) throw new Error(error.message);
-  return { subscription: data as Subscription | null };
-};
-
-// Payment/subscription mutations intentionally stay behind the Edge Function boundary.
-const invokePayment = async <T>(body: Record<string, unknown>): Promise<T> => {
-  const { data, error } = await getSupabase().functions.invoke('payments', { body });
-  if (error) throw new Error(error.message || 'Payment operation failed');
-  if (data?.error) throw new Error(String(data.error));
-  return data as T;
-};
-
-export const createSubscription = (data: CreateSubscriptionData, _token?: string): Promise<CreateSubscriptionResponse> => invokePayment<CreateSubscriptionResponse>({ action: 'create-subscription', ...data });
-export const updateSubscription = (subscriptionId: string, data: { planId?: string; paymentMethodId?: string }, _token?: string) => invokePayment({ action: 'update-subscription', subscriptionId, ...data });
-export const cancelSubscription = (subscriptionId: string, _token?: string) => invokePayment({ action: 'cancel-subscription', subscriptionId });
-export const resumeSubscription = (subscriptionId: string, _token?: string) => invokePayment({ action: 'resume-subscription', subscriptionId });
-
-export const fetchMyInvoices = async (page = 1, limit = 20, _token?: string): Promise<PaginatedResponse<Invoice>> => {
-  const user = (await getSupabase().auth.getUser()).data.user;
-  if (!user) throw new Error('You must be signed in');
-  const from = (page - 1) * limit;
-  const to = from + limit - 1;
-  const { data, error, count } = await getSupabase().from('invoices').select('*', { count: 'exact' }).eq('user_id', user.id).order('created_at', { ascending: false }).range(from, to);
-  if (error) throw new Error(error.message);
-  return { data: (data || []) as Invoice[], page, pageSize: limit, total: count || 0, totalPages: Math.ceil((count || 0) / limit) };
-};
-
-export const fetchInvoiceById = async (invoiceId: string, _token?: string): Promise<{ invoice: Invoice }> => {
-  const { data, error } = await getSupabase().from('invoices').select('*').eq('id', invoiceId).maybeSingle();
-  if (error || !data) throw new Error(error?.message || 'Invoice not found');
-  return { invoice: data as Invoice };
-};
-
-export const downloadInvoice = async (invoiceId: string, _token?: string) => fetchInvoiceById(invoiceId, _token);
-
-export interface PaymentMethod { id: string; type: 'card' | 'bank_account' | 'mobile_money'; details: Record<string, unknown>; isDefault: boolean; }
-export const fetchMyPaymentMethods = async (_token?: string): Promise<{ paymentMethods: PaymentMethod[] }> => {
-  const user = (await getSupabase().auth.getUser()).data.user;
-  if (!user) throw new Error('You must be signed in');
-  const { data, error } = await getSupabase().from('payment_methods').select('*').eq('user_id', user.id).order('is_default', { ascending: false });
-  if (error) throw new Error(error.message);
-  return { paymentMethods: (data || []) as PaymentMethod[] };
-};
-
-export const addPaymentMethod = (data: { type: string; details: Record<string, unknown> }, _token?: string) => invokePayment({ action: 'add-payment-method', ...data });
-export const deletePaymentMethod = (paymentMethodId: string, _token?: string) => invokePayment({ action: 'delete-payment-method', paymentMethodId });
-export const setDefaultPaymentMethod = (paymentMethodId: string, _token?: string) => invokePayment({ action: 'set-default-payment-method', paymentMethodId });
-
-export interface CreatePlanData { name: string; code: string; description?: string; price: number; currency?: string; billingCycle: 'monthly' | 'yearly' | 'one_time'; durationDays: number; trialDays?: number; features?: string[]; limits?: Record<string, unknown>; isActive?: boolean; isPopular?: boolean; displayOrder?: number; }
-export const createPlan = (data: CreatePlanData, _token?: string) => invokePayment({ action: 'create-plan', ...data });
-export const updatePlan = (planId: string, data: Partial<CreatePlanData>, _token?: string) => invokePayment({ action: 'update-plan', planId, ...data });
-export const deletePlan = (planId: string, _token?: string) => invokePayment({ action: 'delete-plan', planId });
-
-export interface CouponValidationResult { coupon: import('@/types/models/subscription').Coupon; discountAmount: number; finalAmount: number; }
-export const applyCouponHandler = (couponCode: string, planId: string, _token?: string): Promise<CouponValidationResult> => invokePayment<CouponValidationResult>({ action: 'validate-coupon', couponCode, planId });
+export const fetchSubscriptionPlans=async(_token?:string):Promise<{plans:SubscriptionPlan[]}>=>{const {data,error}=await getSupabase().from('subscription_plans').select('*').eq('is_active',true).order('display_order');if(error)throw new Error(error.message);return{plans:(data||[]).map(mapPlan)}};
+export const fetchSubscriptionPlanById=async(planId:string,_token?:string):Promise<{plan:SubscriptionPlan}>=>{const {data,error}=await getSupabase().from('subscription_plans').select('*').eq('id',planId).eq('is_active',true).maybeSingle();if(error||!data)throw new Error(error?.message||'Subscription plan not found');return{plan:mapPlan(data)}};
+export interface CreateSubscriptionData{planId:string;paymentMethodId?:string;couponCode?:string;} export interface CreateSubscriptionResponse{data?:{authorizationUrl?:string};paymentRequired?:boolean;subscription?:unknown;}
+const invokePayment=async<T>(body:Record<string,unknown>):Promise<T>=>{const {data,error}=await getSupabase().functions.invoke('payments',{body});if(error)throw new Error(error.message||'Payment operation failed');if(data?.error)throw new Error(String(data.error));return data as T;};
+export const createSubscription=(data:CreateSubscriptionData,_token?:string):Promise<CreateSubscriptionResponse>=>invokePayment<CreateSubscriptionResponse>({action:'create-subscription',...data});
+export const updateSubscription=(_subscriptionId:string,_data:{planId?:string;paymentMethodId?:string},_token?:string)=>Promise.reject(new Error('Plan changes should be started from the plans page.'));
+export const cancelSubscription=(subscriptionId:string,_token?:string)=>invokePayment({action:'cancel-subscription',subscriptionId});
+export const resumeSubscription=(subscriptionId:string,_token?:string)=>invokePayment({action:'resume-subscription',subscriptionId});
+export const fetchMySubscription=async(_token?:string):Promise<{subscription:Subscription|null}>=>{const user=(await getSupabase().auth.getUser()).data.user;if(!user)return{subscription:null};const {data,error}=await getSupabase().from('subscriptions').select('*, subscription_plans(name,code)').eq('user_id',user.id).order('created_at',{ascending:false}).limit(1).maybeSingle();if(error)throw new Error(error.message);return{subscription:data?mapSubscription(data):null}};
+export const fetchMyInvoices=async(page=1,limit=20,_token?:string):Promise<PaginatedResponse<Invoice>>=>{const user=(await getSupabase().auth.getUser()).data.user;if(!user)throw new Error('You must be signed in');const from=(page-1)*limit;const {data,error,count}=await getSupabase().from('invoices').select('*',{count:'exact'}).eq('user_id',user.id).order('created_at',{ascending:false}).range(from,from+limit-1);if(error)throw new Error(error.message);return{data:(data||[]).map(mapInvoice),page,pageSize:limit,total:count||0,totalPages:Math.ceil((count||0)/limit)}};
+export const fetchInvoiceById=async(invoiceId:string,_token?:string):Promise<{invoice:Invoice}>=>{const user=(await getSupabase().auth.getUser()).data.user;if(!user)throw new Error('You must be signed in');const {data,error}=await getSupabase().from('invoices').select('*').eq('id',invoiceId).eq('user_id',user.id).maybeSingle();if(error||!data)throw new Error(error?.message||'Invoice not found');return{invoice:mapInvoice(data)}};
+export const downloadInvoice=async(invoiceId:string,_token?:string)=>fetchInvoiceById(invoiceId,_token);
+export interface PaymentMethod{id:string;type:'card'|'bank_account'|'mobile_money';details:Record<string,unknown>;isDefault:boolean;}
+export const fetchMyPaymentMethods=async(_token?:string):Promise<{paymentMethods:PaymentMethod[]}>=>({paymentMethods:[]});
+export const addPaymentMethod=async()=>{throw new Error('Saved payment methods are not enabled.');};export const deletePaymentMethod=addPaymentMethod;export const setDefaultPaymentMethod=addPaymentMethod;
+export interface CreatePlanData{name:string;code:string;description?:string;price:number;currency?:string;billingCycle:'monthly'|'yearly'|'one_time';durationDays:number;trialDays?:number;features?:string[];limits?:Record<string,unknown>;isActive?:boolean;isPopular?:boolean;displayOrder?:number;}
+export const createPlan=async()=>{throw new Error('Plan administration is available in the admin console.');};export const updatePlan=createPlan;export const deletePlan=createPlan;
+export interface CouponValidationResult{coupon:import('@/types/models/subscription').Coupon;discountAmount:number;finalAmount:number;}
+export const applyCouponHandler=(couponCode:string,planId:string,_token?:string):Promise<CouponValidationResult>=>invokePayment<CouponValidationResult>({action:'validate-coupon',couponCode,planId});

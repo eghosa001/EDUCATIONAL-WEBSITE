@@ -1,4 +1,6 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '');
+const SUPABASE_WEB_API_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/web-api` : null;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || SUPABASE_WEB_API_URL || '/api/v1';
 
 const DEFAULT_HEADERS = {
   'Content-Type': 'application/json',
@@ -8,13 +10,13 @@ export const apiConfig = {
   baseUrl: API_BASE_URL,
   headers: DEFAULT_HEADERS,
   timeout: 10000,
-  credentials: 'include' as const,
+  credentials: 'omit' as const,
 };
 
 export const getAuthHeaders = (token?: string) => {
   const headers: Record<string, string> = { ...DEFAULT_HEADERS };
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
   return headers;
 };
