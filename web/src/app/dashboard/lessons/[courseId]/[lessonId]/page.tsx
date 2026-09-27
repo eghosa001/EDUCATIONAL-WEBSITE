@@ -60,10 +60,16 @@ function normalizeLessonMath(markdown: string) {
     const readable = readableMathExpression(String(expression));
     return readable ? `\n\n> **${readable}**\n\n` : '';
   });
-  return displayMath.replace(/(^|[^\\])\$([^$\n]+?)\$/gm, (_match, prefix, expression) => {
-    const readable = readableMathExpression(String(expression));
-    return `${prefix}**${readable}**`;
-  }).replace(/\\\$/g, '
+  return displayMath
+    .replace(/(^|[^\\])\$([^$\n]+?)\$/gm, (_match, prefix, expression) => {
+      const readable = readableMathExpression(String(expression));
+      return `${prefix}**${readable}**`;
+    })
+    .replace(/\\\$/g, String.fromCharCode(36));
+}
+
+function LessonContent({ content }: { content: string }) {
+  const safe = normalizeLessonMath(String(content || '').trim());
   if (!safe) return <div className="rounded-2xl border border-dashed border-stone-300 p-8 text-slate-500">No written lesson content is available yet.</div>;
   return <article className="lesson-prose text-[16px] leading-8 text-slate-700 dark:text-slate-200"><ReactMarkdown components={{
     h1: ({ children }) => <h2 className="mb-5 mt-2 text-3xl font-extrabold tracking-tight text-[#151A3A] dark:text-white">{children}</h2>,
