@@ -121,3 +121,13 @@ test('AI quota RPCs and learner exam edge routes are versioned', () => {
   assert.match(api, /startExamMatch/);
   assert.match(api, /submitExamMatch/);
 });
+
+
+test('exam catalogue uses the learner API instead of protected exam_questions rows', () => {
+  const source = read('src/app/dashboard/exams/page.tsx');
+  const api = read('../supabase/functions/web-api/index.ts');
+  assert.match(source, /learnerApiConfig\.baseUrl}\/exams\?limit=100/);
+  assert.doesNotMatch(source, /from\('exam_questions'\)/);
+  assert.match(api, /path==='\/exams'/);
+  assert.match(api, /questionCount/);
+});

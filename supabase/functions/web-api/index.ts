@@ -33,6 +33,28 @@ if(request.method==='GET'&&path==='/questions'){const page=asInt(url.searchParam
 if(request.method==='GET'&&path==='/past-questions'){const page=asInt(url.searchParams.get('page'),1,1,10000),limit=asInt(url.searchParams.get('limit'),20,1,100),board=url.searchParams.get('board'),subjectId=url.searchParams.get('subjectId'),year=url.searchParams.get('year'),from=(page-1)*limit;let query=admin.from('past_questions').select('id,board,year,subject_id,topic_id,question_type,question_text,question_image_url,options,difficulty,marks,source,tags',{count:'exact'}).eq('is_active',true).order('year',{ascending:false}).range(from,from+limit-1);if(board)query=query.ilike('board',board);if(subjectId)query=query.eq('subject_id',subjectId);if(year)query=query.eq('year',Number(year));const{data,error,count}=await query;if(error)throw error;const total=count||0;return json({data:{questions:data||[]},pagination:{page,limit,total,totalPages:Math.ceil(total/limit)}},200,origin)}
 const questionCheck=path.match(/^\/(questions|past-questions)\/([0-9a-f-]+)\/check$/i);if(request.method==='POST'&&questionCheck){await requireUser();const payload=await request.json().catch(()=>({}));const submitted=scalarAnswer(payload?.answer);if(!submitted)return json({error:{message:'Answer is required'}},400,origin);const table=questionCheck[1]==='past-questions'?'past_questions':'questions';const columns=table==='past_questions'?'id,correct_answer,explanation,is_active':'id,correct_answer,explanation,explanation_image_url,is_active';const{data:row,error}=await admin.from(table).select(columns).eq('id',questionCheck[2]).eq('is_active',true).maybeSingle();if(error||!row)return json({error:{message:'Question not found'}},404,origin);const correctAnswer=scalarAnswer((row as any).correct_answer);const isCorrect=submitted.toLowerCase()===correctAnswer.toLowerCase();return json({data:{result:{isCorrect,correctAnswer,explanation:(row as any).explanation||null,explanationImageUrl:(row as any).explanation_image_url||null}}},200,origin)}
 
+if(request.method==='GET'&&path==='/exams'){
+  const page=asInt(url.searchParams.get('page'),1,1,10000),limit=asInt(url.searchParams.get('limit'),100,1,100),from=(page-1)*limit;
+  const examType=url.searchParams.get('examType'),subjectId=url.searchParams.get('subjectId'),classId=url.searchParams.get('classId');
+  let examQuery=admin.from('exams').select('id,title,description,exam_type,subject_id,class_id,duration_minutes,total_marks,passing_marks,instructions,is_timed,shuffle_questions,show_results_immediately,allow_review,max_attempts,is_active,is_public,created_at',{count:'exact'}).eq('is_active',true).eq('is_public',true).order('created_at',{ascending:false}).range(from,from+limit-1);
+  if(examType)examQuery=examQuery.eq('exam_type',examType);
+  if(subjectId)examQuery=examQuery.eq('subject_id',subjectId);
+  if(classId)examQuery=examQuery.eq('class_id',classId);
+  const{data:examRows,error:examError,count}=await examQuery;
+  if(examError)throw examError;
+  const ids=(examRows||[]).map((row:any)=>row.id);
+  let links:any[]=[];
+  if(ids.length){
+    const result=await admin.from('exam_questions').select('exam_id').in('exam_id',ids);
+    if(result.error)throw result.error;
+    links=result.data||[];
+  }
+  const counts=new Map<string,number>();
+  for(const row of links)counts.set(String(row.exam_id),(counts.get(String(row.exam_id))||0)+1);
+  const exams=(examRows||[]).map((row:any)=>({...row,questionCount:counts.get(String(row.id))||0})).filter((row:any)=>row.questionCount>0);
+  return json({data:{exams},pagination:{page,limit,total:count||0,totalPages:Math.ceil((count||0)/limit)}},200,origin);
+}
+
 const examMatch=path.match(/^\/exams\/([0-9a-f-]+)$/i);
 if(request.method==='GET'&&examMatch){
   const examId=examMatch[1];
