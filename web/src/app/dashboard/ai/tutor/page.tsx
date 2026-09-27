@@ -5,6 +5,7 @@ import { Send, Bot, User, Lightbulb, Sparkles } from 'lucide-react';
 import { useAuthStore } from '@/state/auth/authStore';
 import { sendAiTutorMessage, type AiTutorRequest } from '@/services/api/aiService';
 import type { ChatMessage } from '@/types/models/ai';
+import { getSupabase } from '@/lib/supabase';
 
 const INITIAL_MESSAGE: ChatMessage = {
   id: 'initial',
@@ -20,17 +21,56 @@ const QUICK_QUESTIONS = [
   'Create a study plan for JAMB',
 ];
 
+type CurriculumOption = { id: string; name: string };
+
 export default function AiTutorPage() {
-  const { token, user } = useAuthStore();
+  const { token } = useAuthStore();
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [subjectId, setSubjectId] = useState('');
   const [topicId, setTopicId] = useState('');
+  const [subjects, setSubjects] = useState<CurriculumOption[]>([]);
+  const [topics, setTopics] = useState<CurriculumOption[]>([]);
+  const [contextLoading, setContextLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   useEffect(scrollToBottom, [messages]);
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await getSupabase().from('subjects').select('id,name').eq('is_active', true).order('name');
+      if (!cancelled && !error) setSubjects((data || []) as CurriculumOption[]);
+    })();
+    return () => { cancelled = true; };
+  }, [token]);
+
+  useEffect(() => {
+    setTopicId('');
+    setTopics([]);
+    if (!subjectId || !token) return;
+    let cancelled = false;
+    setContextLoading(true);
+    (async () => {
+      const { data, error } = await getSupabase().from('topics').select('id,name').eq('subject_id', subjectId).eq('is_active', true).not('class_id', 'is', null).order('name').limit(500);
+      if (!cancelled && !error) {
+        const unique = new Map<string, CurriculumOption>();
+        for (const row of (data || []) as CurriculumOption[]) {
+          const key = row.name.trim().toLowerCase();
+          if (key && !unique.has(key)) unique.set(key, row);
+        }
+        setTopics([...unique.values()]);
+      }
+      if (!cancelled) setContextLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [subjectId, token]);
+
+  const selectedSubject = subjects.find(subject => subject.id === subjectId);
+  const selectedTopic = topics.find(topic => topic.id === topicId);
 
   const handleSend = async (text?: string) => {
     const message = (text || input).trim();
@@ -84,7 +124,7 @@ export default function AiTutorPage() {
         {(subjectId || topicId) && (
           <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">
             <Sparkles className="w-3 h-3" />
-            Context: {subjectId || topicId}
+            Context: {[selectedSubject?.name, selectedTopic?.name].filter(Boolean).join(' · ')}
           </div>
         )}
       </div>
@@ -183,21 +223,17 @@ export default function AiTutorPage() {
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Subject (optional)</label>
-                <input
-                  value={subjectId}
-                  onChange={e => setSubjectId(e.target.value)}
-                  placeholder="Subject ID"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <select value={subjectId} onChange={e => setSubjectId(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">All subjects</option>
+                  {subjects.map(subject => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
+                </select>
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Topic (optional)</label>
-                <input
-                  value={topicId}
-                  onChange={e => setTopicId(e.target.value)}
-                  placeholder="Topic ID"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <select value={topicId} onChange={e => setTopicId(e.target.value)} disabled={!subjectId || contextLoading} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
+                  <option value="">{contextLoading ? 'Loading topics…' : subjectId ? 'All topics in subject' : 'Choose a subject first'}</option>
+                  {topics.map(topic => <option key={topic.id} value={topic.id}>{topic.name}</option>)}
+                </select>
               </div>
             </div>
             <p className="text-xs text-gray-400 mt-3">

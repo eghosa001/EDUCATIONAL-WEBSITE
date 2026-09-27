@@ -23,6 +23,7 @@ export function assessLessonContent(data = {}) {
   if (!title) issues.push('Lesson title is required.');
   if (!written) issues.push('Written lesson content is required before publication.');
   if (written && written.length < 700) issues.push('Written lesson content is too short for publication.');
+  if (/[一-龯]/.test(combined)) issues.push('Lesson contains unsupported mixed-language character contamination.');
 
   const matchedTemplate = TEMPLATE_PATTERNS.find(pattern => pattern.test(combined));
   if (matchedTemplate) issues.push('Lesson contains generic/template teaching text instead of topic-specific instruction.');

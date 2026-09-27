@@ -35,3 +35,15 @@ test('accepts substantial topic-specific lesson content', () => {
   });
   assert.equal(result.valid, true, result.issues.join(' '));
 });
+
+
+test('rejects lessons containing injected CJK fragments', () => {
+  const result = assessLessonContent({
+    title: 'Environmental Protection',
+    written_content: ('Students should protect rivers and dispose of waste safely. Disaster预警 systems help communities prepare for emergencies. ').repeat(12),
+    learning_objectives: ['Explain environmental protection', 'Describe safe community practices'],
+    key_points: ['Protect water sources', 'Dispose of waste safely'],
+  });
+  assert.equal(result.valid, false);
+  assert.ok(result.issues.some(issue => /mixed-language character contamination/i.test(issue)));
+});

@@ -55,3 +55,33 @@ test('backend has publishable-key compatibility fallback', () => {
   assert.match(config, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
   assert.match(config, /sb_publishable_/);
 });
+
+
+test('lesson math is normalized instead of showing raw dollar delimiters', () => {
+  const source = read('src/app/dashboard/lessons/[courseId]/[lessonId]/page.tsx');
+  assert.match(source, /function normalizeLessonMath/);
+  assert.match(source, /function readableMathExpression/);
+  assert.match(source, /normalizeLessonMath\(String\(content/);
+});
+
+test('library client normalizes the backend resources envelope', () => {
+  const source = read('src/services/api/libraryService.ts');
+  assert.match(source, /payload\?\.data\?\.resources/);
+  assert.match(source, /resource\.resource_type/);
+  assert.match(source, /totalPages/);
+});
+
+test('AI tutor uses curriculum selectors instead of raw UUID inputs', () => {
+  const source = read('src/app/dashboard/ai/tutor/page.tsx');
+  assert.match(source, /from\('subjects'\)/);
+  assert.match(source, /from\('topics'\)/);
+  assert.doesNotMatch(source, /placeholder="Subject ID"/);
+  assert.doesNotMatch(source, /placeholder="Topic ID"/);
+});
+
+test('student navigation exposes curriculum, library and plans', () => {
+  const source = read('src/app/dashboard/layout.tsx');
+  assert.match(source, /href: '\/dashboard\/curriculum'/);
+  assert.match(source, /href: '\/dashboard\/library'/);
+  assert.match(source, /href: '\/dashboard\/subscriptions\/plans'/);
+});
