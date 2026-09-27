@@ -33,6 +33,7 @@ export default function AiTutorPage() {
   const [subjects, setSubjects] = useState<CurriculumOption[]>([]);
   const [topics, setTopics] = useState<CurriculumOption[]>([]);
   const [contextLoading, setContextLoading] = useState(false);
+  const [sessionId, setSessionId] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -87,8 +88,18 @@ export default function AiTutorPage() {
     setIsLoading(true);
 
     try {
-      const req: AiTutorRequest = { message, subjectId: subjectId || undefined, topicId: topicId || undefined };
+      const req: AiTutorRequest = {
+        message,
+        subjectId: subjectId || undefined,
+        topicId: topicId || undefined,
+        sessionId: sessionId || undefined,
+        context: {
+          currentSubject: selectedSubject?.name || 'general',
+          currentTopic: selectedTopic?.name || 'general',
+        },
+      };
       const res = await sendAiTutorMessage(req, token);
+      if (res.sessionId) setSessionId(res.sessionId);
       const assistantMsg: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
@@ -96,11 +107,11 @@ export default function AiTutorPage() {
         createdAt: new Date().toISOString(),
       };
       setMessages(prev => [...prev, assistantMsg]);
-    } catch {
+    } catch (error) {
       const errorMsg: ChatMessage = {
         id: `error-${Date.now()}`,
         role: 'assistant',
-        content: 'Something went wrong. Please check your connection and try again.',
+        content: error instanceof Error ? error.message : 'Something went wrong. Please try again.',
         createdAt: new Date().toISOString(),
       };
       setMessages(prev => [...prev, errorMsg]);
@@ -223,14 +234,14 @@ export default function AiTutorPage() {
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Subject (optional)</label>
-                <select value={subjectId} onChange={e => setSubjectId(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                <select value={subjectId} onChange={e => { setSubjectId(e.target.value); setSessionId(''); }} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">All subjects</option>
                   {subjects.map(subject => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Topic (optional)</label>
-                <select value={topicId} onChange={e => setTopicId(e.target.value)} disabled={!subjectId || contextLoading} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
+                <select value={topicId} onChange={e => { setTopicId(e.target.value); setSessionId(''); }} disabled={!subjectId || contextLoading} className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
                   <option value="">{contextLoading ? 'Loading topics…' : subjectId ? 'All topics in subject' : 'Choose a subject first'}</option>
                   {topics.map(topic => <option key={topic.id} value={topic.id}>{topic.name}</option>)}
                 </select>

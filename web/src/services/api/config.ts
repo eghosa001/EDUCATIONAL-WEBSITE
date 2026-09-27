@@ -11,6 +11,22 @@ export const apiConfig = {
   credentials: 'include' as const,
 };
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/+$/, '');
+const SUPABASE_PUBLIC_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+export const learnerApiConfig = {
+  baseUrl: SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/web-api/api/v1` : API_BASE_URL,
+  credentials: 'omit' as const,
+};
+
+export const getLearnerApiHeaders = (token?: string) => {
+  const headers = getAuthHeaders(token);
+  if (SUPABASE_PUBLIC_KEY) headers.apikey = SUPABASE_PUBLIC_KEY;
+  return headers;
+};
+
 export const getAuthHeaders = (token?: string) => {
   const headers: Record<string, string> = { ...DEFAULT_HEADERS };
   if (token) {

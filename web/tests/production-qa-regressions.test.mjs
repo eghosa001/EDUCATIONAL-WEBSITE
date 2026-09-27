@@ -85,3 +85,39 @@ test('student navigation exposes curriculum, library and plans', () => {
   assert.match(source, /href: '\/dashboard\/library'/);
   assert.match(source, /href: '\/dashboard\/subscriptions\/plans'/);
 });
+
+
+test('learner exam and past-question flows use the Supabase learner API', () => {
+  const config = read('src/services/api/config.ts');
+  const exam = read('src/app/dashboard/exams/[examId]/page.tsx');
+  const past = read('src/app/dashboard/past-questions/page.tsx');
+  assert.match(config, /functions\/v1\/web-api\/api\/v1/);
+  assert.match(exam, /learnerApiConfig/);
+  assert.match(past, /learnerApiConfig/);
+  assert.doesNotMatch(exam, /apiConfig\.baseUrl/);
+  assert.doesNotMatch(past, /apiConfig\.baseUrl/);
+});
+
+test('AI tutor preserves the conversation and sends named curriculum context', () => {
+  const source = read('src/app/dashboard/ai/tutor/page.tsx');
+  assert.match(source, /sessionId: sessionId \|\| undefined/);
+  assert.match(source, /currentSubject: selectedSubject\?\.name/);
+  assert.match(source, /currentTopic: selectedTopic\?\.name/);
+  assert.match(source, /setSessionId\(res\.sessionId\)/);
+});
+
+test('flashcard generation requires an explicit curriculum topic', () => {
+  const source = read('src/app/dashboard/flashcards/page.tsx');
+  assert.match(source, /from\('topics'\)/);
+  assert.match(source, /generateAiFlashcards\(\{ subjectId, topicId, count: 20 \}/);
+  assert.match(source, /disabled=\{!subjectId \|\| !topicId \|\| generating\}/);
+});
+
+test('AI quota RPCs and learner exam edge routes are versioned', () => {
+  const migration = read('../supabase/migrations/20260928200000_restore_ai_quota_rpcs.sql');
+  const api = read('../supabase/functions/web-api/index.ts');
+  assert.match(migration, /create or replace function public\.consume_ai_request/i);
+  assert.match(migration, /grant execute on function public\.consume_ai_request\(uuid, integer\) to service_role/i);
+  assert.match(api, /startExamMatch/);
+  assert.match(api, /submitExamMatch/);
+});

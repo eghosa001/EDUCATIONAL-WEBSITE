@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AlertCircle, ArrowLeft, CheckCircle2, Clock3, Flag, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { apiConfig, getAuthHeaders, handleApiResponse } from '@/services/api/config';
+import { learnerApiConfig, getLearnerApiHeaders, handleApiResponse } from '@/services/api/config';
 
 type Answers = Record<string, unknown>;
 interface Exam {
@@ -58,9 +58,9 @@ export default function ExamAttemptPage() {
     (async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${apiConfig.baseUrl}/exams/${examId}`, {
-          headers: getAuthHeaders(token),
-          credentials: apiConfig.credentials,
+        const response = await fetch(`${learnerApiConfig.baseUrl}/exams/${examId}`, {
+          headers: getLearnerApiHeaders(token),
+          credentials: learnerApiConfig.credentials,
         });
         const payload = await handleApiResponse<{ data: { exam: Exam; stats: { questionCount: number } } }>(response);
         if (!cancelled) {
@@ -81,10 +81,10 @@ export default function ExamAttemptPage() {
     setStarting(true);
     setError('');
     try {
-      const response = await fetch(`${apiConfig.baseUrl}/exams/${examId}/attempts`, {
+      const response = await fetch(`${learnerApiConfig.baseUrl}/exams/${examId}/attempts`, {
         method: 'POST',
-        headers: getAuthHeaders(token),
-        credentials: apiConfig.credentials,
+        headers: getLearnerApiHeaders(token),
+        credentials: learnerApiConfig.credentials,
       });
       const payload = await handleApiResponse<{
         data: {
@@ -145,10 +145,10 @@ export default function ExamAttemptPage() {
     setError('');
     try {
       const elapsed = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
-      const response = await fetch(`${apiConfig.baseUrl}/exams/${examId}/attempts/${attemptId}/submit`, {
+      const response = await fetch(`${learnerApiConfig.baseUrl}/exams/${examId}/attempts/${attemptId}/submit`, {
         method: 'POST',
-        headers: getAuthHeaders(token),
-        credentials: apiConfig.credentials,
+        headers: getLearnerApiHeaders(token),
+        credentials: learnerApiConfig.credentials,
         body: JSON.stringify({
           answers: Object.entries(answers).map(([questionId, studentAnswer]) => ({ questionId, studentAnswer })),
           timeSpentSeconds: elapsed,
@@ -159,6 +159,7 @@ export default function ExamAttemptPage() {
           result: {
             score: number; totalMarks: number; percentage: number; isPassed: boolean;
             correctCount: number; incorrectCount: number; unansweredCount: number; showResults: boolean;
+            answers?: Array<{ questionId: string; questionText: string; studentAnswer: unknown; isCorrect: boolean; correctAnswer: unknown; explanation?: string | null }>;
           };
         };
       }>(response);
@@ -175,7 +176,7 @@ export default function ExamAttemptPage() {
         unansweredCount: result.unansweredCount,
         showResults: result.showResults,
         timeSpent: formatTime(elapsed),
-        answers: [],
+        answers: result.answers || [],
       }));
       router.push(`/dashboard/exams/${examId}/results`);
     } catch (err) {
