@@ -33,6 +33,7 @@ const functions = fs.existsSync(functionsRoot)
 assert.ok(functions.length > 0, `No Supabase Edge Functions found in ${functionsRoot}`);
 
 const base = supabaseUrl.replace(/\/$/, '') + '/functions/v1';
+const browserOrigin = process.env.PRODUCTION_WEB_ORIGIN || 'https://web-ogs7.vercel.app';
 
 async function call(name, options = {}) {
   const controller = new AbortController();
@@ -85,6 +86,37 @@ for (const name of functions) {
   }
 
   console.log(`PASS ${name}: OPTIONS=${options.response.status}, GET=${get.response.status}, invalid POST=${invalid.response.status}`);
+}
+
+// Concrete learner routes must work; probing only the function root previously missed broken path normalization.
+for (const route of [
+  'web-api/exams?limit=1',
+  'web-api/past-questions?board=jamb&limit=1',
+  'web-api/api/v1/exams?limit=1',
+]) {
+  const result = await call(route, { method: 'GET' });
+  assert.equal(result.response.status, 200, `${route} returned ${result.response.status}: ${result.text}`);
+  const payload = JSON.parse(result.text);
+  assert.ok(payload?.data, `${route} did not return a data envelope`);
+}
+
+// Browser CORS must allow the actual production origin. This catches "Failed to send a request"
+// before a user ever reaches the flashcard/AI POST body.
+for (const name of ['flashcards', 'ai']) {
+  const preflight = await call(name, {
+    method: 'OPTIONS',
+    headers: {
+      origin: browserOrigin,
+      'access-control-request-method': 'POST',
+      'access-control-request-headers': 'authorization,apikey,content-type',
+    },
+  });
+  assert.equal(preflight.response.status, 200, `${name} browser preflight returned ${preflight.response.status}`);
+  assert.equal(
+    preflight.response.headers.get('access-control-allow-origin'),
+    browserOrigin,
+    `${name} does not allow the production browser origin`,
+  );
 }
 
 console.log(`Edge smoke suite passed for ${functions.length} discovered functions: ${functions.join(', ')}.`);

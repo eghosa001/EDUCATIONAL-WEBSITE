@@ -86,8 +86,11 @@ export const getAiExplanation = (data: AiExplainRequest, _token?: string) => inv
 
 export interface AiFlashcardRequest { subjectId: string; topicId?: string; count: number; }
 export interface AiFlashcard { id: string; front: string; back: string; subjectId: string; topicId?: string; difficulty?: string; }
-export const generateAiFlashcards = (data: AiFlashcardRequest, _token?: string) => {
-  return getSupabase().functions.invoke('flashcards', { body: data }).then(({ data, error }) => {
+export const generateAiFlashcards = (data: AiFlashcardRequest, token?: string) => {
+  return getSupabase().functions.invoke('flashcards', {
+    body: data,
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  }).then(({ data, error }) => {
     if (error) throw new Error(error.message || 'Flashcard generation failed');
     if (data?.error) throw new Error(String(data.error));
     return data as { flashcards: AiFlashcard[] };

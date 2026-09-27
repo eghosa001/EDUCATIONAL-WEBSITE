@@ -91,7 +91,8 @@ test('learner exam and past-question flows use the Supabase learner API', () => 
   const config = read('src/services/api/config.ts');
   const exam = read('src/app/dashboard/exams/[examId]/page.tsx');
   const past = read('src/app/dashboard/past-questions/page.tsx');
-  assert.match(config, /functions\/v1\/web-api\/api\/v1/);
+  assert.match(config, /functions\/v1\/web-api/);
+  assert.doesNotMatch(config, /web-api\/api\/v1/);
   assert.match(exam, /learnerApiConfig/);
   assert.match(past, /learnerApiConfig/);
   assert.doesNotMatch(exam, /apiConfig\.baseUrl/);
@@ -130,4 +131,16 @@ test('exam catalogue uses the learner API instead of protected exam_questions ro
   assert.doesNotMatch(source, /from\('exam_questions'\)/);
   assert.match(api, /path==='\/exams'/);
   assert.match(api, /questionCount/);
+});
+
+
+test('Supabase runtime path prefixes are normalized before learner routing', () => {
+  const api = read('../supabase/functions/web-api/index.ts');
+  assert.match(api, /replace\(\/\^\\\/web-api/);
+  assert.match(api, /path\.startsWith\('\/api\/v1'\)/);
+});
+
+test('flashcard invocation forwards the current learner access token', () => {
+  const service = read('src/services/api/aiService.ts');
+  assert.match(service, /headers: token \? \{ Authorization: `Bearer \$\{token\}` \} : undefined/);
 });

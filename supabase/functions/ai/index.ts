@@ -1,11 +1,16 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const configuredOrigins = (Deno.env.get('AI_ALLOWED_ORIGINS') || '').split(',').map((origin) => origin.trim()).filter(Boolean);
 const corsHeadersFor = (request: Request) => {
   const origin = request.headers.get('Origin');
-  const allowed = origin && (configuredOrigins.length === 0 || configuredOrigins.includes(origin));
+  let allowedOrigin = '*';
+  if (origin) {
+    try {
+      const parsed = new URL(origin);
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') allowedOrigin = parsed.origin;
+    } catch {}
+  }
   return {
-    'Access-Control-Allow-Origin': allowed ? origin : (configuredOrigins.length === 0 ? '*' : configuredOrigins[0]),
+    'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Vary': 'Origin',
@@ -130,7 +135,6 @@ Deno.serve(async (request) => {
     const action = cleanString(body.action, 30);
     if (!['tutor', 'explain', 'quiz', 'study-plan', 'flashcards', 'summarize'].includes(action)) return json(request, { error: 'Unsupported AI action' }, 400);
 
-    // Validate cheap, user-controlled inputs before consuming quota.
     if (action === 'tutor' && !cleanString(body.message, MAX_TUTOR_MESSAGE)) return json(request, { error: 'message is required' }, 400);
     if (action === 'explain' && !cleanString(body.question, MAX_EXPLAIN_QUESTION)) return json(request, { error: 'question is required' }, 400);
     if (action === 'summarize' && !cleanString(body.content, MAX_SUMMARY_CONTENT)) return json(request, { error: 'content is required' }, 400);

@@ -17,7 +17,7 @@ const SUPABASE_PUBLIC_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export const learnerApiConfig = {
-  baseUrl: SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/web-api/api/v1` : API_BASE_URL,
+  baseUrl: SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/web-api` : API_BASE_URL,
   credentials: 'omit' as const,
 };
 
