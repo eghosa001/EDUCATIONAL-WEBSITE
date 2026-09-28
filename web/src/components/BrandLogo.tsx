@@ -7,7 +7,7 @@ type BrandLogoProps = {
   className?: string;
 };
 
-const lightCrop = 'absolute left-[-40.65%] top-[-73.33%] h-[250.67%] w-[177.94%] max-w-none select-none';
+const lightCrop = 'absolute left-[-40.65%] top-[-73.33%] h-[250.67%] w-[177.94%] max-w-none select-none mix-blend-multiply';
 const darkCrop = 'absolute left-[-16.82%] top-[-42.67%] h-[200.53%] w-[128.88%] max-w-none select-none';
 
 export default function BrandLogo({

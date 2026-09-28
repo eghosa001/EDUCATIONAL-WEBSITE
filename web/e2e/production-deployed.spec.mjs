@@ -45,7 +45,7 @@ async function accessToken(page) {
 }
 
 async function expectBrandVisible(page) {
-  const logo = page.locator('[data-brand-logo]').first();
+  const logo = page.locator('[data-brand-logo]:visible').first();
   await expect(logo).toBeVisible();
   const image = logo.locator('img:visible').first();
   await expect(image).toBeVisible();
