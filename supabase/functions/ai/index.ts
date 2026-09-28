@@ -45,7 +45,7 @@ const openAI = async (messages: Array<{ role: string; content: string }>, maxTok
   const model = Deno.env.get('AI_DEFAULT_MODEL') || 'agnes-2.5-flash';
   if (!key) throw new Error('Bynara AI provider is not configured');
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 45_000);
+  const timeout = setTimeout(() => controller.abort(), 100_000);
   try {
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',

@@ -5,8 +5,14 @@ const REPOSITORY = "eghosa001/EDUCATIONAL-WEBSITE";
 const MAIN_REF = "refs/heads/main";
 const GITHUB_ISSUER = "https://token.actions.githubusercontent.com";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
 const decodeBase64Url = (value: string) => {
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
@@ -22,6 +28,7 @@ const verifyGitHubOidc = async (token: string) => {
   const [encodedHeader, encodedPayload, encodedSignature] = parts;
   const header = parsePart(encodedHeader);
   const payload = parsePart(encodedPayload);
+
   if (header.alg !== "RS256" || !header.kid) throw new Error("Unsupported GitHub OIDC token");
   if (payload.iss !== GITHUB_ISSUER) throw new Error("Invalid GitHub OIDC issuer");
   const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
@@ -37,7 +44,13 @@ const verifyGitHubOidc = async (token: string) => {
   const jwks = await jwksResponse.json();
   const jwk = (jwks.keys || []).find((candidate: any) => candidate.kid === header.kid);
   if (!jwk) throw new Error("GitHub OIDC signing key not found");
-  const key = await crypto.subtle.importKey("jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
+  const key = await crypto.subtle.importKey(
+    "jwk",
+    jwk,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["verify"],
+  );
   const valid = await crypto.subtle.verify(
     "RSASSA-PKCS1-v1_5",
     key,
@@ -58,7 +71,9 @@ const cleanupUser = async (admin: any, userId: string) => {
 };
 
 Deno.serve(async (request) => {
+  if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
   try {
     const authorization = request.headers.get("Authorization") || "";
     if (!authorization.startsWith("Bearer ")) return json({ error: "GitHub OIDC token required" }, 401);

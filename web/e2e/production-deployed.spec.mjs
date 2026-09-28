@@ -45,7 +45,6 @@ async function accessToken(page) {
 }
 
 test.describe('deployed production learner QA', () => {
-  test.describe.configure({ mode: 'serial' });
   test.skip(!enabled, 'Production QA runs only after the Vercel deployment is ready.');
 
   test.beforeEach(async ({ page }) => {
@@ -203,7 +202,7 @@ test.describe('deployed production learner QA', () => {
   });
 
   test('AI Tutor completes a real two-turn Bynara conversation', async ({ page }) => {
-    test.setTimeout(180000);
+    test.setTimeout(300000);
     const failures = watchRuntimeFailures(page);
     await page.goto('/dashboard/ai/tutor', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: /AI Tutor/i })).toBeVisible();
@@ -220,7 +219,7 @@ test.describe('deployed production learner QA', () => {
       await input.fill(message);
       const responsePromise = page.waitForResponse(
         response => response.url().includes('/functions/v1/ai') && response.request().method() === 'POST',
-        { timeout: 90000 },
+        { timeout: 120000 },
       );
       await input.press('Enter');
       const response = await responsePromise;

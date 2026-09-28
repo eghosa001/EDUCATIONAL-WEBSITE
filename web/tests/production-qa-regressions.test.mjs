@@ -175,3 +175,17 @@ test('production QA creates a mandatory temporary authenticated learner', () => 
   assert.match(qaUser, /token\.actions\.githubusercontent\.com/);
   assert.match(qaUser, /eghosa001\/EDUCATIONAL-WEBSITE/);
 });
+
+
+test('production QA continues after individual feature failures and cleanup JSON is valid', () => {
+  const workflow = read('../.github/workflows/comprehensive-tests.yml');
+  const spec = read('e2e/production-deployed.spec.mjs');
+  assert.doesNotMatch(spec, /mode:\s*['"]serial['"]/);
+  assert.match(workflow, /delete_payload=\$\(node -e/);
+  assert.match(workflow, /JSON\.stringify\(\{action:"delete",userId:process\.env\.QA_USER_ID\}\)/);
+});
+
+test('AI Tutor allows Bynara production latency above the old 45-second limit', () => {
+  const source = read('../supabase/functions/ai/index.ts');
+  assert.match(source, /controller\.abort\(\), 100_000/);
+});
