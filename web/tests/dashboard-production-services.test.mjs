@@ -158,3 +158,16 @@ test('flashcard curriculum fallback can build cards from ordinary lesson prose',
   assert.match(source, /What important idea/);
   assert.match(source, /What is key point/);
 });
+
+test('extracted source questions have a dedicated in-site question bank instead of PDF links', () => {
+  const bank = read('../src/app/dashboard/past-questions/library/page.tsx');
+  const cbt = read('../src/app/dashboard/past-questions/page.tsx');
+  const api = read('../../supabase/functions/web-api/index.ts');
+  assert.match(cbt, /Browse extracted question bank/);
+  assert.match(bank, /Extracted Question Bank/);
+  assert.match(bank, /Learners do not receive the PDFs/);
+  assert.match(bank, /past-questions\?/);
+  assert.doesNotMatch(bank, /file_url|public_url|createSignedUrl|storage\/v1\/object/);
+  assert.match(api, /questionType/);
+  assert.match(api, /storageBacked/);
+});

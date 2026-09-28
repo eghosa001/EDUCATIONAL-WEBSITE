@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   ArrowLeft,
   BookOpenIcon,
@@ -328,7 +329,7 @@ export default function PastQuestionsPage() {
 
   if (phase === 'setup') {
     return <div className="space-y-6">
-      <header><h1 className="text-2xl font-bold text-[#151A3A] dark:text-white">Past Questions CBT</h1><p className="mt-1 text-slate-500 dark:text-slate-400">Choose the exam source and subjects first. Question count comes on the next screen.</p></header>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="text-2xl font-bold text-[#151A3A] dark:text-white">Past Questions CBT</h1><p className="mt-1 text-slate-500 dark:text-slate-400">Choose the exam source and subjects first. Question count comes on the next screen.</p></div><Link href="/dashboard/past-questions/library" className="inline-flex items-center justify-center rounded-xl border border-[#151A3A] px-4 py-2 text-sm font-semibold text-[#151A3A] transition hover:bg-[#151A3A] hover:text-white dark:border-slate-300 dark:text-slate-100">Browse extracted question bank</Link></header>
       {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">{error}</div>}
       <div className="flex w-fit gap-1 rounded-xl bg-stone-100 p-1 dark:bg-slate-800">
         <button onClick={() => chooseMode('class')} className={`rounded-lg px-4 py-2 text-sm font-semibold ${mode === 'class' ? 'bg-white text-[#151A3A] shadow-sm dark:bg-[#1b2045] dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}><GraduationCapIcon className="mr-1.5 inline h-4 w-4"/>Class Practice</button>
