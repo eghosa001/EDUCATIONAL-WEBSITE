@@ -304,6 +304,7 @@ def main():
                     "action": "ingest",
                     "fileId": file["id"],
                     "subject": subject,
+                    "pipelineVersion": 2,
                     "method": method,
                     "questions": questions,
                 })

@@ -94,7 +94,7 @@ const isLikelyQuestionFile = (file: any) => {
   const status = String(file.metadata?.status || "");
   if (!["waec", "jamb"].includes(board)) return false;
   if (/syllabus|selected[- _]?text|nerdc|scheme|2021[- _]?2025/.test(name)) return false;
-  if (["needs_ocr_or_manual_parse", "needs_batch_processing", "ocr_failed"].includes(status)) return true;
+  if (["needs_ocr_or_manual_parse", "needs_batch_processing", "needs_clean_reprocess", "ocr_failed"].includes(status)) return true;
   if (board === "jamb") return /past[- _]?questions?|questions?[- _]?and[- _]?answers?/.test(name);
   return Boolean(file.year) && !/allproblems/.test(name);
 };
@@ -147,7 +147,11 @@ Deno.serve(async (request) => {
         .select("id,board,subject,year,file_name,metadata").eq("id", fileId).maybeSingle();
       if (fileError || !file) return json({ error: "Source file not found" }, 404);
       const fileStatus = String(file?.metadata?.status || "");
+      const pipelineVersion = Number(body?.pipelineVersion || 0);
       if (fileStatus === "reference_material") return json({ success: true, skipped: true, reason: "reference_material" });
+      if (fileStatus === "needs_clean_reprocess" && pipelineVersion < 2) {
+        return json({ success: true, skipped: true, reason: "requires_clean_pipeline_v2" });
+      }
       if (file.is_processed && fileStatus === "ocr_extracted") {
         return json({ success: true, skipped: true, reason: "already_processed", inserted: 0, active: Number(file.questions_extracted || 0), answered: 0 });
       }
