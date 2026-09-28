@@ -44,6 +44,54 @@ async function accessToken(page) {
   });
 }
 
+async function expectBrandVisible(page) {
+  const logo = page.locator('[data-brand-logo]').first();
+  await expect(logo).toBeVisible();
+  const image = logo.locator('img:visible').first();
+  await expect(image).toBeVisible();
+  const state = await image.evaluate((img) => {
+    const rect = img.getBoundingClientRect();
+    const style = getComputedStyle(img);
+    return {
+      complete: img.complete,
+      naturalWidth: img.naturalWidth,
+      naturalHeight: img.naturalHeight,
+      width: rect.width,
+      height: rect.height,
+      opacity: Number(style.opacity || '1'),
+      visibility: style.visibility,
+      display: style.display,
+    };
+  });
+  expect(state.complete).toBe(true);
+  expect(state.naturalWidth).toBeGreaterThan(500);
+  expect(state.naturalHeight).toBeGreaterThan(250);
+  expect(state.width).toBeGreaterThan(100);
+  expect(state.height).toBeGreaterThan(30);
+  expect(state.opacity).toBeGreaterThan(0);
+  expect(state.visibility).not.toBe('hidden');
+  expect(state.display).not.toBe('none');
+}
+
+async function captureVisual(page, testInfo, name) {
+  const safe = name.replace(/^\/+|\/+$/g, '').replace(/[^a-z0-9]+/gi, '-') || 'home';
+  const path = testInfo.outputPath(`visual-${safe}.png`);
+  await page.screenshot({ path, fullPage: true, animations: 'disabled' });
+  await testInfo.attach(`visual-${safe}`, { path, contentType: 'image/png' });
+}
+
+test.describe('deployed production public visual QA', () => {
+  test.skip(!enabled, 'Production QA runs only after the Vercel deployment is ready.');
+  for (const route of ['/', '/login', '/register', '/forgot-password', '/visual-404-check']) {
+    test(`visual ${route}`, async ({ page }, testInfo) => {
+      const response = await page.goto(route, { waitUntil: 'networkidle' });
+      if (route !== '/visual-404-check') expect(response?.status() || 0).toBeLessThan(400);
+      await expectBrandVisible(page);
+      await captureVisual(page, testInfo, route);
+    });
+  }
+});
+
 test.describe('deployed production learner QA', () => {
   test.skip(!enabled, 'Production QA runs only after the Vercel deployment is ready.');
 
@@ -85,6 +133,8 @@ test.describe('deployed production learner QA', () => {
         await page.waitForTimeout(300);
         expect(new URL(page.url()).pathname, `${route} unexpectedly redirected`).toBe(route);
         await expect(page.locator('body')).not.toContainText(fatalText);
+        await expectBrandVisible(page);
+        await captureVisual(page, testInfo, route);
       });
     }
     await testInfo.attach('route-count', { body: String(routes.length), contentType: 'text/plain' });
@@ -151,6 +201,8 @@ test.describe('deployed production learner QA', () => {
     const failures = watchRuntimeFailures(page);
     await page.goto('/dashboard/past-questions', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: /Past Questions CBT/i })).toBeVisible();
+    await expect(page.getByText(/Original source papers/i)).toHaveCount(0);
+    await expect(page.locator('a[href*=".pdf"], a[href*="/storage/v1/object/"]')).toHaveCount(0);
     const token = await accessToken(page);
     const result = await page.evaluate(async ({ supabaseUrl, publishableKey, token }) => {
       const headers = { apikey: publishableKey, Authorization: `Bearer ${token}`, 'content-type': 'application/json' };

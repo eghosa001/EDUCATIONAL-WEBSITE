@@ -30,7 +30,7 @@ export default function LandingPage() {
     <div className="min-h-screen overflow-x-hidden bg-stone-50 text-slate-900 dark:bg-[#151A3A] dark:text-slate-100">
       <nav className="sticky top-0 z-50 border-b border-stone-200/80 bg-white/95 backdrop-blur-xl dark:border-slate-700/80 dark:bg-[#151A3A]/95">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <BrandLogo href="/" className="shrink-0" />
+          <BrandLogo href="/" compact className="shrink-0" />
           <div className="hidden items-center gap-7 text-sm font-medium text-slate-600 dark:text-slate-300 lg:flex">
             <a href="#learning" className="transition hover:text-[#151A3A] dark:hover:text-white">Learning</a>
             <a href="#exams" className="transition hover:text-[#151A3A] dark:hover:text-white">Exam prep</a>

@@ -2,11 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-test('brand component uses supplied THE GUIDE assets, not the generic vector mark', () => {
+test('brand component uses supplied THE GUIDE raster assets directly', () => {
   const brand = fs.readFileSync(new URL('../src/components/BrandLogo.tsx', import.meta.url), 'utf8');
-  assert.match(brand, /brand-light\.svg/);
-  assert.match(brand, /brand-dark\.svg/);
-  assert.doesNotMatch(brand, /the-guide-mark\.svg/);
+  assert.match(brand, /primary-logo\.jfif/);
+  assert.match(brand, /dark-mode-silver\.jfif/);
+  assert.match(brand, /data-brand-logo/);
+  assert.doesNotMatch(brand, /brand-light\.svg|brand-dark\.svg|the-guide-mark/);
 });
 
 test('auth screens no longer use generic book or user marks', () => {

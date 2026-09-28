@@ -4,7 +4,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <title>THE GUIDE Admin</title>
         <meta name="description" content="THE GUIDE administration portal" />
-        <link rel="icon" href="/logos/the-guide-mark.webp" type="image/webp" />
+        <link rel="icon" href="/logos/app-icon.jfif" type="image/jpeg" />
       </head>
       <body>{children}</body>
     </html>
