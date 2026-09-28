@@ -185,9 +185,11 @@ test('production QA continues after individual feature failures and cleanup JSON
   assert.match(workflow, /JSON\.stringify\(\{action:"delete",userId:process\.env\.QA_USER_ID\}\)/);
 });
 
-test('AI Tutor allows Bynara production latency above the old 45-second limit', () => {
+test('AI provider timeout is configurable and Tutor uses bounded fast-model attempts', () => {
   const source = read('../supabase/functions/ai/index.ts');
-  assert.match(source, /controller\.abort\(\), 100_000/);
+  assert.match(source, /timeoutMs = 100_000/);
+  assert.match(source, /controller\.abort\(\), timeoutMs/);
+  assert.match(source, /openAI\(messages, 700, 0\.6, model, 30_000\)/);
 });
 
 
