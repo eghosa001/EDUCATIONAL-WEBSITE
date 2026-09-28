@@ -1,28 +1,5 @@
-import { apiConfig, getAuthHeaders, handleApiError } from './config';
-
-const { baseUrl } = apiConfig;
-
-export interface Certificate {
-  id: string;
-  courseId: string;
-  courseTitle: string;
-  certificateId: string;
-  issuedAt: string;
-  studentName: string;
-  studentId: string;
-  verificationCode?: string;
-}
-
-export const fetchMyCertificates = async (token: string): Promise<{ data: Certificate[] }> => {
-  const response = await fetch(`${baseUrl}/certificates/my`, {
-    headers: getAuthHeaders(token), credentials: 'include'
-  });
-  return handleApiError(response);
-};
-
-export const verifyCertificate = async (certificateId: string, token?: string) => {
-  const response = await fetch(`${baseUrl}/certificates/verify/${certificateId}`, {
-    headers: token ? getAuthHeaders(token) : undefined,
-  });
-  return handleApiError(response);
-};
+import { getSupabase } from '@/lib/supabase';
+export interface Certificate{id:string;courseId:string;courseTitle:string;certificateId:string;issuedAt:string;studentName:string;studentId:string;verificationCode:string;certificateUrl?:string;}
+const displayName=(user:any)=>{const m=user?.user_metadata||{};return String(m.full_name||m.name||[m.first_name,m.last_name].filter(Boolean).join(' ')||String(user?.email||'').split('@')[0]||'Student');};
+export const fetchMyCertificates=async(_token?:string):Promise<{data:Certificate[]}>=>{const s=getSupabase();const{data:auth,error:authError}=await s.auth.getUser();if(authError||!auth.user)throw new Error('You must be signed in');const{data,error}=await s.from('student_courses').select('id,course_id,completed_at,certificate_issued_at,certificate_url,courses:course_id(title)').eq('student_id',auth.user.id).not('completed_at','is',null).order('completed_at',{ascending:false});if(error)throw new Error(error.message);return{data:(data||[]).map((row:any)=>({id:String(row.id),courseId:String(row.course_id),courseTitle:String(row.courses?.title||'Completed course'),certificateId:`TG-${String(row.id).split('-')[0].toUpperCase()}`,issuedAt:String(row.certificate_issued_at||row.completed_at),studentName:displayName(auth.user),studentId:auth.user.id,verificationCode:String(row.id),certificateUrl:row.certificate_url||undefined}))};};
+export const verifyCertificate=async(id:string,_token?:string)=>{const{data}=await fetchMyCertificates();const certificate=data.find(x=>x.id===id||x.certificateId.toLowerCase()===id.toLowerCase()||x.verificationCode===id);if(!certificate)throw new Error('Certificate not found');return{certificate};};

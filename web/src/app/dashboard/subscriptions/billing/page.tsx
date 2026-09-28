@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Calendar, CreditCard, FileText, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '@/state/auth/authStore';
 import {
@@ -12,9 +12,12 @@ import {
   fetchSubscriptionPlans,
 } from '@/services/api/subscriptionService';
 import type { Subscription, Invoice, SubscriptionPlan } from '@/types/models/subscription';
+import { verifyPayment } from '@/services/api/paymentService';
 
 export default function BillingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackQuery = searchParams.toString();
   const { user, token } = useAuthStore();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -29,28 +32,45 @@ export default function BillingPage() {
 
   useEffect(() => {
     if (!token) { setLoading(false); return; }
-    Promise.all([
-      fetchMySubscription(token),
-      fetchMyInvoices(1, 10, token),
-      fetchSubscriptionPlans(token),
-    ])
-      .then(([subResult, invoiceResult, plansResult]) => {
-        setSubscription(subResult.subscription);
-        setInvoices(invoiceResult.data || []);
-        setAllPlans(plansResult.plans || []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [token]);
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const reference = searchParams.get('reference') || searchParams.get('trxref') || searchParams.get('tx_ref');
+      const transactionId = searchParams.get('transaction_id') || undefined;
+      const callbackStatus = String(searchParams.get('status') || '').toLowerCase();
+      if (reference) {
+        if (['failed','cancelled','canceled'].includes(callbackStatus)) {
+          if (!cancelled) setActionError('The payment was not completed. No subscription change was made.');
+        } else {
+          try {
+            const result = await verifyPayment(reference, token, transactionId);
+            if (result.data?.verified && !cancelled) setActionSuccess('Payment verified successfully. Your subscription is active.');
+          } catch (err) {
+            if (!cancelled) setActionError(err instanceof Error ? err.message : 'Unable to verify payment');
+          }
+        }
+        router.replace('/dashboard/subscriptions/billing');
+      }
+      try {
+        const [subResult, invoiceResult, plansResult] = await Promise.all([
+          fetchMySubscription(token), fetchMyInvoices(1, 10, token), fetchSubscriptionPlans(token),
+        ]);
+        if (!cancelled) { setSubscription(subResult.subscription); setInvoices(invoiceResult.data || []); setAllPlans(plansResult.plans || []); }
+      } catch (err) {
+        if (!cancelled) setActionError(err instanceof Error ? err.message : 'Unable to load billing details');
+      } finally { if (!cancelled) setLoading(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [token, callbackQuery, router, searchParams]);
 
   const handleCancel = async () => {
     if (!subscription || !token) return;
     setCancelling(true);
     setActionError(null);
     try {
-      await cancelSubscription(subscription.id, token);
-      setSubscription({ ...subscription, status: 'cancelled' });
-      setActionSuccess('Subscription cancelled successfully');
+      const result = await cancelSubscription(subscription.id, token);
+      setSubscription(result.subscription);
+      setActionSuccess('Cancellation scheduled for the end of your current billing period.');
       setShowCancelModal(false);
     } catch (err: unknown) {
       setActionError(err instanceof Error ? err.message : 'Failed to cancel subscription');
@@ -64,9 +84,9 @@ export default function BillingPage() {
     setResuming(true);
     setActionError(null);
     try {
-      await resumeSubscription(subscription.id, token);
-      setSubscription({ ...subscription, status: 'active' });
-      setActionSuccess('Subscription resumed successfully');
+      const result = await resumeSubscription(subscription.id, token);
+      setSubscription(result.subscription);
+      setActionSuccess('Scheduled cancellation removed. Your subscription will continue.');
     } catch (err: unknown) {
       setActionError(err instanceof Error ? err.message : 'Failed to resume subscription');
     } finally {
@@ -146,7 +166,7 @@ export default function BillingPage() {
         )}
 
         <div className="flex gap-3">
-          {subscription?.status === 'cancelled' && (
+          {subscription?.status === 'active' && subscription.cancelAtPeriodEnd && (
             <button
               onClick={handleResume}
               disabled={resuming}
@@ -156,7 +176,7 @@ export default function BillingPage() {
               Resume Subscription
             </button>
           )}
-          {subscription?.status === 'active' && (
+          {subscription?.status === 'active' && !subscription.cancelAtPeriodEnd && (
             <button
               onClick={() => setShowCancelModal(true)}
               disabled={cancelling}
@@ -168,7 +188,7 @@ export default function BillingPage() {
           )}
           {!subscription && (
             <button
-              onClick={() => router.push('/subscriptions/plans')}
+              onClick={() => router.push('/dashboard/subscriptions/plans')}
               className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700"
             >
               Browse Plans
@@ -188,7 +208,7 @@ export default function BillingPage() {
                 <div
                   key={plan.id}
                   className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-emerald-300 hover:bg-emerald-50/50 cursor-pointer transition-colors"
-                  onClick={() => router.push('/subscriptions/plans')}
+                  onClick={() => router.push('/dashboard/subscriptions/plans')}
                 >
                   <div>
                     <p className="font-medium text-gray-900">{plan.name}</p>

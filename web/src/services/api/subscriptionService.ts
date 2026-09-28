@@ -10,10 +10,30 @@ import type { PaginatedResponse } from '@/types/api/api';
 
 const mapPlan = (row: any): SubscriptionPlan => ({
   id: row.id, name: row.name, code: row.code, description: row.description,
-  price: Number(row.price || 0), currency: row.currency, billingCycle: row.billing_cycle,
-  durationDays: row.duration_days, trialDays: row.trial_days, features: row.features || [],
-  limits: row.limits || {}, isActive: row.is_active, isPopular: row.is_popular, displayOrder: row.display_order,
+  price: Number(row.price || 0), currency: row.currency || 'NGN', billingCycle: row.billing_cycle,
+  durationDays: Number(row.duration_days || 0), trialDays: Number(row.trial_days || 0), features: row.features || [],
+  limits: row.limits || {}, isActive: Boolean(row.is_active), isPopular: Boolean(row.is_popular), displayOrder: Number(row.display_order || 0),
+  createdAt: row.created_at || '', updatedAt: row.updated_at || row.created_at || '',
 } as SubscriptionPlan);
+
+const mapSubscription = (row: any): Subscription => ({
+  id: row.id, userId: row.user_id, planId: row.plan_id,
+  planName: row.subscription_plans?.name, planCode: row.subscription_plans?.code,
+  gatewaySubscriptionId: row.gateway_subscription_id || undefined,
+  gateway: row.gateway || 'free', status: row.status,
+  currentPeriodStart: row.current_period_start, currentPeriodEnd: row.current_period_end,
+  cancelAtPeriodEnd: Boolean(row.cancel_at_period_end),
+  createdAt: row.created_at || '', updatedAt: row.updated_at || row.created_at || '',
+});
+
+const mapInvoice = (row: any): Invoice => ({
+  id: row.id, invoiceNumber: row.invoice_number, userId: row.user_id,
+  subscriptionId: row.subscription_id || undefined, paymentId: row.payment_id || undefined,
+  amount: Number(row.amount || 0), currency: row.currency || 'NGN',
+  taxAmount: Number(row.tax_amount || 0), discountAmount: Number(row.discount_amount || 0),
+  status: row.status, dueDate: row.due_date || row.created_at, paidAt: row.paid_at || undefined,
+  createdAt: row.created_at || '',
+});
 
 export const fetchSubscriptionPlans = async (_token?: string): Promise<{ plans: SubscriptionPlan[] }> => {
   const { data, error } = await getSupabase().from('subscription_plans').select('*').eq('is_active', true).order('display_order');
@@ -35,7 +55,7 @@ export const fetchMySubscription = async (_token?: string): Promise<{ subscripti
   if (!user) return { subscription: null };
   const { data, error } = await getSupabase().from('subscriptions').select('*, subscription_plans(*)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
   if (error) throw new Error(error.message);
-  return { subscription: data as Subscription | null };
+  return { subscription: data ? mapSubscription(data) : null };
 };
 
 // Payment/subscription mutations intentionally stay behind the Edge Function boundary.
@@ -48,8 +68,14 @@ const invokePayment = async <T>(body: Record<string, unknown>): Promise<T> => {
 
 export const createSubscription = (data: CreateSubscriptionData, _token?: string): Promise<CreateSubscriptionResponse> => invokePayment<CreateSubscriptionResponse>({ action: 'create-subscription', ...data });
 export const updateSubscription = (subscriptionId: string, data: { planId?: string; paymentMethodId?: string }, _token?: string) => invokePayment({ action: 'update-subscription', subscriptionId, ...data });
-export const cancelSubscription = (subscriptionId: string, _token?: string) => invokePayment({ action: 'cancel-subscription', subscriptionId });
-export const resumeSubscription = (subscriptionId: string, _token?: string) => invokePayment({ action: 'resume-subscription', subscriptionId });
+export const cancelSubscription = async (subscriptionId: string, _token?: string): Promise<{ subscription: Subscription }> => {
+  const result = await invokePayment<{ subscription: any }>({ action: 'cancel-subscription', subscriptionId });
+  return { subscription: mapSubscription(result.subscription) };
+};
+export const resumeSubscription = async (subscriptionId: string, _token?: string): Promise<{ subscription: Subscription }> => {
+  const result = await invokePayment<{ subscription: any }>({ action: 'resume-subscription', subscriptionId });
+  return { subscription: mapSubscription(result.subscription) };
+};
 
 export const fetchMyInvoices = async (page = 1, limit = 20, _token?: string): Promise<PaginatedResponse<Invoice>> => {
   const user = (await getSupabase().auth.getUser()).data.user;
@@ -58,13 +84,13 @@ export const fetchMyInvoices = async (page = 1, limit = 20, _token?: string): Pr
   const to = from + limit - 1;
   const { data, error, count } = await getSupabase().from('invoices').select('*', { count: 'exact' }).eq('user_id', user.id).order('created_at', { ascending: false }).range(from, to);
   if (error) throw new Error(error.message);
-  return { data: (data || []) as Invoice[], page, pageSize: limit, total: count || 0, totalPages: Math.ceil((count || 0) / limit) };
+  return { data: (data || []).map(mapInvoice), page, pageSize: limit, total: count || 0, totalPages: Math.ceil((count || 0) / limit) };
 };
 
 export const fetchInvoiceById = async (invoiceId: string, _token?: string): Promise<{ invoice: Invoice }> => {
   const { data, error } = await getSupabase().from('invoices').select('*').eq('id', invoiceId).maybeSingle();
   if (error || !data) throw new Error(error?.message || 'Invoice not found');
-  return { invoice: data as Invoice };
+  return { invoice: mapInvoice(data) };
 };
 
 export const downloadInvoice = async (invoiceId: string, _token?: string) => fetchInvoiceById(invoiceId, _token);

@@ -1,168 +1,24 @@
-import { apiConfig, getAuthHeaders, handleApiError } from './config';
+import { getSupabase } from '@/lib/supabase';
 import type { PaginatedResponse } from '@/types/api/api';
 
-const { baseUrl } = apiConfig;
+export interface Payment { id:string; userId:string; amount:number; currency:string; status:'pending'|'completed'|'failed'|'refunded'; gateway?:string; reference:string; metadata?:Record<string,unknown>; createdAt:string; updatedAt:string; }
+export interface PaymentFilters { page?:number; limit?:number; status?:string; userId?:string; startDate?:string; endDate?:string; }
+export interface CreatePaymentData { amount:number; currency?:string; gateway:'paystack'|'flutterwave'; planId?:string; courseId?:string; examId?:string; redirectUrl?:string; metadata?:Record<string,unknown>; }
+export interface CreatePaymentResponse { success:boolean; data:{ payment:Payment; authorizationUrl?:string|null; accessCode?:string|null; reference?:string; }; }
+export interface PaymentGateway { id:string; name:string; code:string; isActive:boolean; }
 
-// ========== PAYMENTS ==========
+const requireUser=async()=>{const{data,error}=await getSupabase().auth.getUser();if(error||!data.user)throw new Error('You must be signed in');return data.user;};
+const mapPayment=(r:any):Payment=>({id:String(r.id),userId:String(r.user_id),amount:Number(r.amount||0),currency:String(r.currency||'NGN'),status:r.status,gateway:r.gateway||undefined,reference:String(r.reference||''),metadata:r.metadata&&typeof r.metadata==='object'?r.metadata:undefined,createdAt:String(r.created_at||''),updatedAt:String(r.updated_at||r.created_at||'')});
+const invokePayment=async<T>(body:Record<string,unknown>):Promise<T>=>{const{data,error}=await getSupabase().functions.invoke('payments',{body});if(error)throw new Error(error.message||'Payment operation failed');if(data?.error)throw new Error(String(data.error));return data as T;};
 
-export interface Payment {
-  id: string;
-  userId: string;
-  amount: number;
-  currency: string;
-  status: 'pending' | 'completed' | 'failed' | 'refunded';
-  method?: string;
-  gateway?: string;
-  reference: string;
-  description?: string;
-  metadata?: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
-}
+export const fetchPayments=async(filters:PaymentFilters={},_token?:string):Promise<PaginatedResponse<Payment>>=>{const u=await requireUser();const page=Math.max(1,filters.page||1),limit=Math.min(100,Math.max(1,filters.limit||20)),from=(page-1)*limit;let q=getSupabase().from('payments').select('*',{count:'exact'}).eq('user_id',u.id);if(filters.status)q=q.eq('status',filters.status);if(filters.startDate)q=q.gte('created_at',filters.startDate);if(filters.endDate)q=q.lte('created_at',filters.endDate);const{data,error,count}=await q.order('created_at',{ascending:false}).range(from,from+limit-1);if(error)throw new Error(error.message);const total=count||0;return{data:(data||[]).map(mapPayment),page,pageSize:limit,total,totalPages:Math.max(1,Math.ceil(total/limit))};};
+export const fetchPaymentById=async(id:string,_token?:string)=>{const u=await requireUser();const{data,error}=await getSupabase().from('payments').select('*').eq('id',id).eq('user_id',u.id).maybeSingle();if(error||!data)throw new Error(error?.message||'Payment not found');return{payment:mapPayment(data)};};
+export const createPayment=async(data:CreatePaymentData,_token?:string):Promise<CreatePaymentResponse>=>invokePayment<CreatePaymentResponse>({action:'create-payment',...data});
+export const verifyPayment=async(reference:string,_token?:string,transactionId?:string)=>invokePayment<{success:boolean;data:{payment:Payment;verified:boolean}}>({action:'verify-payment',reference,transactionId});
+export const fetchPaymentGateways=async(_token?:string):Promise<{gateways:PaymentGateway[]}>=>invokePayment<{gateways:PaymentGateway[]}>({action:'gateways'});
 
-export interface PaymentFilters {
-  page?: number;
-  limit?: number;
-  status?: string;
-  userId?: string;
-  startDate?: string;
-  endDate?: string;
-}
-
-export interface CreatePaymentData {
-  // Amount remains required by the HTTP validator for compatibility, but the
-  // backend ignores it for entitlement-bearing plan/course payments and derives
-  // the authoritative amount from the referenced resource.
-  amount: number;
-  currency?: string;
-  gateway: 'paystack' | 'flutterwave';
-  planId?: string;
-  courseId?: string;
-  examId?: string;
-  redirectUrl?: string;
-  metadata?: Record<string, unknown>;
-}
-
-export interface CreatePaymentResponse {
-  success: boolean;
-  message?: string;
-  data: {
-    payment: Payment;
-    authorizationUrl?: string | null;
-    accessCode?: string | null;
-    reference?: string;
-  };
-}
-
-export const fetchPayments = async (
-  filters: PaymentFilters = {},
-  token: string
-): Promise<PaginatedResponse<Payment>> => {
-  const query = new URLSearchParams();
-  Object.entries(filters).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
-      query.append(key, String(value));
-    }
-  });
-
-  const response = await fetch(`${baseUrl}/payments?${query.toString()}`, {
-    headers: getAuthHeaders(token), credentials: 'include'
-  });
-  return handleApiError(response);
-};
-
-export const fetchPaymentById = async (paymentId: string, token: string): Promise<{ payment: Payment }> => {
-  const response = await fetch(`${baseUrl}/payments/${paymentId}`, {
-    headers: getAuthHeaders(token), credentials: 'include'
-  });
-  return handleApiError(response);
-};
-
-export const createPayment = async (data: CreatePaymentData, token: string): Promise<CreatePaymentResponse> => {
-  const response = await fetch(`${baseUrl}/payments`, {
-    method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(data), credentials: 'include'
-  });
-  return handleApiError(response);
-};
-
-export const verifyPayment = async (reference: string, token: string) => {
-  const response = await fetch(`${baseUrl}/payments/verify`, {
-    method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify({ reference }),
-    credentials: 'include',
-  });
-  return handleApiError(response);
-};
-
-// ========== PAYMENT GATEWAYS ==========
-
-export interface PaymentGateway {
-  id: string;
-  name: string;
-  code: string;
-  isActive: boolean;
-  config?: Record<string, unknown>;
-}
-
-export const fetchPaymentGateways = async (token?: string): Promise<{ success?: boolean; data?: { gateways: PaymentGateway[] }; gateways?: PaymentGateway[] }> => {
-  const response = await fetch(`${baseUrl}/payments/gateways`, {
-    headers: getAuthHeaders(token), credentials: 'include'
-  });
-  return handleApiError(response);
-};
-
-// ========== WALLET ==========
-
-export interface Wallet {
-  id: string;
-  userId: string;
-  balance: number;
-  currency: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface WalletTransaction {
-  id: string;
-  walletId: string;
-  type: 'credit' | 'debit';
-  amount: number;
-  description: string;
-  reference?: string;
-  balanceAfter: number;
-  createdAt: string;
-}
-
-export const fetchMyWallet = async (token: string): Promise<{ wallet: Wallet }> => {
-  const response = await fetch(`${baseUrl}/payments/wallet`, {
-    headers: getAuthHeaders(token), credentials: 'include'
-  });
-  return handleApiError(response);
-};
-
-export const fetchWalletTransactions = async (
-  page: number = 1,
-  limit: number = 20,
-  token: string
-): Promise<PaginatedResponse<WalletTransaction>> => {
-  const response = await fetch(
-    `${baseUrl}/payments/wallet/transactions?page=${page}&limit=${limit}`,
-    {
-      headers: getAuthHeaders(token), credentials: 'include'
-    }
-  );
-  return handleApiError(response);
-};
-
-export const fundWallet = async (amount: number, paymentMethodId: string, token: string) => {
-  const response = await fetch(`${baseUrl}/payments/wallet/fund`, {
-    method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify({ amount, paymentMethodId }),
-    credentials: 'include',
-  });
-  return handleApiError(response);
-};
+export interface Wallet { id:string; userId:string; balance:number; currency:string; createdAt:string; updatedAt:string; }
+export interface WalletTransaction { id:string; walletId:string; type:'credit'|'debit'; amount:number; description:string; reference?:string; balanceAfter:number; createdAt:string; }
+export const fetchMyWallet=async(_token?:string):Promise<{wallet:Wallet|null}>=>{const u=await requireUser();const{data,error}=await getSupabase().from('wallets').select('*').eq('user_id',u.id).maybeSingle();if(error)throw new Error(error.message);return{wallet:data?{id:data.id,userId:data.user_id,balance:Number(data.balance||0),currency:data.currency||'NGN',createdAt:data.created_at,updatedAt:data.updated_at}:null};};
+export const fetchWalletTransactions=async(page=1,limit=20,_token?:string):Promise<PaginatedResponse<WalletTransaction>>=>{const u=await requireUser();const p=Math.max(1,page),l=Math.min(100,Math.max(1,limit)),from=(p-1)*l;const{data,error,count}=await getSupabase().from('wallet_transactions').select('*',{count:'exact'}).eq('user_id',u.id).order('created_at',{ascending:false}).range(from,from+l-1);if(error)throw new Error(error.message);const total=count||0;return{data:(data||[]).map((r:any)=>({id:r.id,walletId:r.wallet_id,type:r.type,amount:Number(r.amount||0),description:r.description||'',reference:r.reference||undefined,balanceAfter:Number(r.balance_after||0),createdAt:r.created_at})),page:p,pageSize:l,total,totalPages:Math.max(1,Math.ceil(total/l))};};
+export const fundWallet=async()=>{throw new Error('Wallet funding must be completed through a verified payment checkout.');};

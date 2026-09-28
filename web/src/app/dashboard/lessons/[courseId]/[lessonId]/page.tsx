@@ -7,7 +7,7 @@ import { CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, Loader2, Spa
 import ReactMarkdown from 'react-markdown';
 import { getSupabase } from '@/lib/supabase';
 import { sendAiTutorMessage } from '@/services/api/aiService';
-import { apiConfig, getAuthHeaders, handleApiResponse } from '@/services/api/config';
+import { learnerApiConfig, getLearnerApiHeaders, handleApiResponse } from '@/services/api/config';
 import { useAuth } from '@/contexts/AuthContext';
 
 type Tab = 'learn' | 'practice' | 'video' | 'resources';
@@ -260,8 +260,8 @@ export default function LessonPage() {
         return;
       }
       if (!token) throw new Error('Sign in to check your answer');
-      const response = await fetch(`${apiConfig.baseUrl}/questions/${currentQ.id}/check`, {
-        method: 'POST', headers: getAuthHeaders(token), credentials: apiConfig.credentials, body: JSON.stringify({ answer: id }),
+      const response = await fetch(`${learnerApiConfig.baseUrl}/questions/${currentQ.id}/check`, {
+        method: 'POST', headers: getLearnerApiHeaders(token), credentials: learnerApiConfig.credentials, body: JSON.stringify({ answer: id }),
       });
       const payload = await handleApiResponse<{ data: { result: CheckResult } }>(response);
       setChecked(payload.data.result);
@@ -280,8 +280,8 @@ export default function LessonPage() {
     setCompleting(true);
     setError('');
     try {
-      const response = await fetch(`${apiConfig.baseUrl}/lessons/${lesson.id}/complete`, {
-        method: 'POST', headers: getAuthHeaders(token), credentials: apiConfig.credentials,
+      const response = await fetch(`${learnerApiConfig.baseUrl}/lessons/${lesson.id}/complete`, {
+        method: 'POST', headers: getLearnerApiHeaders(token), credentials: learnerApiConfig.credentials,
       });
       await handleApiResponse(response);
       setCompleted(true);

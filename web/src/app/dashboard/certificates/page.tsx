@@ -1,76 +1,16 @@
 'use client';
-
-import { useEffect, useState } from 'react';
-import { Award, Download, Calendar, User } from 'lucide-react';
+import { useEffect,useState } from 'react';
+import { Award,Calendar,Download,Share2,User } from 'lucide-react';
 import { useAuthStore } from '@/state/auth/authStore';
-import { fetchMyCertificates, type Certificate } from '@/services/api/certificateService';
-
-export default function CertificatesPage() {
-  const { token } = useAuthStore();
-  const [certificates, setCertificates] = useState<Certificate[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!token) return;
-    fetchMyCertificates(token)
-      .then(res => setCertificates(res.data || []))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [token]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">Loading certificates...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Certificates</h1>
-        <p className="text-gray-500 mt-1">Your earned certificates and achievements</p>
-      </div>
-
-      {certificates.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-          <Award className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-1">No certificates yet</h3>
-          <p className="text-gray-500 text-sm">Complete courses to earn certificates.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {certificates.map(cert => (
-            <div key={cert.id} className="bg-white rounded-xl border border-gray-200 p-5">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-100 to-amber-200 flex items-center justify-center">
-                  <Award className="w-6 h-6 text-amber-600" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">{cert.courseTitle || 'Course'}</h3>
-                  <p className="text-sm text-gray-500 mt-1">Certificate ID: {cert.certificateId || 'N/A'}</p>
-                  <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
-                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(cert.issuedAt).toLocaleDateString()}</span>
-                    <span className="flex items-center gap-1"><User className="w-3 h-3" /> {cert.studentName || 'Student'}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2 mt-4">
-                <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors">
-                  <Download className="w-4 h-4" /> Download
-                </button>
-                <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                  Share
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+import { fetchMyCertificates,type Certificate } from '@/services/api/certificateService';
+const esc=(v:string)=>v.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c));
+export default function CertificatesPage(){const{token}=useAuthStore();const[certificates,setCertificates]=useState<Certificate[]>([]);const[loading,setLoading]=useState(true);const[error,setError]=useState('');const[notice,setNotice]=useState('');
+ useEffect(()=>{if(!token){setLoading(false);return;}fetchMyCertificates(token).then(r=>setCertificates(r.data||[])).catch(err=>setError(err instanceof Error?err.message:'Unable to load certificates')).finally(()=>setLoading(false));},[token]);
+ const printCertificate=(c:Certificate)=>{const w=window.open('','_blank','width=900,height=700');if(!w){setError('Your browser blocked the certificate window. Allow pop-ups and try again.');return;}w.document.write(`<!doctype html><html><head><title>${esc(c.certificateId)}</title><style>body{font-family:Arial,sans-serif;background:#f5f3ed;padding:40px;color:#151A3A}.certificate{max-width:900px;margin:auto;background:#fff;border:10px double #151A3A;padding:64px;text-align:center}h1{font-size:42px}.student{font-size:32px;font-weight:700;margin:28px 0}.course{font-size:24px;font-weight:700;margin:16px 0}.meta{margin-top:40px;color:#4b5563}@media print{body{background:#fff;padding:0}}</style></head><body><main class="certificate"><h1>Certificate of Completion</h1><p>This certifies that</p><div class="student">${esc(c.studentName)}</div><p>successfully completed</p><div class="course">${esc(c.courseTitle)}</div><p>on ${esc(new Date(c.issuedAt).toLocaleDateString())}</p><div class="meta">Certificate ID: ${esc(c.certificateId)}<br>Issued by THE GUIDE</div></main><script>window.onload=()=>window.print();</script></body></html>`);w.document.close();};
+ const shareCertificate=async(c:Certificate)=>{const text=`${c.studentName} completed ${c.courseTitle}. Certificate ID: ${c.certificateId}`;try{if(navigator.share)await navigator.share({title:'THE GUIDE Certificate',text});else{await navigator.clipboard.writeText(text);setNotice('Certificate details copied to your clipboard.');}}catch(err:any){if(err?.name!=='AbortError')setError('Unable to share this certificate.');}};
+ if(loading)return <div className="flex min-h-[60vh] items-center justify-center"><div className="text-center"><div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600"/><p className="text-gray-500">Loading certificates...</p></div></div>;
+ return <div className="space-y-6"><div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Certificates</h1><p className="mt-1 text-gray-500">Certificates are issued automatically when you complete every published lesson in a course.</p></div>{error&&<div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}{notice&&<div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">{notice}</div>}
+ {!error&&certificates.length===0?<div className="rounded-xl border border-gray-200 bg-white p-12 text-center dark:border-slate-700 dark:bg-[#1b2045]"><Award className="mx-auto mb-4 h-12 w-12 text-gray-300"/><h3 className="mb-1 text-lg font-medium text-gray-900 dark:text-white">No certificates yet</h3><p className="text-sm text-gray-500">Complete a course to earn your first certificate.</p></div>:
+ <div className="grid grid-cols-1 gap-4 md:grid-cols-2">{certificates.map(c=><div key={c.id} className="rounded-xl border border-gray-200 bg-white p-5 dark:border-slate-700 dark:bg-[#1b2045]"><div className="flex items-start gap-4"><div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-100 to-amber-200"><Award className="h-6 w-6 text-amber-600"/></div><div className="flex-1"><h3 className="font-semibold text-gray-900 dark:text-white">{c.courseTitle}</h3><p className="mt-1 text-sm text-gray-500">Certificate ID: {c.certificateId}</p><div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-gray-400"><span className="flex items-center gap-1"><Calendar className="h-3 w-3"/>{new Date(c.issuedAt).toLocaleDateString()}</span><span className="flex items-center gap-1"><User className="h-3 w-3"/>{c.studentName}</span></div></div></div><div className="mt-4 flex gap-2"><button onClick={()=>printCertificate(c)} className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-blue-200 px-4 py-2 text-sm text-blue-600"><Download className="h-4 w-4"/>Print / Save PDF</button><button onClick={()=>void shareCertificate(c)} className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600"><Share2 className="h-4 w-4"/>Share</button></div></div>)}</div>}
+ </div>;
 }

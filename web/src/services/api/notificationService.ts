@@ -1,88 +1,12 @@
-import { apiConfig, getAuthHeaders, handleApiError } from './config';
+import { getSupabase } from '@/lib/supabase';
 import type { PaginatedResponse } from '@/types/api/api';
-
-const { baseUrl } = apiConfig;
-
-export interface Notification {
-  id: string;
-  userId: string;
-  title: string;
-  message: string;
-  type: 'info' | 'warning' | 'success' | 'error' | 'promotion';
-  data?: Record<string, unknown>;
-  isRead: boolean;
-  createdAt: string;
-}
-
-export interface NotificationFilters { page?: number; limit?: number; isRead?: boolean; type?: string; }
-
-export const fetchNotifications = async (filters: NotificationFilters = {}, token: string): Promise<PaginatedResponse<Notification>> => {
-  const query = new URLSearchParams();
-  Object.entries(filters).forEach(([key, value]) => { if (value !== undefined && value !== null) query.append(key, String(value)); });
-  const response = await fetch(`${baseUrl}/notifications?${query.toString()}`, { headers: getAuthHeaders(token), credentials: 'include' });
-  return handleApiError(response);
-};
-export const fetchUnreadNotifications = async (token: string): Promise<{ notifications: Notification[]; count: number }> => {
-  const response = await fetch(`${baseUrl}/notifications/unread`, { headers: getAuthHeaders(token), credentials: 'include' });
-  return handleApiError(response);
-};
-export const markNotificationAsRead = async (notificationId: string, token: string) => handleApiError(await fetch(`${baseUrl}/notifications/${notificationId}/read`, { method: 'POST', headers: getAuthHeaders(token), credentials: 'include' }));
-export const markAllNotificationsAsRead = async (token: string) => handleApiError(await fetch(`${baseUrl}/notifications/read-all`, { method: 'POST', headers: getAuthHeaders(token), credentials: 'include' }));
-export const deleteNotification = async (notificationId: string, token: string) => handleApiError(await fetch(`${baseUrl}/notifications/${notificationId}`, { method: 'DELETE', headers: getAuthHeaders(token), credentials: 'include' }));
-export const deleteAllNotifications = async (token: string) => handleApiError(await fetch(`${baseUrl}/notifications`, { method: 'DELETE', headers: getAuthHeaders(token), credentials: 'include' }));
-
-export interface NotificationPreferences { email: boolean; push: boolean; sms: boolean; examReminders: boolean; courseUpdates: boolean; promotional: boolean; }
-export const fetchNotificationPreferences = async (token: string): Promise<{ preferences: NotificationPreferences }> => handleApiError(await fetch(`${baseUrl}/notifications/preferences`, { headers: getAuthHeaders(token), credentials: 'include' }));
-export const updateNotificationPreferences = async (preferences: Partial<NotificationPreferences>, token: string) => handleApiError(await fetch(`${baseUrl}/notifications/preferences`, { method: 'PATCH', headers: { ...getAuthHeaders(token), 'Content-Type': 'application/json' }, body: JSON.stringify(preferences), credentials: 'include' }));
-
-export interface NotificationSocketMessage { type: 'notification' | 'read_receipt' | 'ping'; data: Notification | { notificationId: string } | null; }
-
-let socket: WebSocket | null = null;
-let messageCallback: ((message: NotificationSocketMessage) => void) | null = null;
-let intentionalDisconnect = false;
-let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-
-export const connectNotificationSocket = (token: string, onMessage: (message: NotificationSocketMessage) => void) => {
-  if (typeof window === 'undefined' || !token) return;
-  intentionalDisconnect = false;
-  messageCallback = onMessage;
-  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
-
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const socketUrl = `${protocol}//${window.location.host}/notifications?token=${encodeURIComponent(token)}`;
-  const currentSocket = new WebSocket(socketUrl);
-  socket = currentSocket;
-
-  currentSocket.onopen = () => console.log('Notification socket connected');
-  currentSocket.onmessage = (event) => {
-    try {
-      const message = JSON.parse(String(event.data)) as NotificationSocketMessage;
-      if (message && typeof message.type === 'string') messageCallback?.(message);
-    } catch (error) { console.error('Error parsing notification message:', error); }
-  };
-  currentSocket.onclose = () => {
-    if (socket === currentSocket) socket = null;
-    console.log('Notification socket disconnected');
-    if (!intentionalDisconnect && messageCallback === onMessage) {
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      reconnectTimer = setTimeout(() => {
-        reconnectTimer = null;
-        connectNotificationSocket(token, onMessage);
-      }, 5000);
-    }
-  };
-  currentSocket.onerror = (error) => console.error('Notification socket error:', error);
-};
-
-export const disconnectNotificationSocket = () => {
-  intentionalDisconnect = true;
-  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
-  messageCallback = null;
-  const currentSocket = socket;
-  socket = null;
-  if (currentSocket) currentSocket.close();
-};
-
-export const sendSocketMessage = (message: Omit<NotificationSocketMessage, 'type'>) => {
-  if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
-};
+export interface Notification { id:string; userId:string; title:string; message:string; type:string; data?:Record<string,unknown>; isRead:boolean; actionUrl?:string; createdAt:string; }
+export interface NotificationFilters { page?:number; limit?:number; isRead?:boolean; type?:string; }
+const mapNotification=(row:any):Notification=>({id:String(row.id),userId:String(row.user_id),title:String(row.title||'Notification'),message:String(row.body||''),type:String(row.type||'info'),data:row.data&&typeof row.data==='object'?row.data:undefined,isRead:Boolean(row.read_at),actionUrl:row.action_url||undefined,createdAt:String(row.created_at||'')});
+const requireUser=async()=>{const{data,error}=await getSupabase().auth.getUser();if(error||!data.user)throw new Error('You must be signed in');return data.user;};
+export const fetchNotifications=async(filters:NotificationFilters={},_token?:string):Promise<PaginatedResponse<Notification>>=>{const user=await requireUser();const page=Math.max(1,filters.page||1),limit=Math.min(100,Math.max(1,filters.limit||20)),from=(page-1)*limit;let query=getSupabase().from('notifications').select('*',{count:'exact'}).eq('user_id',user.id);if(filters.isRead===true)query=query.not('read_at','is',null);if(filters.isRead===false)query=query.is('read_at',null);if(filters.type)query=query.eq('type',filters.type);const{data,error,count}=await query.order('created_at',{ascending:false}).range(from,from+limit-1);if(error)throw new Error(error.message);const total=count||0;return{data:(data||[]).map(mapNotification),page,pageSize:limit,total,totalPages:Math.max(1,Math.ceil(total/limit))};};
+export const fetchUnreadNotifications=async(_token?:string)=>{const r=await fetchNotifications({page:1,limit:100,isRead:false});return{notifications:r.data,count:r.total};};
+export const markNotificationAsRead=async(id:string,_token?:string)=>{const user=await requireUser();const{data,error}=await getSupabase().from('notifications').update({read_at:new Date().toISOString()}).eq('id',id).eq('user_id',user.id).select().maybeSingle();if(error)throw new Error(error.message);return{notification:data?mapNotification(data):null};};
+export const markAllNotificationsAsRead=async(_token?:string)=>{const user=await requireUser();const{error}=await getSupabase().from('notifications').update({read_at:new Date().toISOString()}).eq('user_id',user.id).is('read_at',null);if(error)throw new Error(error.message);return{success:true};};
+export const deleteNotification=async(id:string,_token?:string)=>{const user=await requireUser();const{error}=await getSupabase().from('notifications').delete().eq('id',id).eq('user_id',user.id);if(error)throw new Error(error.message);return{success:true};};
+export const deleteAllNotifications=async(_token?:string)=>{const user=await requireUser();const{error}=await getSupabase().from('notifications').delete().eq('user_id',user.id);if(error)throw new Error(error.message);return{success:true};};

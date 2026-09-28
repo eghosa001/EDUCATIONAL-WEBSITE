@@ -325,6 +325,28 @@ test.describe('deployed production learner QA', () => {
     await expectHealthy(page, failures);
   });
 
+  test('published paid plans have at least one configured secure gateway', async ({ page }) => {
+    const token = await accessToken(page);
+    expect(token).toBeTruthy();
+    const result = await page.evaluate(async ({ supabaseUrl, publishableKey, token }) => {
+      const headers = { apikey: publishableKey, Authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+      const plansResponse = await fetch(`${supabaseUrl}/rest/v1/subscription_plans?select=id,price&is_active=eq.true`, { headers });
+      const plans = await plansResponse.json();
+      const paid = Array.isArray(plans) && plans.some((plan) => Number(plan.price || 0) > 0);
+      const gatewayResponse = await fetch(`${supabaseUrl}/functions/v1/payments`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ action: 'gateways' }),
+      });
+      const gatewayText = await gatewayResponse.text();
+      let gatewayPayload = {};
+      try { gatewayPayload = JSON.parse(gatewayText); } catch {}
+      return { paid, gatewayStatus: gatewayResponse.status, gatewayText, gateways: gatewayPayload?.gateways || [] };
+    }, { supabaseUrl, publishableKey, token });
+    expect(result.gatewayStatus, result.gatewayText).toBe(200);
+    if (result.paid) expect(result.gateways.filter((gateway) => gateway.isActive).length).toBeGreaterThan(0);
+  });
+
   test('profile changes save and the free subscription flow reaches billing', async ({ page }, testInfo) => {
     const failures = watchRuntimeFailures(page);
     await page.goto('/dashboard/profile/settings', { waitUntil: 'domcontentloaded' });
