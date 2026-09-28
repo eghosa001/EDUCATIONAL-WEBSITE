@@ -364,9 +364,19 @@ Deno.serve(async (request) => {
       if (paymentError || !payment) return json(request, { error: 'Payment not found' }, 404);
 
       if (payment.status === 'completed') {
-        const subscription = payment.purpose === 'subscription' && payment.purpose_id
-          ? await activateSubscription(admin, user.id, payment)
-          : null;
+        let subscription = null;
+        if (payment.purpose === 'subscription' && payment.purpose_id) {
+          const result = await admin.from('subscriptions')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('plan_id', payment.purpose_id)
+            .in('status', ['active', 'trialing'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (result.error) throw result.error;
+          subscription = result.data;
+        }
         return json(request, { success: true, data: { payment, verified: true, subscription } });
       }
 
@@ -425,8 +435,20 @@ Deno.serve(async (request) => {
         failed_at: null,
         failure_reason: null,
         updated_at: now,
-      }).eq('id', payment.id).eq('user_id', user.id).select().single();
-      if (updateError || !completed) return json(request, { error: 'Unable to finalize payment' }, 500);
+      }).eq('id', payment.id).eq('user_id', user.id).eq('status', 'pending').select().maybeSingle();
+      if (updateError) return json(request, { error: 'Unable to finalize payment' }, 500);
+
+      if (!completed) {
+        const { data: latest, error: latestError } = await admin.from('payments')
+          .select('*')
+          .eq('id', payment.id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (latestError || !latest || latest.status !== 'completed') {
+          return json(request, { error: 'Unable to finalize payment' }, 500);
+        }
+        return json(request, { success: true, data: { payment: latest, verified: true, subscription: null } });
+      }
 
       const subscription = completed.purpose === 'subscription' && completed.purpose_id
         ? await activateSubscription(admin, user.id, completed)

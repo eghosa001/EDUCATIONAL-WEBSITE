@@ -73,6 +73,8 @@ test('paid subscriptions are not activated before payment', () => {
   assert.match(source, /if \(price > 0\)[\s\S]*?paymentRequired:\s*true/);
   assert.match(source, /paymentRequired:\s*true/);
   assert.doesNotMatch(source, /status:\s*'trialing'.*insert/s);
+  assert.match(source, /\.eq\('status', 'pending'\)/);
+  assert.doesNotMatch(source, /payment\.status === 'completed'[\s\S]*?activateSubscription/);
 });
 
 test('obsolete lesson regenerator is fail-closed', () => {
