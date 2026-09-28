@@ -83,6 +83,22 @@ def clean_text(value):
     value = re.sub(r"\n{3,}", "\n\n", value)
     return value.strip()
 
+ARTIFACT_RE = re.compile(
+    r"(WAEC.{0,45}Past|Uploaded\s+on|UNTIL\s+YOU\s+ARE\s+TOLD|PRINT\s+IN\s+BLOCK\s+LETTERS|INSTRUCTIONS\s+TO\s+CANDIDATES)",
+    re.I,
+)
+
+def clean_option_text(value):
+    value = clean_text(value)
+    value = re.sub(r"\s+(w\.m|t\.co)$", "", value, flags=re.I)
+    value = re.sub(
+        r"\s+(Turn\s+over|UNTIL\s+YOU\s+ARE\s+TOLD|Uploaded\s+on|[0-9]{0,5}[\s\W]*WAEC.{0,45}Past).*$",
+        "",
+        value,
+        flags=re.I,
+    )
+    return re.sub(r"\s+", " ", value).strip()
+
 def answer_key(text):
     key = {}
     marker = re.search(r"(?is)\b(answer\s*key|answers?)\b", text)
@@ -123,10 +139,18 @@ def parse_questions(raw):
                 otext = block[om.end():oend].strip(" \n\t;")
                 otext = re.split(r"(?i)\b(?:correct\s*option|correct\s*answer|answer)\s*[:\-]", otext, maxsplit=1)[0].strip()
                 if otext:
-                    options.append({"id": oid, "text": re.sub(r"\s+", " ", otext)[:900]})
+                    cleaned_option = clean_option_text(otext)[:900]
+                    if cleaned_option:
+                        options.append({"id": oid, "text": cleaned_option})
         question = re.sub(r"\s+", " ", question).strip(" -:\n\t")
-        if len(question) < 8 or len(question) > 2200:
+        if len(question) < 8 or len(question) > 2200 or ARTIFACT_RE.search(question):
             continue
+        if options:
+            ids = [item["id"] for item in options]
+            if ids[:4] != ["A", "B", "C", "D"] or len(question) > 1000:
+                continue
+            if any(len(item["text"]) > 500 or ARTIFACT_RE.search(item["text"]) for item in options):
+                continue
         normalized = re.sub(r"[^a-z0-9]+", "", question.lower())
         if not normalized or normalized in seen:
             continue

@@ -62,12 +62,19 @@ const cleanText = (value: unknown, max = 2200) => String(value ?? "")
   .trim()
   .slice(0, max);
 
+const artifactPattern = /(WAEC.{0,45}Past|Uploaded\s+on|UNTIL\s+YOU\s+ARE\s+TOLD|PRINT\s+IN\s+BLOCK\s+LETTERS|INSTRUCTIONS\s+TO\s+CANDIDATES)/i;
+const cleanOptionText = (value: unknown) => cleanText(value, 900)
+  .replace(/\s+(w\.m|t\.co)$/i, "")
+  .replace(/\s+(Turn\s+over|UNTIL\s+YOU\s+ARE\s+TOLD|Uploaded\s+on|[0-9]{0,5}[\s\W]*WAEC.{0,45}Past).*$/i, "")
+  .trim();
+
 const isLikelyQuestionFile = (file: any) => {
   const name = String(file.file_name || "").toLowerCase();
   if (!["waec", "jamb"].includes(String(file.board || "").toLowerCase())) return false;
   if (/syllabus|selected[- _]?text|nerdc|scheme|2021[- _]?2025/.test(name)) return false;
   if (String(file.board).toLowerCase() === "jamb") return /past[- _]?questions?|questions?[- _]?and[- _]?answers?/.test(name);
-  return Boolean(file.year) && !/allproblems|document[_-]?compress/.test(name);
+  const knownUnyearTaggedPaper = /^(data-processing-1|hausa-1|igbo-1|shorthand|technical-drawing-1)\.pdf$/.test(name);
+  return (Boolean(file.year) || knownUnyearTaggedPaper) && !/allproblems|document[_-]?compress/.test(name);
 };
 
 Deno.serve(async (request) => {
@@ -132,7 +139,7 @@ Deno.serve(async (request) => {
         const seen = new Set<string>();
         const options = rawOptions.map((option: any, index: number) => {
           const id = String(option?.id || String.fromCharCode(65 + index)).toUpperCase().replace(/[^A-E]/g, "").slice(0, 1);
-          const text = cleanText(option?.text ?? option?.value ?? "", 900);
+          const text = cleanOptionText(option?.text ?? option?.value ?? "");
           return { id, text };
         }).filter((option: any) => option.id && option.text && !seen.has(option.id) && seen.add(option.id)).slice(0, 5);
         let correctAnswer = String(q.correctAnswer || q.correct_answer || "").toUpperCase().trim();
@@ -140,9 +147,13 @@ Deno.serve(async (request) => {
         if (correctAnswer) answered++;
         const looksLikeReference = /(topics\/contents\/notes objectives|candidates should be able to|learning objectives|definition of .* salient features|assessment would include)/i.test(questionText);
         const isMcq = options.length > 0;
-        const isActive = questionText.length >= 10 && questionText.length <= 1800 && !looksLikeReference &&
+        const optionIds = options.map((option: any) => option.id);
+        const coreOptionsOrdered = optionIds.slice(0, 4).join("") === "ABCD";
+        const hasExtractionArtifacts = artifactPattern.test(questionText) ||
+          options.some((option: any) => artifactPattern.test(option.text) || option.text.length > 500);
+        const isActive = questionText.length >= 10 && questionText.length <= 1800 && !looksLikeReference && !hasExtractionArtifacts &&
           ((!isMcq && /\?|\b(state|explain|describe|calculate|find|determine|list|define|write|draw|discuss|give|outline|compare|mention)\b/i.test(questionText)) ||
-           (isMcq && options.length >= 4));
+           (isMcq && options.length >= 4 && coreOptionsOrdered && questionText.length <= 1000));
         if (isActive) active++;
         rows.push({
           board: String(file.board || "").toLowerCase(),

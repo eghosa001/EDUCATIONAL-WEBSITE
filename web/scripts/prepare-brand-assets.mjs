@@ -1,20 +1,14 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access } from 'node:fs/promises';
 import path from 'node:path';
 
 const root = process.cwd();
-const sourceDir = path.join(root, 'brand-assets');
-const publicDir = path.join(root, 'public', 'logos');
-
-await mkdir(publicDir, { recursive: true });
-
-const assets = [
-  ['the-guide-mark.webp.b64', 'the-guide-mark.webp'],
-  ['the-guide-wordmark.webp.b64', 'the-guide-wordmark.webp'],
+const required = [
+  'public/logos/primary-logo.jfif',
+  'public/logos/dark-mode-silver.jfif',
+  'public/logos/app-icon.jfif',
+  'public/logos/brand-light.svg',
+  'public/logos/brand-dark.svg',
 ];
 
-for (const [source, target] of assets) {
-  const encoded = (await readFile(path.join(sourceDir, source), 'utf8')).trim();
-  await writeFile(path.join(publicDir, target), Buffer.from(encoded, 'base64'));
-}
-
-console.log('THE GUIDE brand assets prepared.');
+await Promise.all(required.map(file => access(path.join(root, file))));
+console.log('Verified supplied THE GUIDE brand assets.');

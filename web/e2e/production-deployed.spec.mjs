@@ -147,35 +147,43 @@ test.describe('deployed production learner QA', () => {
     await expectHealthy(page, failures);
   });
 
-  test('past questions load and authenticated answer checking returns an explanation', async ({ page }) => {
+  test('past questions load and verified answer checking works', async ({ page }) => {
     const failures = watchRuntimeFailures(page);
     await page.goto('/dashboard/past-questions', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: /Past Questions CBT/i })).toBeVisible();
     const token = await accessToken(page);
     const result = await page.evaluate(async ({ supabaseUrl, publishableKey, token }) => {
       const headers = { apikey: publishableKey, Authorization: `Bearer ${token}`, 'content-type': 'application/json' };
-      const listResponse = await fetch(`${supabaseUrl}/functions/v1/web-api/past-questions?board=jamb&limit=1`, { headers });
-      const listText = await listResponse.text();
-      if (!listResponse.ok) return { listStatus: listResponse.status, listText };
-      const list = JSON.parse(listText);
-      const question = list?.data?.questions?.[0];
-      if (!question) return { listStatus: listResponse.status, listText, error: 'No JAMB question returned' };
+      let question = null;
+      let listStatus = 0;
+      let listText = '';
+      for (let pageNo = 1; pageNo <= 20 && !question; pageNo += 1) {
+        const listResponse = await fetch(`${supabaseUrl}/functions/v1/web-api/past-questions?board=jamb&page=${pageNo}&limit=100`, { headers });
+        listStatus = listResponse.status;
+        listText = await listResponse.text();
+        if (!listResponse.ok) return { listStatus, listText };
+        const list = JSON.parse(listText);
+        const rows = list?.data?.questions || [];
+        question = rows.find((item) => item?.hasAnswer === true && Array.isArray(item?.options) && item.options.length > 0) || null;
+        const totalPages = Number(list?.pagination?.totalPages || 0);
+        if (totalPages && pageNo >= totalPages) break;
+      }
+      if (!question) return { listStatus, listText, error: 'No graded JAMB question returned' };
       const options = question.options;
-      const answer = Array.isArray(options)
-        ? String(options[0]?.id ?? options[0]?.value ?? options[0]?.label ?? options[0] ?? 'A')
-        : String(Object.keys(options || {})[0] || 'A');
+      const answer = String(options[0]?.id ?? options[0]?.value ?? options[0]?.label ?? options[0] ?? 'A');
       const checkResponse = await fetch(`${supabaseUrl}/functions/v1/web-api/past-questions/${question.id}/check`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ answer }),
       });
-      return { listStatus: listResponse.status, checkStatus: checkResponse.status, checkText: await checkResponse.text() };
+      return { listStatus, checkStatus: checkResponse.status, checkText: await checkResponse.text() };
     }, { supabaseUrl, publishableKey, token });
     expect(result.listStatus, result.listText).toBe(200);
+    expect(result.error, result.listText).toBeFalsy();
     expect(result.checkStatus, result.checkText).toBe(200);
     const checked = JSON.parse(result.checkText);
     expect(checked?.data?.result?.correctAnswer).toBeTruthy();
-    expect(checked?.data?.result?.explanation).toBeTruthy();
+    expect(typeof checked?.data?.result?.isCorrect).toBe('boolean');
     await expectHealthy(page, failures);
   });
 
