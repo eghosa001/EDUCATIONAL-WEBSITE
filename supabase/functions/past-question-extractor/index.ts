@@ -249,9 +249,12 @@ Deno.serve(async (request) => {
     if (action === "fail") {
       const fileId = String(body?.fileId || "");
       const message = cleanText(body?.message || "OCR extraction failed", 500);
-      const { data: file } = await admin.from("past_question_files").select("metadata").eq("id", fileId).maybeSingle();
+      const { data: file } = await admin.from("past_question_files").select("metadata,questions_extracted").eq("id", fileId).maybeSingle();
       if (String(file?.metadata?.status || "") === "reference_material") {
         return json({ success: true, skipped: true, reason: "reference_material" });
+      }
+      if (Number(file?.questions_extracted || 0) > 0 || String(file?.metadata?.status || "") === "ocr_extracted") {
+        return json({ success: true, skipped: true, reason: "already_extracted" });
       }
       await admin.from("past_question_files").update({
         is_processed: true,
