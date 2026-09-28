@@ -64,11 +64,12 @@ test('lesson math is normalized instead of showing raw dollar delimiters', () =>
   assert.match(source, /normalizeLessonMath\(String\(content/);
 });
 
-test('library client normalizes the backend resources envelope', () => {
+test('library client reads learner resources directly through Supabase RLS', () => {
   const source = read('src/services/api/libraryService.ts');
-  assert.match(source, /payload\?\.data\?\.resources/);
+  assert.match(source, /from\('library_resources'\)/);
   assert.match(source, /resource\.resource_type/);
   assert.match(source, /totalPages/);
+  assert.doesNotMatch(source, /payload\?\.data\?\.resources/);
 });
 
 test('AI tutor uses curriculum selectors instead of raw UUID inputs', () => {
