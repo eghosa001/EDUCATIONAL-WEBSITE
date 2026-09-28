@@ -143,3 +143,18 @@ test('past-question availability exposes only scoreable MCQs', () => {
   assert.match(api, /question_type,correct_answer/);
   assert.match(api, /scalarAnswer\(row\.correct_answer\)/);
 });
+
+test('AI Tutor preserves the session with a curriculum fallback when providers fail', () => {
+  const source = read('../../supabase/functions/ai/index.ts');
+  assert.match(source, /curriculumTutorFallback/);
+  assert.match(source, /Tutor providers unavailable; using curriculum fallback/);
+  assert.match(source, /responseModel = 'curriculum-fallback'/);
+  assert.match(source, /release_ai_request/);
+});
+
+test('flashcard curriculum fallback can build cards from ordinary lesson prose', () => {
+  const source = read('../../supabase/functions/flashcards/index.ts');
+  assert.match(source, /proseChunks/);
+  assert.match(source, /What important idea/);
+  assert.match(source, /What is key point/);
+});

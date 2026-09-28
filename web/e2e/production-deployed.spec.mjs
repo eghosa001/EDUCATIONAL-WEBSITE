@@ -317,7 +317,30 @@ test.describe('deployed production learner QA', () => {
     await expect.poll(async () => await subject.locator('option').count(), { timeout: 20000 }).toBeGreaterThan(1);
     await subject.selectOption(target.subjectId);
     await expect.poll(async () => await topic.locator('option').count(), { timeout: 20000 }).toBeGreaterThan(1);
-    await topic.selectOption(target.topicId);
+    const visibleTopicIds = await topic.locator('option').evaluateAll(options =>
+      options.map(option => option.value).filter(Boolean)
+    );
+    const richVisibleTopicId = await page.evaluate(async ({ supabaseUrl, publishableKey, token, topicIds }) => {
+      const headers = { apikey: publishableKey, Authorization: `Bearer ${token}` };
+      for (let offset = 0; offset < topicIds.length; offset += 80) {
+        const chunk = topicIds.slice(offset, offset + 80);
+        if (!chunk.length) continue;
+        const response = await fetch(
+          `${supabaseUrl}/rest/v1/lessons?select=topic_id,written_content&is_published=eq.true&written_content=not.is.null&topic_id=in.(${chunk.join(',')})&limit=1000`,
+          { headers },
+        );
+        const rows = await response.json();
+        const sizes = new Map();
+        for (const row of Array.isArray(rows) ? rows : []) {
+          sizes.set(row.topic_id, (sizes.get(row.topic_id) || 0) + String(row.written_content || '').length);
+        }
+        const match = chunk.find(id => (sizes.get(id) || 0) >= 1500);
+        if (match) return match;
+      }
+      return null;
+    }, { supabaseUrl, publishableKey, token, topicIds: visibleTopicIds });
+    expect(richVisibleTopicId).toBeTruthy();
+    await topic.selectOption(richVisibleTopicId);
     await page.getByLabel('Number of flashcards').selectOption('10');
 
     const started = Date.now();

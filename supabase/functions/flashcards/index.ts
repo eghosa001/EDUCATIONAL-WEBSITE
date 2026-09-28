@@ -84,16 +84,30 @@ const groundedFallbackCards = (topic: Record<string, unknown>, lessons: any[], c
       if (section) add(`Explain ${heading} in ${topicName}.`, section);
     }
 
-    for (const point of [...(Array.isArray(lesson?.key_points) ? lesson.key_points : []), ...(Array.isArray(lesson?.learning_objectives) ? lesson.learning_objectives : [])]) {
+    const lessonPoints = [...(Array.isArray(lesson?.key_points) ? lesson.key_points : []), ...(Array.isArray(lesson?.learning_objectives) ? lesson.learning_objectives : [])];
+    lessonPoints.forEach((point, pointIndex) => {
       const answer = cleanMarkdown(point, 1200);
-      if (answer.length >= 25) add(`What key point should you know about ${topicName}?`, answer);
-    }
+      if (answer.length >= 25) add(`What is key point ${pointIndex + 1} from ${cleanMarkdown(lesson?.title, 120) || topicName}?`, answer);
+    });
+
+    const proseChunks = content
+      .split(/\n\s*\n|(?<=[.!?])\s+(?=[A-Z0-9])/)
+      .map((part: string) => cleanMarkdown(part, 1500))
+      .filter((part: string) =>
+        part.length >= 45 &&
+        part.length <= 1400 &&
+        !/^[-|]/.test(part) &&
+        !/^(objectives?|summary|introduction|conclusion|recap)$/i.test(part)
+      );
+    proseChunks.slice(0, Math.max(0, count - cards.length)).forEach((chunk: string, chunkIndex: number) => {
+      add(`What important idea ${chunkIndex + 1} does ${cleanMarkdown(lesson?.title, 120) || topicName} teach about ${topicName}?`, chunk);
+    });
   }
 
-  for (const objective of Array.isArray(topic.learning_objectives) ? topic.learning_objectives : []) {
+  (Array.isArray(topic.learning_objectives) ? topic.learning_objectives : []).forEach((objective, objectiveIndex) => {
     const answer = cleanMarkdown(objective, 1200);
-    if (answer.length >= 25) add(`What curriculum objective applies to ${topicName}?`, answer);
-  }
+    if (answer.length >= 25) add(`What is curriculum objective ${objectiveIndex + 1} for ${topicName}?`, answer);
+  });
 
   return cards.slice(0, count);
 };

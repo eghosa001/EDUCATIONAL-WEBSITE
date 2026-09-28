@@ -135,6 +135,91 @@ const validateStudyPlan = (value: unknown) => {
   };
 };
 
+
+const curriculumTutorFallback = async (
+  adminClient: any,
+  body: Record<string, unknown>,
+  message: string,
+  context: { currentSubject: string; currentTopic: string },
+) => {
+  const topicId = cleanString(body.topicId, 100);
+  const clean = (value: unknown, max = 1000) => cleanString(value, max)
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/[*_`#>|]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  let topicName = context.currentTopic || 'your selected topic';
+  const material: string[] = [];
+  if (topicId) {
+    const { data: topic } = await adminClient
+      .from('topics')
+      .select('name,description,learning_objectives')
+      .eq('id', topicId)
+      .maybeSingle();
+    if (topic) {
+      topicName = clean(topic.name, 180) || topicName;
+      const description = clean(topic.description, 1200);
+      if (description) material.push(description);
+      for (const objective of Array.isArray(topic.learning_objectives) ? topic.learning_objectives : []) {
+        const value = clean(objective, 800);
+        if (value) material.push(value);
+      }
+    }
+
+    const { data: lessons } = await adminClient
+      .from('lessons')
+      .select('title,written_content,key_points,learning_objectives')
+      .eq('topic_id', topicId)
+      .eq('is_published', true)
+      .order('order_index', { ascending: true })
+      .limit(12);
+
+    for (const lesson of lessons || []) {
+      for (const point of [...(Array.isArray(lesson?.key_points) ? lesson.key_points : []), ...(Array.isArray(lesson?.learning_objectives) ? lesson.learning_objectives : [])]) {
+        const value = clean(point, 1000);
+        if (value) material.push(value);
+      }
+      const content = String(lesson?.written_content || '');
+      for (const chunk of content.split(/\n\s*\n|(?<=[.!?])\s+(?=[A-Z0-9])/)) {
+        const value = clean(chunk, 1200);
+        if (value.length >= 40) material.push(value);
+        if (material.length >= 80) break;
+      }
+      if (material.length >= 80) break;
+    }
+  }
+
+  const terms = [...new Set(
+    message.toLowerCase().match(/[a-z]{4,}/g)?.filter(word =>
+      !['what','when','where','which','with','that','this','from','have','does','give','define','explain','simple','example','about','your'].includes(word)
+    ) || []
+  )];
+  const scored = material
+    .map((text, index) => ({
+      text,
+      index,
+      score: terms.reduce((sum, term) => sum + (text.toLowerCase().includes(term) ? 2 : 0), 0),
+    }))
+    .sort((a, b) => b.score - a.score || a.index - b.index);
+
+  const selected: string[] = [];
+  const seen = new Set<string>();
+  for (const item of scored) {
+    const key = item.text.toLowerCase().slice(0, 180);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    selected.push(item.text);
+    if (selected.length >= 3) break;
+  }
+
+  if (selected.length) {
+    return `The live AI provider is temporarily unavailable, so I’m using the published curriculum for ${topicName} instead.\n\n${selected.map((item, index) => `${index + 1}. ${item}`).join('\n\n')}\n\nAsk another question about this topic and I’ll continue from the curriculum while the live model is unavailable.`;
+  }
+
+  return `The live AI provider is temporarily unavailable. I kept your tutor session open, but I can’t verify a curriculum-grounded answer to “${clean(message, 300)}” from the published material currently linked to ${topicName}. Please try again shortly or choose a topic with published lesson content.`;
+};
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeadersFor(request) });
   if (request.method !== 'POST') return json(request, { error: 'Method not allowed' }, 405);
@@ -207,13 +292,25 @@ Deno.serve(async (request) => {
         ...((previous || []).reverse() as Array<{ role: string; content: string }>),
         { role: 'user', content: message },
       ];
-      const response = await openAITutor(messages);
-      const answer = cleanString(response.choices?.[0]?.message?.content, 12000);
-      if (!answer) throw new Error('AI returned an empty response');
-      tokensUsed = Number(response.usage?.total_tokens || 0);
+      let answer = '';
+      let responseModel = 'curriculum-fallback';
+      try {
+        const response = await openAITutor(messages);
+        answer = cleanString(response.choices?.[0]?.message?.content, 12000);
+        if (!answer) throw new Error('AI returned an empty response');
+        tokensUsed = Number(response.usage?.total_tokens || 0);
+        responseModel = cleanString(response.model, 120) || 'bynara';
+      } catch (providerError) {
+        console.warn('Tutor providers unavailable; using curriculum fallback:', providerError instanceof Error ? providerError.message : String(providerError));
+        answer = await curriculumTutorFallback(adminClient, body as Record<string, unknown>, message, context);
+        if (reserved) {
+          try { await adminClient.rpc('release_ai_request', { p_user_id: user.id }); } catch {}
+          reserved = false;
+        }
+      }
       const { error: messageError } = await adminClient.from('ai_messages').insert([
-        { conversation_id: sessionId, role: 'user', content: message, model: response.model },
-        { conversation_id: sessionId, role: 'assistant', content: answer, model: response.model, tokens_used: tokensUsed || null },
+        { conversation_id: sessionId, role: 'user', content: message, model: responseModel },
+        { conversation_id: sessionId, role: 'assistant', content: answer, model: responseModel, tokens_used: tokensUsed || null },
       ]);
       if (messageError) throw new Error('Unable to save AI conversation');
       await adminClient.from('ai_conversations').update({ message_count: ((previous || []).length + 2), last_message_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', sessionId).eq('user_id', user.id);
