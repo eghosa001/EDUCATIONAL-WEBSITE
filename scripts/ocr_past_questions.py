@@ -59,14 +59,14 @@ def pdf_text(pdf):
     run(["pdftotext", "-layout", str(pdf), out])
     return Path(out).read_text(errors="ignore")
 
-def ocr_pdf(pdf, work):
-    prefix = work / "page"
+def ocr_pdf(pdf, work, psm=6):
+    prefix = work / ("page-psm%d" % psm)
     run(["pdftoppm", "-jpeg", "-r", "180", str(pdf), str(prefix)])
-    pages = sorted(work.glob("page-*.jpg"))
+    pages = sorted(work.glob("page-psm%d-*.jpg" % psm))
     text = []
     for idx, image in enumerate(pages, 1):
-        out = work / ("ocr-%04d" % idx)
-        run(["tesseract", str(image), str(out), "-l", "eng", "--psm", "6"])
+        out = work / ("ocr-psm%d-%04d" % (psm, idx))
+        run(["tesseract", str(image), str(out), "-l", "eng", "--psm", str(psm)])
         txt = out.with_suffix(".txt")
         if txt.exists():
             text.append(txt.read_text(errors="ignore"))
@@ -221,17 +221,29 @@ def main():
                 work = Path(td)
                 pdf = work / "source.pdf"
                 download(file["public_url"], pdf)
-                text = pdf_text(pdf)
+                embedded_text = pdf_text(pdf)
+                text = embedded_text
                 method = "pdf-text"
-                if should_ocr(file, text):
-                    text = ocr_pdf(pdf, work)
-                    method = "tesseract-ocr"
-                questions = parse_questions(text)
+                questions = parse_questions(embedded_text)
+                if should_ocr(file, embedded_text):
+                    ocr_text = ocr_pdf(pdf, work, psm=6)
+                    ocr_questions = parse_questions(ocr_text)
+                    if len(ocr_questions) >= len(questions):
+                        text = ocr_text
+                        questions = ocr_questions
+                        method = "tesseract-ocr-psm6"
+                if not questions:
+                    layout_text = ocr_pdf(pdf, work, psm=3)
+                    layout_questions = parse_questions(layout_text)
+                    if len(layout_questions) > len(questions):
+                        text = layout_text
+                        questions = layout_questions
+                        method = "tesseract-ocr-psm3"
                 if not questions:
                     api({
                         "action": "fail",
                         "fileId": file["id"],
-                        "message": "No reliable structured questions found after " + method,
+                        "message": "No reliable structured questions found after embedded text + OCR layout retries",
                     })
                     totals["failed"] += 1
                     continue
