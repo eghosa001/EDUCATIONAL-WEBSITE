@@ -13,11 +13,15 @@ permissions:
   id-token: write
 
 concurrency:
-  group: ocr-past-questions
+  group: ocr-past-questions-v2
   cancel-in-progress: false
 
 jobs:
   extract:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4]
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -28,4 +32,6 @@ jobs:
         env:
           EXTRACTOR_URL: https://xanrzsszrysianxhpprk.supabase.co/functions/v1/past-question-extractor
           OIDC_AUDIENCE: the-guide-question-extractor
+          OCR_SHARD_INDEX: ${{ matrix.shard }}
+          OCR_SHARD_TOTAL: 5
         run: python scripts/ocr_past_questions.py

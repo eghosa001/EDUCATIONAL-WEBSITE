@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import hashlib
 import json
 import os
 import re
@@ -208,7 +209,14 @@ def should_ocr(file, text):
 def main():
     manifest = api({"action": "manifest"})
     files = manifest.get("files", [])
-    print("Files queued for extraction/retry:", len(files))
+    shard_total = max(1, int(os.environ.get("OCR_SHARD_TOTAL", "1")))
+    shard_index = int(os.environ.get("OCR_SHARD_INDEX", "0"))
+    if shard_total > 1:
+        files = [
+            file for file in files
+            if int(hashlib.sha256(str(file.get("id") or "").encode()).hexdigest(), 16) % shard_total == shard_index
+        ]
+    print("Files queued for extraction/retry:", len(files), "shard", shard_index, "of", shard_total)
     print("Boards:", json.dumps({
         board: sum(1 for item in files if str(item.get("board") or "").lower() == board)
         for board in sorted({str(item.get("board") or "").lower() for item in files})

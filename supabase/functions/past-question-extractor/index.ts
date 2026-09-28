@@ -80,6 +80,14 @@ const textQualityOk = (value: string) => {
   return true;
 };
 
+const tesseractTextOk = (value: string, maxLength: number) => {
+  if (!textQualityOk(value) || value.length > maxLength) return false;
+  if (/[a-z][A-Z][a-z]/.test(value)) return false;
+  if (/\b\d{1,3}\s*[.)]\s+(?:the|which|what|when|where|why|how|if|in|from|under|during|use|a|an)\b/i.test(value)) return false;
+  if (/(candidates should|learning objectives|assessment would include|topics[ /]contents|question paper type)/i.test(value)) return false;
+  return true;
+};
+
 const isLikelyQuestionFile = (file: any) => {
   const name = String(file.file_name || "").toLowerCase();
   const board = String(file.board || "").toLowerCase();
@@ -138,6 +146,11 @@ Deno.serve(async (request) => {
       const { data: file, error: fileError } = await admin.from("past_question_files")
         .select("id,board,subject,year,file_name,metadata").eq("id", fileId).maybeSingle();
       if (fileError || !file) return json({ error: "Source file not found" }, 404);
+      const fileStatus = String(file?.metadata?.status || "");
+      if (fileStatus === "reference_material") return json({ success: true, skipped: true, reason: "reference_material" });
+      if (file.is_processed && fileStatus === "ocr_extracted") {
+        return json({ success: true, skipped: true, reason: "already_processed", inserted: 0, active: Number(file.questions_extracted || 0), answered: 0 });
+      }
       if (!isLikelyQuestionFile(file)) return json({ error: "Source is not classified as a past-question paper" }, 400);
 
       const { data: subjects, error: subjectError } = await admin.from("subjects").select("id,name").eq("is_active", true);
@@ -181,8 +194,12 @@ Deno.serve(async (request) => {
         const coreOptionsOrdered = optionIds.slice(0, 4).join("") === "ABCD";
         const hasExtractionArtifacts = artifactPattern.test(questionText) ||
           options.some((option: any) => artifactPattern.test(option.text) || option.text.length > 500);
-        const optionsReadable = !isMcq || options.every((option: any) => textQualityOk(option.text));
-        const isActive = questionText.length >= 10 && questionText.length <= 1800 && textQualityOk(questionText) && !looksLikeReference && !hasExtractionArtifacts && optionsReadable &&
+        const isTesseract = /^tesseract/i.test(extractionMethod);
+        const optionsReadable = !isMcq || options.every((option: any) =>
+          isTesseract ? tesseractTextOk(option.text, 160) : textQualityOk(option.text)
+        );
+        const questionReadable = isTesseract ? tesseractTextOk(questionText, 420) : textQualityOk(questionText);
+        const isActive = questionText.length >= 10 && questionText.length <= 1800 && questionReadable && !looksLikeReference && !hasExtractionArtifacts && optionsReadable &&
           ((!isMcq && /\?|\b(state|explain|describe|calculate|find|determine|list|define|write|draw|discuss|give|outline|compare|mention)\b/i.test(questionText)) ||
            (isMcq && options.length >= 4 && coreOptionsOrdered && questionText.length <= 1000));
         if (isActive) active++;
@@ -233,6 +250,9 @@ Deno.serve(async (request) => {
       const fileId = String(body?.fileId || "");
       const message = cleanText(body?.message || "OCR extraction failed", 500);
       const { data: file } = await admin.from("past_question_files").select("metadata").eq("id", fileId).maybeSingle();
+      if (String(file?.metadata?.status || "") === "reference_material") {
+        return json({ success: true, skipped: true, reason: "reference_material" });
+      }
       await admin.from("past_question_files").update({
         is_processed: true,
         metadata: { ...(file?.metadata || {}), status: "ocr_failed", failed_at: new Date().toISOString(), review_reason: message },
