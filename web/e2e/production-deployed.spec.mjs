@@ -311,6 +311,20 @@ test.describe('deployed production learner QA', () => {
     await expectHealthy(page, failures);
   });
 
+  test('gamification loads the live achievement catalog', async ({ page }, testInfo) => {
+    const failures = watchRuntimeFailures(page);
+    await page.goto('/dashboard/gamification', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { name: /^Gamification$/i })).toBeVisible();
+    const summary = page.getByText(/\d+ of \d+ earned/i);
+    await expect(summary).toBeVisible({ timeout: 20000 });
+    const text = (await summary.textContent()) || '';
+    const match = text.match(/(\d+) of (\d+) earned/i);
+    expect(match, text).toBeTruthy();
+    expect(Number(match?.[2] || 0)).toBeGreaterThan(0);
+    await captureVisual(page, testInfo, 'gamification-achievements');
+    await expectHealthy(page, failures);
+  });
+
   test('profile changes save and the free subscription flow reaches billing', async ({ page }, testInfo) => {
     const failures = watchRuntimeFailures(page);
     await page.goto('/dashboard/profile/settings', { waitUntil: 'domcontentloaded' });

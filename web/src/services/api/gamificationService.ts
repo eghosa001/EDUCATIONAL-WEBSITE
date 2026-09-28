@@ -69,22 +69,82 @@ export interface UserBadge {
   earnedAt: string;
 }
 
-export const fetchBadges = async (token?: string): Promise<{ badges: Badge[] }> => {
-  const response = await fetch(`${baseUrl}/gamification/badges`, {
-    headers: getAuthHeaders(token), credentials: 'include'
-  });
-  return handleApiError(response);
+const mapBadge = (row: any): Badge => ({
+  id: String(row.id),
+  name: String(row.name || 'Achievement'),
+  description: String(row.description || ''),
+  icon: String(row.icon_url || ''),
+  pointsRequired: Number(row.xp_reward || 0),
+  category: row.code === 'social_share' ? 'social' : 'achievement',
+  isActive: Boolean(row.is_active),
+});
+
+export const fetchBadges = async (_token?: string): Promise<{ badges: Badge[] }> => {
+  const { data, error } = await getSupabase()
+    .from('badges')
+    .select('id,name,code,description,icon_url,xp_reward,is_active')
+    .eq('is_active', true)
+    .order('xp_reward', { ascending: true });
+  if (error) throw new Error(error.message);
+  return { badges: (data || []).map(mapBadge) };
 };
 
 export const fetchMyBadges = async (
   page: number = 1,
   limit: number = 20,
-  token: string
+  _token: string
 ): Promise<PaginatedResponse<UserBadge>> => {
-  const response = await fetch(`${baseUrl}/gamification/badges/me?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token), credentials: 'include'
-  });
-  return handleApiError(response);
+  const supabase = getSupabase();
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError || !auth.user) throw new Error('You must be signed in');
+
+  const safePage = Math.max(1, page);
+  const safeLimit = Math.min(100, Math.max(1, limit));
+  const from = (safePage - 1) * safeLimit;
+  const to = from + safeLimit - 1;
+
+  const { data: rows, error, count } = await supabase
+    .from('achievements')
+    .select('id,badge_id,user_id,earned_at', { count: 'exact' })
+    .eq('user_id', auth.user.id)
+    .order('earned_at', { ascending: false })
+    .range(from, to);
+  if (error) throw new Error(error.message);
+
+  const badgeIds = [...new Set((rows || []).map((row: any) => row.badge_id).filter(Boolean))];
+  let badgeRows: any[] = [];
+  if (badgeIds.length) {
+    const result = await supabase
+      .from('badges')
+      .select('id,name,code,description,icon_url,xp_reward,is_active')
+      .in('id', badgeIds);
+    if (result.error) throw new Error(result.error.message);
+    badgeRows = result.data || [];
+  }
+
+  const badgeMap = new Map(badgeRows.map((row: any) => [row.id, mapBadge(row)]));
+  const data = (rows || [])
+    .map((row: any) => {
+      const badge = badgeMap.get(row.badge_id);
+      if (!badge) return null;
+      return {
+        id: String(row.id),
+        badgeId: String(row.badge_id),
+        userId: String(row.user_id),
+        badge,
+        earnedAt: String(row.earned_at || ''),
+      } satisfies UserBadge;
+    })
+    .filter(Boolean) as UserBadge[];
+
+  const total = Number(count || 0);
+  return {
+    data,
+    page: safePage,
+    pageSize: safeLimit,
+    total,
+    totalPages: Math.ceil(total / safeLimit),
+  };
 };
 
 // ========== ACHIEVEMENTS ==========

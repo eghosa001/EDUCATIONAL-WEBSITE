@@ -1,108 +1,152 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { TrophyIcon, FlameIcon, MedalIcon, BadgeCheckIcon } from 'lucide-react';
+import { BadgeCheckIcon, FlameIcon, MedalIcon, TrophyIcon } from 'lucide-react';
 import { useAuthStore } from '@/state/auth/authStore';
-import { fetchMyPoints, fetchMyBadges } from '@/services/api/gamificationService';
+import {
+  fetchBadges,
+  fetchMyBadges,
+  fetchMyPoints,
+  type Badge,
+} from '@/services/api/gamificationService';
 
-const ACHIEVEMENTS = [
-  { id: '1', title: 'First Course', desc: 'Complete your first course', icon: BadgeCheckIcon, xp: 100 },
-  { id: '2', title: '7-Day Streak', desc: 'Study 7 days in a row', icon: FlameIcon, xp: 200 },
-  { id: '3', title: 'Quiz Master', desc: 'Score 90%+ on 5 quizzes', icon: TrophyIcon, xp: 300 },
-  { id: '4', title: 'Exam Champion', desc: 'Pass your first exam', icon: MedalIcon, xp: 500 },
-  { id: '5', title: '30-Day Streak', desc: 'Study 30 days in a row', icon: FlameIcon, xp: 1000 },
-  { id: '6', title: 'Top Scorer', desc: 'Rank #1 in any subject', icon: TrophyIcon, xp: 750 },
-];
+function iconForBadge(name: string) {
+  if (/streak/i.test(name)) return FlameIcon;
+  if (/exam|quiz|score|warrior|crusher/i.test(name)) return TrophyIcon;
+  if (/community|profile/i.test(name)) return MedalIcon;
+  return BadgeCheckIcon;
+}
 
 export default function GamificationPage() {
   const { token } = useAuthStore();
   const authToken = token ?? undefined;
   const [points, setPoints] = useState(0);
   const [level, setLevel] = useState(1);
+  const [badges, setBadges] = useState<Badge[]>([]);
   const [earnedIds, setEarnedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!authToken) { setLoading(false); return; }
+    if (!authToken) {
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    setError('');
 
     Promise.all([
-      fetchMyPoints(authToken).catch(() => ({ points: { totalPoints: 0 } })),
-      fetchMyBadges(1, 50, authToken).catch(() => ({ data: [] })),
-    ]).then(([pointsRes, badgesRes]) => {
-      setPoints(pointsRes.points?.totalPoints ?? 0);
-      const earned = new Set<string>((badgesRes.data || []).map((b: any) => b.badgeId ?? b.id));
-      setEarnedIds(earned);
-      setLevel(Math.floor((pointsRes.points?.totalPoints ?? 0) / 500) + 1);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+      fetchMyPoints(authToken),
+      fetchBadges(authToken),
+      fetchMyBadges(1, 100, authToken),
+    ])
+      .then(([pointsRes, badgeRes, earnedRes]) => {
+        if (cancelled) return;
+        const totalPoints = pointsRes.points?.totalPoints ?? 0;
+        setPoints(totalPoints);
+        setLevel(Math.floor(totalPoints / 500) + 1);
+        setBadges(badgeRes.badges || []);
+        setEarnedIds(new Set((earnedRes.data || []).map(item => item.badgeId)));
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Unable to load gamification data');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [authToken]);
 
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900">Gamification</h1>
-        <div className="flex items-center justify-center py-12 text-gray-500">Loading…</div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Gamification</h1>
+        <div className="flex items-center justify-center py-12 text-gray-500 dark:text-slate-300">Loading…</div>
       </div>
     );
   }
 
   const nextLevelXp = level * 500;
+  const xpRemaining = Math.max(0, nextLevelXp - points);
+  const progress = Math.min(100, Math.max(0, (points % 500) / 5));
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Gamification</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Gamification</h1>
 
-      {/* XP & Level */}
-      <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-2xl p-6 text-white">
-        <div className="flex items-center justify-between mb-4">
+      {error && (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+          {error}
+        </div>
+      )}
+
+      <div className="rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 p-6 text-white">
+        <div className="mb-4 flex items-center justify-between">
           <div>
-            <p className="text-indigo-200 text-sm">Current Level</p>
+            <p className="text-sm text-indigo-200">Current Level</p>
             <p className="text-4xl font-bold">{level}</p>
           </div>
           <div className="text-right">
-            <p className="text-indigo-200 text-sm">Total XP</p>
+            <p className="text-sm text-indigo-200">Total XP</p>
             <p className="text-3xl font-bold">{points}</p>
           </div>
         </div>
-        <div className="bg-white/20 rounded-full h-3">
-          <div
-            className="bg-yellow-400 h-3 rounded-full transition-all"
-            style={{ width: `${Math.min(100, (points % 500) / 5)}%` }}
-          />
+        <div className="h-3 rounded-full bg-white/20">
+          <div className="h-3 rounded-full bg-yellow-400 transition-all" style={{ width: `${progress}%` }} />
         </div>
-        <p className="text-indigo-200 text-sm mt-2">
-          {nextLevelXp - points} XP to Level {level + 1}
-        </p>
+        <p className="mt-2 text-sm text-indigo-200">{xpRemaining} XP to Level {level + 1}</p>
       </div>
 
-      {/* Achievements */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-4">Achievements</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {ACHIEVEMENTS.map(a => {
-            const earned = earnedIds.has(a.id);
-            const Icon = a.icon;
-            return (
-              <div
-                key={a.id}
-                className={`flex items-center gap-3 p-3 rounded-lg border ${
-                  earned ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 opacity-60'
-                }`}
-              >
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  earned ? 'bg-green-100' : 'bg-gray-200'
-                }`}>
-                  <Icon className={`w-5 h-5 ${earned ? 'text-green-600' : 'text-gray-400'}`} />
-                </div>
-                <div className="flex-1">
-                  <p className={`font-medium text-sm ${earned ? 'text-green-900' : 'text-gray-700'}`}>{a.title}</p>
-                  <p className="text-xs text-gray-500">{a.desc}</p>
-                </div>
-                <span className="text-xs font-medium text-gray-400">+{a.xp} XP</span>
-              </div>
-            );
-          })}
+      <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-slate-700 dark:bg-[#1b2045]">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="font-semibold text-gray-900 dark:text-white">Achievements</h2>
+          <span className="text-xs font-medium text-gray-500 dark:text-slate-300">
+            {earnedIds.size} of {badges.length} earned
+          </span>
         </div>
+
+        {badges.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-200 py-10 text-center text-sm text-gray-500 dark:border-slate-700 dark:text-slate-300">
+            No active achievements are available yet.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {badges.map(badge => {
+              const earned = earnedIds.has(badge.id);
+              const Icon = iconForBadge(badge.name);
+              return (
+                <div
+                  key={badge.id}
+                  className={`flex items-center gap-3 rounded-lg border p-3 ${
+                    earned
+                      ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30'
+                      : 'border-gray-200 bg-gray-50 opacity-70 dark:border-slate-700 dark:bg-[#151A3A]'
+                  }`}
+                >
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                    earned ? 'bg-green-100 dark:bg-green-900/50' : 'bg-gray-200 dark:bg-slate-700'
+                  }`}>
+                    <Icon className={`h-5 w-5 ${earned ? 'text-green-600 dark:text-green-300' : 'text-gray-400 dark:text-slate-400'}`} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-sm font-medium ${earned ? 'text-green-900 dark:text-green-200' : 'text-gray-700 dark:text-slate-200'}`}>
+                      {badge.name}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">{badge.description}</p>
+                  </div>
+                  <span className="shrink-0 text-xs font-medium text-gray-400 dark:text-slate-400">+{badge.pointsRequired} XP</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

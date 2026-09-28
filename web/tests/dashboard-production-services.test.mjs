@@ -24,3 +24,13 @@ test('production visual QA rejects visible feature error banners', () => {
   assert.match(source, /\[role="alert"\]:visible/);
   assert.match(source, /Failed to load\|Unable to load/);
 });
+
+test('gamification uses the live Supabase badge catalog instead of hard-coded achievements', () => {
+  const service = read('../src/services/api/gamificationService.ts');
+  assert.match(service, /from\('badges'\)/);
+  assert.match(service, /from\('achievements'\)/);
+  const page = read('../src/app/dashboard/gamification/page.tsx');
+  assert.match(page, /fetchBadges/);
+  assert.doesNotMatch(page, /const ACHIEVEMENTS/);
+  assert.match(page, /role="alert"/);
+});
