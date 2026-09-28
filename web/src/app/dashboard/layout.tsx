@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import BrandLogo from '@/components/BrandLogo';
 import { Home, BookOpen, ClipboardCheck as ClipboardDocumentCheckIcon, MessageSquare as ChatBubbleLeftRightIcon, Bookmark as LibraryBookmarkIcon, Lightbulb as LightBulbIcon, Users as UserGroupIcon, Trophy, Bell, FileText as DocumentTextIcon, LogOut as ArrowLeftStartOnRectangleIcon, Menu as Bars3Icon, X as XMarkIcon, Settings as Cog6ToothIcon, GraduationCap, Library, CreditCard } from 'lucide-react';
 
 const studentNavItems = [
@@ -43,7 +44,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const navItems = user.role === 'teacher' ? teacherNavItems : user.role === 'parent' ? parentNavItems : studentNavItems;
   const handleLogout = async () => { await logout(); router.replace('/login'); };
-  const Brand = () => <Link href="/dashboard" aria-label="THE GUIDE dashboard" className="flex items-center"><img src="/logos/primary-logo.jfif" alt="THE GUIDE" className="h-12 w-auto max-w-[180px] object-contain sm:h-14" /></Link>;
+  const Brand = () => <BrandLogo href="/dashboard" compact className="max-w-[190px]" />;
   return <div className="min-h-screen bg-stone-50 dark:bg-[#151A3A]">
     <header className="fixed left-0 right-0 top-0 z-50 flex h-16 items-center justify-between border-b border-stone-200 bg-white px-4 dark:border-slate-700 dark:bg-[#151A3A] lg:hidden"><Brand /><button onClick={() => setSidebarOpen(!sidebarOpen)} className="rounded-lg p-2 text-slate-600 hover:bg-brand-50 hover:text-brand-700 dark:text-slate-300 dark:hover:bg-slate-800" aria-label="Toggle navigation">{sidebarOpen ? <XMarkIcon className="h-6 w-6" /> : <Bars3Icon className="h-6 w-6" />}</button></header>
     {sidebarOpen && <div className="fixed inset-0 z-40 bg-[#151A3A]/60 backdrop-blur-[1px] lg:hidden" onClick={() => setSidebarOpen(false)} />}

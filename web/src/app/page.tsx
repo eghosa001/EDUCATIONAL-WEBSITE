@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import BrandLogo from '@/components/BrandLogo';
 
 const learningPaths = [
   { label: 'Primary', title: 'Build strong foundations', description: 'Clear curriculum lessons and guided practice for core primary-school subjects.' },
@@ -29,9 +30,7 @@ export default function LandingPage() {
     <div className="min-h-screen overflow-x-hidden bg-stone-50 text-slate-900 dark:bg-[#151A3A] dark:text-slate-100">
       <nav className="sticky top-0 z-50 border-b border-stone-200/80 bg-white/95 backdrop-blur-xl dark:border-slate-700/80 dark:bg-[#151A3A]/95">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" aria-label="THE GUIDE home" className="flex shrink-0 items-center">
-            <img src="/logos/primary-logo.jfif" alt="THE GUIDE" className="h-14 w-auto max-w-[210px] object-contain sm:h-16" />
-          </Link>
+          <BrandLogo href="/" className="shrink-0" />
           <div className="hidden items-center gap-7 text-sm font-medium text-slate-600 dark:text-slate-300 lg:flex">
             <a href="#learning" className="transition hover:text-[#151A3A] dark:hover:text-white">Learning</a>
             <a href="#exams" className="transition hover:text-[#151A3A] dark:hover:text-white">Exam prep</a>
@@ -126,7 +125,7 @@ export default function LandingPage() {
         </section>
 
         <section className="pb-16 sm:pb-24">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"><div className="brand-gradient brand-glow overflow-hidden rounded-[2rem] px-7 py-12 text-center sm:px-12 sm:py-16"><img src="/logos/primary-logo.jfif" alt="THE GUIDE" className="mx-auto mb-6 h-20 w-auto max-w-[220px] rounded-lg object-contain" /><h2 className="text-3xl font-bold text-white sm:text-4xl">Give every study session a direction.</h2><p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-stone-200">Start with your level, learn the right topic, practise what you know and use your results to decide what comes next.</p><div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"><Link href="/register" className="rounded-xl bg-white px-7 py-3.5 font-semibold text-[#151A3A] transition hover:bg-brand-50">Start learning free</Link><Link href="/login" className="rounded-xl border border-white/20 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10">Log in</Link></div></div></div>
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"><div className="brand-gradient brand-glow overflow-hidden rounded-[2rem] px-7 py-12 text-center sm:px-12 sm:py-16"><div className="mb-6 flex justify-center"><BrandLogo href="/" inverse /></div><h2 className="text-3xl font-bold text-white sm:text-4xl">Give every study session a direction.</h2><p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-stone-200">Start with your level, learn the right topic, practise what you know and use your results to decide what comes next.</p><div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"><Link href="/register" className="rounded-xl bg-white px-7 py-3.5 font-semibold text-[#151A3A] transition hover:bg-brand-50">Start learning free</Link><Link href="/login" className="rounded-xl border border-white/20 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10">Log in</Link></div></div></div>
         </section>
       </main>
 
