@@ -163,6 +163,41 @@ def parse_questions(raw):
         })
     return results
 
+SUBJECT_ALIASES = [
+    ("agricultural science", "Agricultural Science"),
+    ("agriculture", "Agricultural Science"),
+    ("biology", "Biology"),
+    ("chemistry", "Chemistry"),
+    ("commerce", "Commerce"),
+    ("computer studies", "Computer Studies"),
+    ("computer", "Computer Studies"),
+    ("economics", "Economics"),
+    ("english language", "English Language"),
+    ("use of english", "English Language"),
+    ("literature in english", "Literature in English"),
+    ("literature", "Literature in English"),
+    ("french", "French"),
+    ("geography", "Geography"),
+    ("government", "Government"),
+    ("history", "History"),
+    ("mathematics", "Mathematics"),
+    ("maths", "Mathematics"),
+    ("physics", "Physics"),
+    ("technical drawing", "Technical Drawing"),
+    ("visual arts", "Visual Arts"),
+    ("yoruba", "Yoruba"),
+]
+
+def infer_subject(file, text):
+    explicit = str(file.get("subject") or "").strip()
+    if explicit:
+        return explicit
+    haystack = (str(file.get("file_name") or "") + "\n" + text[:12000]).lower()
+    for needle, subject in SUBJECT_ALIASES:
+        if needle in haystack:
+            return subject
+    return None
+
 def should_ocr(file, text):
     status = str((file.get("metadata") or {}).get("status") or "")
     if status == "needs_batch_processing":
@@ -173,7 +208,11 @@ def should_ocr(file, text):
 def main():
     manifest = api({"action": "manifest"})
     files = manifest.get("files", [])
-    print("Files queued:", len(files))
+    print("Files queued for extraction/retry:", len(files))
+    print("Boards:", json.dumps({
+        board: sum(1 for item in files if str(item.get("board") or "").lower() == board)
+        for board in sorted({str(item.get("board") or "").lower() for item in files})
+    }, sort_keys=True))
     totals = {"files": 0, "questions": 0, "active": 0, "answered": 0, "failed": 0}
     for pos, file in enumerate(files, 1):
         print("[%d/%d] %s" % (pos, len(files), file.get("file_name")))
@@ -196,9 +235,19 @@ def main():
                     })
                     totals["failed"] += 1
                     continue
+                subject = infer_subject(file, text)
+                if not subject:
+                    api({
+                        "action": "fail",
+                        "fileId": file["id"],
+                        "message": "Questions were found but the subject could not be identified safely",
+                    })
+                    totals["failed"] += 1
+                    continue
                 result = api({
                     "action": "ingest",
                     "fileId": file["id"],
+                    "subject": subject,
                     "method": method,
                     "questions": questions,
                 })

@@ -70,10 +70,13 @@ const cleanOptionText = (value: unknown) => cleanText(value, 900)
 
 const isLikelyQuestionFile = (file: any) => {
   const name = String(file.file_name || "").toLowerCase();
-  if (!["waec", "jamb"].includes(String(file.board || "").toLowerCase())) return false;
+  const board = String(file.board || "").toLowerCase();
+  const status = String(file.metadata?.status || "");
+  if (!["waec", "jamb"].includes(board)) return false;
   if (/syllabus|selected[- _]?text|nerdc|scheme|2021[- _]?2025/.test(name)) return false;
-  if (String(file.board).toLowerCase() === "jamb") return /past[- _]?questions?|questions?[- _]?and[- _]?answers?/.test(name);
-  return Boolean(file.year) && !/allproblems|document[_-]?compress/.test(name);
+  if (["needs_ocr_or_manual_parse", "needs_batch_processing", "ocr_failed"].includes(status)) return true;
+  if (board === "jamb") return /past[- _]?questions?|questions?[- _]?and[- _]?answers?/.test(name);
+  return Boolean(file.year) && !/allproblems/.test(name);
 };
 
 Deno.serve(async (request) => {
@@ -127,12 +130,15 @@ Deno.serve(async (request) => {
 
       const { data: subjects, error: subjectError } = await admin.from("subjects").select("id,name").eq("is_active", true);
       if (subjectError) throw subjectError;
-      const wanted = norm(file.subject);
+      const suppliedSubject = cleanText(body?.subject, 200);
+      const effectiveSubject = suppliedSubject || cleanText(file.subject, 200);
+      const wanted = norm(effectiveSubject);
       let subjectId: string | null = null;
       for (const subject of subjects || []) {
         const candidate = norm(subject.name);
-        if (candidate === wanted || candidate.includes(wanted) || wanted.includes(candidate)) { subjectId = subject.id; break; }
+        if (candidate === wanted || (wanted.length >= 4 && (candidate.includes(wanted) || wanted.includes(candidate)))) { subjectId = subject.id; break; }
       }
+      if (!subjectId) return json({ error: `Unable to map source subject "${effectiveSubject || "unknown"}" to an active website subject` }, 400);
 
       const source = `storage:${file.id}`;
       const { error: deleteError } = await admin.from("past_questions").delete().eq("source", source);
@@ -177,7 +183,7 @@ Deno.serve(async (request) => {
           difficulty: "medium",
           marks: isMcq ? 1 : 10,
           source,
-          tags: [String(file.board || "").toLowerCase(), file.subject, file.year, file.file_name, "storage-extracted"].filter(Boolean),
+          tags: [String(file.board || "").toLowerCase(), effectiveSubject, file.year, file.file_name, "storage-extracted"].filter(Boolean),
           is_active: isActive,
         });
       }
@@ -197,6 +203,7 @@ Deno.serve(async (request) => {
         answered_questions: answered,
       };
       const { error: updateError } = await admin.from("past_question_files").update({
+        subject: effectiveSubject || file.subject || null,
         is_processed: true,
         questions_extracted: active,
         metadata: nextMetadata,
