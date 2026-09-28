@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useSearchParams } from 'next/navigation';
 import { resetPassword as resetSupabasePassword } from '@/services/api/authService';
+import BrandLogo from '@/components/BrandLogo';
 
 const resetPasswordSchema = z.object({
   password: z.string()
@@ -90,11 +91,7 @@ export default function ResetPasswordForm() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <div className="mx-auto h-16 w-16 bg-blue-100 rounded-full flex items-center justify-center">
-            <svg className="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-            </svg>
-          </div>
+          <div className="flex justify-center"><BrandLogo href="/" /></div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Set new password</h2>
         </div>
 

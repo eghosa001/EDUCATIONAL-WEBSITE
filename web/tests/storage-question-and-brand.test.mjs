@@ -11,8 +11,12 @@ test('learner question API excludes generic objective filler and exposes stored 
 
 test('visible branding uses the supplied light and dark logo artwork', () => {
   const brand = fs.readFileSync(new URL('../src/components/BrandLogo.tsx', import.meta.url), 'utf8');
-  assert.match(brand, /primary-logo\.jfif/);
-  assert.match(brand, /dark-mode-silver\.jfif/);
+  const light = fs.readFileSync(new URL('../public/logos/brand-light.svg', import.meta.url), 'utf8');
+  const dark = fs.readFileSync(new URL('../public/logos/brand-dark.svg', import.meta.url), 'utf8');
+  assert.match(brand, /brand-light\.svg/);
+  assert.match(brand, /brand-dark\.svg/);
+  assert.match(light, /primary-logo\.jfif/);
+  assert.match(dark, /dark-mode-silver\.jfif/);
   assert.doesNotMatch(brand, /the-guide-mark/);
-  assert.match(brand, /object-cover object-center/);
+  assert.match(brand, /object-contain/);
 });
