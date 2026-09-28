@@ -1,5 +1,6 @@
 import { apiConfig, getAuthHeaders, handleApiError } from './config';
 import type { PaginatedResponse } from '@/types/api/api';
+import { getSupabase } from '@/lib/supabase';
 
 const { baseUrl } = apiConfig;
 
@@ -17,11 +18,24 @@ export interface UserPoints {
   updatedAt: string;
 }
 
-export const fetchMyPoints = async (token: string): Promise<{ points: UserPoints }> => {
-  const response = await fetch(`${baseUrl}/gamification/points/me`, {
-    headers: getAuthHeaders(token), credentials: 'include'
-  });
-  return handleApiError(response);
+export const fetchMyPoints = async (_token: string): Promise<{ points: UserPoints }> => {
+  const supabase = getSupabase();
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError || !auth.user) throw new Error('You must be signed in');
+  const { data, error } = await supabase.from('student_points').select('*').eq('user_id', auth.user.id).maybeSingle();
+  if (error) throw new Error(error.message);
+  const now = new Date().toISOString();
+  return { points: {
+    id: data?.id || auth.user.id,
+    userId: auth.user.id,
+    totalPoints: Number(data?.total_points || 0),
+    dailyPoints: 0,
+    weeklyPoints: 0,
+    monthlyPoints: 0,
+    level: Number(data?.level || 1),
+    createdAt: data?.updated_at || now,
+    updatedAt: data?.updated_at || now,
+  } };
 };
 
 export const fetchLeaderboard = async (
@@ -122,11 +136,19 @@ export interface StudyStreak {
   streakStartDate: string;
 }
 
-export const fetchMyStreak = async (token: string): Promise<{ streak: StudyStreak }> => {
-  const response = await fetch(`${baseUrl}/gamification/streaks/me`, {
-    headers: getAuthHeaders(token), credentials: 'include'
-  });
-  return handleApiError(response);
+export const fetchMyStreak = async (_token: string): Promise<{ streak: StudyStreak }> => {
+  const supabase = getSupabase();
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError || !auth.user) throw new Error('You must be signed in');
+  const { data, error } = await supabase.from('student_points').select('current_streak,longest_streak,updated_at').eq('user_id', auth.user.id).maybeSingle();
+  if (error) throw new Error(error.message);
+  const date = String(data?.updated_at || '');
+  return { streak: {
+    currentStreak: Number(data?.current_streak || 0),
+    longestStreak: Number(data?.longest_streak || 0),
+    lastActivityDate: date,
+    streakStartDate: date,
+  } };
 };
 
 // ========== REWARDS ==========

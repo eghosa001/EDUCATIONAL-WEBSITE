@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BookmarkIcon, BookOpenIcon, StarIcon } from 'lucide-react';
 import { useAuthStore } from '@/state/auth/authStore';
+import { getSupabase } from '@/lib/supabase';
 
 interface SavedCourse {
   id: string;
@@ -34,26 +35,39 @@ export default function SavedPage() {
     setLoading(true);
     setError('');
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/courses/saved`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(async response => {
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data?.message || data?.error || 'Unable to load saved items');
-        return data;
-      })
-      .then(data => {
-        if (!cancelled) setSavedCourses(Array.isArray(data?.data?.courses) ? data.data.courses : []);
-      })
-      .catch(err => {
+    (async () => {
+      try {
+        const supabase = getSupabase();
+        const { data: auth, error: authError } = await supabase.auth.getUser();
+        if (authError || !auth.user) throw new Error('You must be signed in');
+        const { data, error } = await supabase
+          .from('bookmarks')
+          .select('id,created_at,course_id,courses:course_id(id,slug,title,short_description,thumbnail_url,rating,is_free,price)')
+          .eq('user_id', auth.user.id)
+          .not('course_id', 'is', null)
+          .order('created_at', { ascending: false });
+        if (error) throw new Error(error.message);
+        const courses = (data || []).map((row: any) => ({
+          id: row.courses?.id || row.course_id,
+          slug: row.courses?.slug || row.course_id,
+          title: row.courses?.title || 'Course',
+          shortDescription: row.courses?.short_description || undefined,
+          thumbnailUrl: row.courses?.thumbnail_url || undefined,
+          rating: row.courses?.rating == null ? undefined : Number(row.courses.rating),
+          isFree: Boolean(row.courses?.is_free),
+          price: Number(row.courses?.price || 0),
+          bookmarkedAt: row.created_at,
+        }));
+        if (!cancelled) setSavedCourses(courses);
+      } catch (err) {
         if (!cancelled) {
           setSavedCourses([]);
           setError(err instanceof Error ? err.message : 'Unable to load saved items');
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    })();
 
     return () => { cancelled = true; };
   }, [token]);

@@ -1,5 +1,6 @@
 import { apiConfig, getAuthHeaders, handleApiError } from './config';
 import type { PaginatedResponse } from '@/types/api/api';
+import { getSupabase } from '@/lib/supabase';
 
 const { baseUrl } = apiConfig;
 
@@ -26,15 +27,51 @@ export interface CreateForumData {
   isPublic?: boolean;
 }
 
+const mapForum = (row: any): Forum => ({
+  id: row.id,
+  name: row.name,
+  description: row.description || '',
+  subjectId: row.subject_id || undefined,
+  classId: row.class_id || undefined,
+  isPublic: Boolean(row.is_public),
+  memberCount: Number(row.member_count || 0),
+  postCount: Number(row.post_count || 0),
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+const mapPost = (row: any): Post => ({
+  id: row.id,
+  forumId: row.forum_id || '',
+  authorId: row.user_id || '',
+  authorName: 'Student',
+  title: row.title,
+  content: row.content,
+  isPinned: Boolean(row.is_pinned),
+  isLocked: Boolean(row.is_locked),
+  likeCount: Number(row.like_count ?? row.likes_count ?? 0),
+  replyCount: Number(row.replies_count || 0),
+  viewCount: Number(row.views || 0),
+  tags: Array.isArray(row.tags) ? row.tags : [],
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
 export const fetchForums = async (
   page: number = 1,
   limit: number = 20,
-  token?: string
+  _token?: string
 ): Promise<PaginatedResponse<Forum>> => {
-  const response = await fetch(`${baseUrl}/community/forums?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token), credentials: 'include'
-  });
-  return handleApiError(response);
+  const from = (page - 1) * limit;
+  const { data, error, count } = await getSupabase()
+    .from('forums')
+    .select('*', { count: 'exact' })
+    .eq('is_public', true)
+    .order('name')
+    .range(from, from + limit - 1);
+  if (error) throw new Error(error.message);
+  const total = count || 0;
+  return { data: (data || []).map(mapForum), page, pageSize: limit, total, totalPages: Math.ceil(total / limit) };
 };
 
 export const fetchForumById = async (forumId: string, token?: string): Promise<{ forum: Forum }> => {
@@ -130,51 +167,43 @@ export interface CreatePostData {
 export const fetchPosts = async (
   forumId: string,
   filters: { page?: number; limit?: number } = {},
-  token?: string
+  _token?: string
 ): Promise<{ data: Post[]; pagination: any }> => {
-  const url = forumId
-    ? `${baseUrl}/community/forums/${forumId}/posts?page=${filters.page || 1}&limit=${filters.limit || 20}`
-    : `${baseUrl}/community/posts?page=${filters.page || 1}&limit=${filters.limit || 20}`;
-  const response = await fetch(url, {
-    headers: getAuthHeaders(token), credentials: 'include'
-  });
-  const res = await handleApiError(response) as any;
-  return { data: res.data?.posts || res.data || [], pagination: res.pagination || {} };
+  const page = filters.page || 1;
+  const limit = filters.limit || 20;
+  const from = (page - 1) * limit;
+  let query = getSupabase().from('community_posts').select('*', { count: 'exact' }).eq('status', 'published');
+  if (forumId) query = query.eq('forum_id', forumId);
+  const { data, error, count } = await query.order('created_at', { ascending: false }).range(from, from + limit - 1);
+  if (error) throw new Error(error.message);
+  const total = count || 0;
+  return { data: (data || []).map(mapPost), pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
 };
 
 export const fetchCommunityPosts = async (
   filters: { page?: number; limit?: number } = {},
   token?: string
-): Promise<{ data: Post[]; pagination: any }> => {
-  const response = await fetch(`${baseUrl}/community/posts?page=${filters.page || 1}&limit=${filters.limit || 20}`, {
-    headers: getAuthHeaders(token), credentials: 'include'
-  });
-  const res = await handleApiError(response) as any;
-  return { data: res.data?.posts || res.data || [], pagination: res.pagination || {} };
+): Promise<{ data: Post[]; pagination: any }> => fetchPosts('', filters, token);
+
+const insertPost = async (data: CreatePostData): Promise<{ post: Post }> => {
+  const supabase = getSupabase();
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError || !auth.user) throw new Error('You must be signed in');
+  const { data: row, error } = await supabase.from('community_posts').insert({
+    user_id: auth.user.id,
+    forum_id: data.forumId || null,
+    title: data.title,
+    content: data.content,
+    tags: data.tags || [],
+  }).select().single();
+  if (error) throw new Error(error.message);
+  const post = mapPost(row);
+  post.authorName = [auth.user.user_metadata?.first_name, auth.user.user_metadata?.last_name].filter(Boolean).join(' ') || 'You';
+  return { post };
 };
 
-export const createCommunityPost = async (
-  data: CreatePostData,
-  token: string
-): Promise<{ post: Post }> => {
-  const response = await fetch(`${baseUrl}/community/posts`, {
-    method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(data), credentials: 'include'
-  });
-  const res = await handleApiError(response) as any;
-  return { post: res.data?.post || res.data || {} };
-};
-
-export const createPost = async (data: CreatePostData, token: string): Promise<{ post: Post }> => {
-  const response = await fetch(`${baseUrl}/community/posts`, {
-    method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(data), credentials: 'include'
-  });
-  const res = await handleApiError(response) as any;
-  return { post: res.data?.post || res.data || {} };
-};
+export const createCommunityPost = async (data: CreatePostData, _token: string): Promise<{ post: Post }> => insertPost(data);
+export const createPost = async (data: CreatePostData, _token: string): Promise<{ post: Post }> => insertPost(data);
 
 export const fetchPostById = async (postId: string, token?: string): Promise<{ post: Post }> => {
   const response = await fetch(`${baseUrl}/community/posts/${postId}`, {

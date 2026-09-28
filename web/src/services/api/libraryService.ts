@@ -1,5 +1,6 @@
 import { apiConfig, getAuthHeaders, handleApiError } from './config';
 import type { PaginatedResponse } from '@/types/api/api';
+import { getSupabase } from '@/lib/supabase';
 
 const { baseUrl } = apiConfig;
 
@@ -39,42 +40,34 @@ export interface LibraryStats {
 
 export const fetchLibraryResources = async (
   filters: LibraryFilters = {},
-  token?: string
+  _token?: string
 ): Promise<PaginatedResponse<LibraryResource>> => {
-  const query = new URLSearchParams();
-  Object.entries(filters).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
-      query.append(key, String(value));
-    }
-  });
-
-  const response = await fetch(`${baseUrl}/library?${query.toString()}`, {
-    headers: getAuthHeaders(token), credentials: 'include'
-  });
-  const payload = await handleApiError(response) as any;
-  const rawResources = payload?.data?.resources ?? payload?.resources ?? payload?.data ?? [];
-  const pagination = payload?.data?.pagination ?? payload?.pagination ?? {};
-  const resources = Array.isArray(rawResources) ? rawResources.map((resource: any): LibraryResource => ({
+  const page = Math.max(1, filters.page || 1);
+  const limit = Math.min(100, Math.max(1, filters.limit || 20));
+  const from = (page - 1) * limit;
+  let query = getSupabase().from('library_resources').select('*', { count: 'exact' });
+  if (filters.resourceType && filters.resourceType !== 'all') query = query.eq('resource_type', filters.resourceType);
+  if (filters.search?.trim()) {
+    const term = filters.search.trim().replace(/[%_,]/g, ' ');
+    query = query.or(`title.ilike.%${term}%,description.ilike.%${term}%`);
+  }
+  const { data, error, count } = await query.order('created_at', { ascending: false }).range(from, from + limit - 1);
+  if (error) throw new Error(error.message);
+  const resources: LibraryResource[] = (data || []).map((resource: any) => ({
     id: String(resource.id),
     title: String(resource.title || 'Untitled resource'),
-    resourceType: String(resource.resourceType ?? resource.resource_type ?? 'document'),
-    fileUrl: String(resource.fileUrl ?? resource.file_url ?? ''),
-    fileSizeBytes: resource.fileSizeBytes ?? resource.file_size_bytes ?? undefined,
-    mimeType: resource.mimeType ?? resource.mime_type ?? undefined,
+    resourceType: String(resource.resource_type || 'document'),
+    fileUrl: String(resource.file_url || ''),
+    fileSizeBytes: resource.file_size_bytes ?? undefined,
+    mimeType: resource.mime_type ?? undefined,
     description: resource.description ?? undefined,
-    isDownloadable: Boolean(resource.isDownloadable ?? resource.is_downloadable ?? resource.fileUrl ?? resource.file_url),
-    lessonId: resource.lessonId ?? resource.lesson_id ?? undefined,
-    lessonTitle: resource.lessonTitle ?? resource.lesson_title ?? undefined,
-    courseId: resource.courseId ?? resource.course_id ?? undefined,
-    courseTitle: resource.courseTitle ?? resource.course_title ?? undefined,
-    subjectId: resource.subjectId ?? resource.subject_id ?? undefined,
-    classId: resource.classId ?? resource.class_id ?? undefined,
-    createdAt: String(resource.createdAt ?? resource.created_at ?? ''),
-  })) : [];
-  const page = Number(pagination.page ?? filters.page ?? 1);
-  const pageSize = Number(pagination.limit ?? pagination.pageSize ?? filters.limit ?? 20);
-  const total = Number(pagination.total ?? resources.length);
-  return { data: resources, page, pageSize, total, totalPages: Number(pagination.totalPages ?? pagination.total_pages ?? Math.max(1, Math.ceil(total / Math.max(1, pageSize)))) };
+    isDownloadable: Boolean(resource.file_url),
+    subjectId: resource.subject_id ?? undefined,
+    classId: resource.class_id ?? undefined,
+    createdAt: String(resource.created_at || ''),
+  }));
+  const total = count || 0;
+  return { data: resources, page, pageSize: limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) };
 };
 
 export const fetchLibraryStats = async (token?: string): Promise<{ stats: LibraryStats }> => {

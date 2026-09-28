@@ -2,6 +2,7 @@ import { apiConfig, getAuthHeaders, handleApiError } from './config';
 import type { Exam, ExamResult, ExamAttempt } from '@/types/models/exam';
 import type { Question } from '@/types/models/question';
 import type { PaginatedResponse } from '@/types/api/api';
+import { getSupabase } from '@/lib/supabase';
 
 const { baseUrl } = apiConfig;
 
@@ -181,15 +182,33 @@ export const submitExamAttempt = async (
 export const fetchMyExamAttempts = async (
   page: number = 1,
   limit: number = 20,
-  token: string
+  _token: string
 ): Promise<PaginatedResponse<ExamAttempt>> => {
-  const response = await fetch(
-    `${baseUrl}/exams/my-attempts?page=${page}&limit=${limit}`,
-    {
-      headers: getAuthHeaders(token), credentials: 'include'
-    }
-  );
-  return handleApiError(response);
+  const supabase = getSupabase();
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError || !auth.user) throw new Error('You must be signed in');
+  const from = (page - 1) * limit;
+  const { data, error, count } = await supabase
+    .from('exam_attempts')
+    .select('*, exams:exam_id(title)', { count: 'exact' })
+    .eq('student_id', auth.user.id)
+    .order('started_at', { ascending: false })
+    .range(from, from + limit - 1);
+  if (error) throw new Error(error.message);
+  const attempts = (data || []).map((row: any) => ({
+    ...row,
+    examId: row.exam_id,
+    studentId: row.student_id,
+    examTitle: row.exams?.title || 'Exam',
+    startedAt: row.started_at,
+    submittedAt: row.submitted_at,
+    timeSpentSeconds: row.time_spent_seconds,
+    percentage: row.percentage == null ? undefined : Number(row.percentage),
+    score: row.score == null ? undefined : Number(row.score),
+    isPassed: Boolean(row.is_passed),
+  })) as ExamAttempt[];
+  const total = count || 0;
+  return { data: attempts, page, pageSize: limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) };
 };
 
 export const fetchExamAttempts = async (
