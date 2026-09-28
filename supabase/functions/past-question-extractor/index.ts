@@ -5,9 +5,15 @@ const REPOSITORY = "eghosa001/EDUCATIONAL-WEBSITE";
 const MAIN_REF = "refs/heads/main";
 const GITHUB_ISSUER = "https://token.actions.githubusercontent.com";
 
+const corsHeaders = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "authorization, apikey, content-type, x-client-info",
+  "access-control-allow-methods": "POST, OPTIONS",
+};
+
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
-  headers: { "content-type": "application/json", "cache-control": "no-store" },
+  headers: { ...corsHeaders, "content-type": "application/json", "cache-control": "no-store" },
 });
 
 const decodeBase64Url = (value: string) => {
@@ -65,6 +71,7 @@ const isLikelyQuestionFile = (file: any) => {
 };
 
 Deno.serve(async (request) => {
+  if (request.method === "OPTIONS") return new Response(null, { status: 200, headers: corsHeaders });
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
   try {
     const authorization = request.headers.get("authorization") || "";
