@@ -93,16 +93,26 @@ Deno.serve(async (request) => {
 
     if (action === "manifest") {
       const { data, error } = await admin.from("past_question_files")
-        .select("id,board,subject,year,file_name,public_url,is_processed,questions_extracted,metadata")
-        .not("public_url", "is", null)
+        .select("id,bucket_id,file_path,board,subject,year,file_name,is_processed,questions_extracted,metadata")
+        .not("file_path", "is", null)
         .in("board", ["waec", "jamb"])
         .order("year", { ascending: true, nullsFirst: false });
       if (error) throw error;
-      const files = (data || []).filter((file: any) => {
+      const candidates = (data || []).filter((file: any) => {
         if (!isLikelyQuestionFile(file)) return false;
         const status = String(file.metadata?.status || "");
         return !file.is_processed || ["needs_ocr_or_manual_parse", "needs_batch_processing", "ocr_failed"].includes(status);
       });
+      const files = [];
+      for (const file of candidates) {
+        const { data: signed, error: signedError } = await admin.storage.from(file.bucket_id).createSignedUrl(file.file_path, 900);
+        if (signedError || !signed?.signedUrl) {
+          console.error("Unable to sign source PDF", file.id, signedError?.message || "missing signed URL");
+          continue;
+        }
+        const { bucket_id, file_path, ...safe } = file as any;
+        files.push({ ...safe, public_url: signed.signedUrl });
+      }
       return json({ files, count: files.length });
     }
 

@@ -74,6 +74,9 @@ async function expectBrandVisible(page) {
 }
 
 async function captureVisual(page, testInfo, name) {
+  await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+  await page.getByText(/^Loading\.\.\.$/).first().waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
+  await page.waitForTimeout(400);
   const safe = name.replace(/^\/+|\/+$/g, '').replace(/[^a-z0-9]+/gi, '-') || 'home';
   const path = testInfo.outputPath(`visual-${safe}.png`);
   await page.screenshot({ path, fullPage: true, animations: 'disabled' });
@@ -141,7 +144,7 @@ test.describe('deployed production learner QA', () => {
     await expectHealthy(page, failures);
   });
 
-  test('published lesson opens and renders from real curriculum data', async ({ page }) => {
+  test('published lesson opens and renders from real curriculum data', async ({ page }, testInfo) => {
     const failures = watchRuntimeFailures(page);
     const token = await accessToken(page);
     expect(token).toBeTruthy();
@@ -159,10 +162,11 @@ test.describe('deployed production learner QA', () => {
     expect(target).toBeTruthy();
     await page.goto(`/dashboard/lessons/${encodeURIComponent(target.courseRef)}/${encodeURIComponent(target.lessonId)}`, { waitUntil: 'domcontentloaded' });
     await expect(page.getByText(target.lessonTitle, { exact: false }).first()).toBeVisible();
+    await captureVisual(page, testInfo, 'dynamic-lesson');
     await expectHealthy(page, failures);
   });
 
-  test('exam can start, accept answers, submit, and open results', async ({ page }) => {
+  test('exam can start, accept answers, submit, and open results', async ({ page }, testInfo) => {
     test.setTimeout(120000);
     const failures = watchRuntimeFailures(page);
     await page.goto('/dashboard/exams', { waitUntil: 'domcontentloaded' });
@@ -173,6 +177,7 @@ test.describe('deployed production learner QA', () => {
     await expect(startButton).toBeEnabled();
     await startButton.click();
     await expect(page.getByText(/Question 1 of/i)).toBeVisible({ timeout: 30000 });
+    await captureVisual(page, testInfo, 'dynamic-exam-active');
 
     const answerCurrent = async () => {
       const option = page.locator('main button span.font-bold').first().locator('..');
@@ -194,10 +199,11 @@ test.describe('deployed production learner QA', () => {
     await page.getByRole('button', { name: /Submit CBT/i }).click();
     await page.waitForURL(/\/dashboard\/exams\/[^/]+\/results/, { timeout: 30000 });
     await expect(page.locator('body')).toContainText(/score|result|passed|questions/i);
+    await captureVisual(page, testInfo, 'dynamic-exam-results');
     await expectHealthy(page, failures);
   });
 
-  test('past questions load and verified answer checking works', async ({ page }) => {
+  test('past questions load and verified answer checking works', async ({ page }, testInfo) => {
     const failures = watchRuntimeFailures(page);
     await page.goto('/dashboard/past-questions', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: /Past Questions CBT/i })).toBeVisible();
@@ -236,10 +242,11 @@ test.describe('deployed production learner QA', () => {
     const checked = JSON.parse(result.checkText);
     expect(checked?.data?.result?.correctAnswer).toBeTruthy();
     expect(typeof checked?.data?.result?.isCorrect).toBe('boolean');
+    await captureVisual(page, testInfo, 'past-questions-no-source-pdfs');
     await expectHealthy(page, failures);
   });
 
-  test('Flashcards generate through the real UI and can be reviewed', async ({ page }) => {
+  test('Flashcards generate through the real UI and can be reviewed', async ({ page }, testInfo) => {
     test.setTimeout(180000);
     const failures = watchRuntimeFailures(page);
     await page.goto('/dashboard/flashcards', { waitUntil: 'domcontentloaded' });
@@ -258,10 +265,11 @@ test.describe('deployed production learner QA', () => {
     await reveal.click();
     await page.getByRole('button', { name: /^Next/i }).click();
     await expect(page.getByText(/Card 2 of 20/i)).toBeVisible();
+    await captureVisual(page, testInfo, 'flashcards-generated');
     await expectHealthy(page, failures);
   });
 
-  test('AI Tutor completes a real two-turn Bynara conversation', async ({ page }) => {
+  test('AI Tutor completes a real two-turn Bynara conversation', async ({ page }, testInfo) => {
     test.setTimeout(300000);
     const failures = watchRuntimeFailures(page);
     await page.goto('/dashboard/ai/tutor', { waitUntil: 'domcontentloaded' });
@@ -294,10 +302,11 @@ test.describe('deployed production learner QA', () => {
     const second = await send('Now give one simple example related to that explanation.');
     expect(first.sessionId).toBeTruthy();
     expect(second.sessionId).toBe(first.sessionId);
+    await captureVisual(page, testInfo, 'ai-tutor-conversation');
     await expectHealthy(page, failures);
   });
 
-  test('profile changes save and the free subscription flow reaches billing', async ({ page }) => {
+  test('profile changes save and the free subscription flow reaches billing', async ({ page }, testInfo) => {
     const failures = watchRuntimeFailures(page);
     await page.goto('/dashboard/profile/settings', { waitUntil: 'domcontentloaded' });
     const firstName = page.getByText('First Name', { exact: true }).locator('..').locator('input');
@@ -315,6 +324,7 @@ test.describe('deployed production learner QA', () => {
     await expect(activate).toBeEnabled();
     await activate.click();
     await page.waitForURL(/\/dashboard\/subscriptions\/billing/, { timeout: 30000 });
+    await captureVisual(page, testInfo, 'subscription-billing');
     await expectHealthy(page, failures);
   });
 });
