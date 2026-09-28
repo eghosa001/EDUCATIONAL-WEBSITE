@@ -126,3 +126,20 @@ test('past-question CBT session and grading stay server-side', () => {
   assert.match(source, /correct_answer/);
   assert.match(source, /const\{correct_answer,\.\.\.safe\}=row/);
 });
+
+test('deployed Past Questions CBT separates selection, count, exam and results phases', () => {
+  const source = read('../src/app/dashboard/past-questions/page.tsx');
+  assert.match(source, /type Phase = 'setup' \| 'count' \| 'exam' \| 'results'/);
+  assert.match(source, /Choose question count/);
+  assert.match(source, /Continue to question count/);
+  assert.match(source, /past-questions\/session/);
+  assert.match(source, /past-questions\/grade/);
+  assert.doesNotMatch(source, /question-bank/);
+});
+
+test('past-question availability exposes only scoreable MCQs', () => {
+  const api = read('../../supabase/functions/web-api/index.ts');
+  assert.match(api, /past-question-availability/);
+  assert.match(api, /question_type,correct_answer/);
+  assert.match(api, /scalarAnswer\(row\.correct_answer\)/);
+});

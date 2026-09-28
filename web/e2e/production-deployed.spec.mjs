@@ -209,7 +209,7 @@ test.describe('deployed production learner QA', () => {
     await expectHealthy(page, failures);
   });
 
-  test('past questions load and verified answer checking works', async ({ page }, testInfo) => {
+  test('past questions use a separate count screen and storage-backed CBT session', async ({ page }, testInfo) => {
     const failures = watchRuntimeFailures(page);
     await page.goto('/dashboard/past-questions', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: /Past Questions CBT/i })).toBeVisible();
@@ -249,6 +249,28 @@ test.describe('deployed production learner QA', () => {
     expect(checked?.data?.result?.correctAnswer).toBeTruthy();
     expect(typeof checked?.data?.result?.isCorrect).toBe('boolean');
     await captureVisual(page, testInfo, 'past-questions-no-source-pdfs');
+
+    const target = await page.evaluate(async ({ supabaseUrl, publishableKey, token }) => {
+      const headers = { apikey: publishableKey, Authorization: `Bearer ${token}` };
+      const availabilityResponse = await fetch(`${supabaseUrl}/functions/v1/web-api/past-question-availability`, { headers });
+      const availability = await availabilityResponse.json();
+      const subjectId = availability?.data?.availability?.waec?.subjectIds?.[0];
+      if (!subjectId) return null;
+      const subjectResponse = await fetch(`${supabaseUrl}/rest/v1/subjects?select=id,name&id=eq.${subjectId}&limit=1`, { headers });
+      const subjects = await subjectResponse.json();
+      return subjects?.[0] || null;
+    }, { supabaseUrl, publishableKey, token });
+    expect(target).toBeTruthy();
+
+    await page.getByRole('button', { name: 'WAEC', exact: true }).click();
+    await page.getByRole('button', { name: new RegExp(target.name, 'i') }).click();
+    await page.getByRole('button', { name: /Continue to question count/i }).click();
+    await expect(page.getByRole('heading', { name: /Choose question count/i })).toBeVisible();
+    await expect(page.getByText(/Question 1 of/i)).toHaveCount(0);
+    await page.getByRole('button', { name: /10 questions/i }).click();
+    await page.getByRole('button', { name: /^Start CBT$/i }).click();
+    await expect(page.getByText(/Question 1 of/i)).toBeVisible({ timeout: 30000 });
+    await captureVisual(page, testInfo, 'past-questions-active-cbt');
     await expectHealthy(page, failures);
   });
 
