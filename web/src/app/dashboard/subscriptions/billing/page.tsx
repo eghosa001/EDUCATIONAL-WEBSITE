@@ -61,7 +61,7 @@ export default function BillingPage() {
       } finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [token, callbackQuery, router, searchParams]);
+  }, [token, callbackQuery, router]);
 
   const handleCancel = async () => {
     if (!subscription || !token) return;
@@ -69,7 +69,11 @@ export default function BillingPage() {
     setActionError(null);
     try {
       const result = await cancelSubscription(subscription.id, token);
-      setSubscription(result.subscription);
+      setSubscription({
+        ...result.subscription,
+        planName: subscription.planName,
+        planCode: subscription.planCode,
+      });
       setActionSuccess('Cancellation scheduled for the end of your current billing period.');
       setShowCancelModal(false);
     } catch (err: unknown) {
@@ -85,7 +89,11 @@ export default function BillingPage() {
     setActionError(null);
     try {
       const result = await resumeSubscription(subscription.id, token);
-      setSubscription(result.subscription);
+      setSubscription({
+        ...result.subscription,
+        planName: subscription.planName,
+        planCode: subscription.planCode,
+      });
       setActionSuccess('Scheduled cancellation removed. Your subscription will continue.');
     } catch (err: unknown) {
       setActionError(err instanceof Error ? err.message : 'Failed to resume subscription');

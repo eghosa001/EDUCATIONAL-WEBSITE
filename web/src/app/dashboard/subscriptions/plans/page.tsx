@@ -35,10 +35,9 @@ export default function PlansPage() {
       fetchPaymentGateways(token).catch(() => ({ gateways: [] as PaymentGateway[] })),
     ]).then(([planResult, gatewayResult]) => {
       setPlans(planResult.plans.filter((p) => p.isActive));
-      let gatewayRows: PaymentGateway[] = [];
-      if ('data' in gatewayResult && Array.isArray(gatewayResult.data?.gateways)) gatewayRows = gatewayResult.data.gateways;
-      else if ('gateways' in gatewayResult && Array.isArray(gatewayResult.gateways)) gatewayRows = gatewayResult.gateways;
-      const available = gatewayRows.filter(gateway => gateway.isActive && (gateway.code === 'paystack' || gateway.code === 'flutterwave'));
+      const available = (gatewayResult.gateways || []).filter(
+        gateway => gateway.isActive && (gateway.code === 'paystack' || gateway.code === 'flutterwave')
+      );
       setGateways(available);
       const preferred = available.find(gateway => gateway.code === 'paystack') || available[0];
       if (preferred) setSelectedGateway(preferred.code as 'paystack' | 'flutterwave');

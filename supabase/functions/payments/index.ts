@@ -125,7 +125,7 @@ async function activateSubscription(admin: any, userId: string, payment: any) {
     });
   }
 
-  await admin.from('notifications').insert({
+  const { error: notificationError } = await admin.from('notifications').insert({
     user_id: userId,
     type: 'payment',
     title: 'Payment successful',
@@ -134,7 +134,8 @@ async function activateSubscription(admin: any, userId: string, payment: any) {
     action_url: '/dashboard/subscriptions/billing',
     channel: 'in_app',
     sent_at: now.toISOString(),
-  }).catch(() => null);
+  });
+  if (notificationError) console.warn('Payment notification insert failed:', notificationError.message);
 
   return subscription;
 }
