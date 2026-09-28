@@ -241,17 +241,20 @@ def main():
                         questions = ocr_questions
                         method = "tesseract-ocr-psm6"
                 if not questions:
-                    layout_text = ocr_pdf(pdf, work, psm=3)
-                    layout_questions = parse_questions(layout_text)
-                    if len(layout_questions) > len(questions):
-                        text = layout_text
-                        questions = layout_questions
-                        method = "tesseract-ocr-psm3"
+                    for psm in (3, 4, 11):
+                        layout_text = ocr_pdf(pdf, work, psm=psm)
+                        layout_questions = parse_questions(layout_text)
+                        if len(layout_questions) > len(questions):
+                            text = layout_text
+                            questions = layout_questions
+                            method = "tesseract-ocr-psm%d" % psm
+                        if questions:
+                            break
                 if not questions:
                     api({
                         "action": "fail",
                         "fileId": file["id"],
-                        "message": "No reliable structured questions found after embedded text + OCR layout retries",
+                        "message": "No reliable structured questions found after embedded text + OCR PSM 6/3/4/11 retries",
                     })
                     totals["failed"] += 1
                     continue
