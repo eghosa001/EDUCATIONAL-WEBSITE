@@ -130,7 +130,7 @@ export default function LandingPage() {
       </main>
 
       <footer className="border-t border-stone-200 bg-white dark:border-slate-700 dark:bg-[#151A3A]">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-9 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8"><Link href="/" aria-label="THE GUIDE home"><img src="/logos/primary-logo.jfif" alt="THE GUIDE" className="h-12 w-auto max-w-[180px] object-contain" /></Link><div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-500 dark:text-slate-400"><a href="#learning" className="hover:text-brand-700">Learning</a><a href="#exams" className="hover:text-brand-700">Exam prep</a><a href="#parents" className="hover:text-brand-700">Families</a><span>© {new Date().getFullYear()} THE GUIDE</span></div></div>
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-9 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8"><BrandLogo href="/" compact /><div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-500 dark:text-slate-400"><a href="#learning" className="hover:text-brand-700">Learning</a><a href="#exams" className="hover:text-brand-700">Exam prep</a><a href="#parents" className="hover:text-brand-700">Families</a><span>© {new Date().getFullYear()} THE GUIDE</span></div></div>
       </footer>
     </div>
   );

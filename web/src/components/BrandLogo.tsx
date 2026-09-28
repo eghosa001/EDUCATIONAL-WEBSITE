@@ -13,36 +13,36 @@ export default function BrandLogo({
   inverse = false,
   className = '',
 }: BrandLogoProps) {
+  const frame = compact
+    ? 'h-11 w-[180px] sm:h-12 sm:w-[205px]'
+    : 'h-14 w-[225px] sm:h-16 sm:w-[260px]';
+
   return (
     <Link
       href={href}
-      aria-label="THE GUIDE"
-      className={`inline-flex min-w-0 items-center gap-2.5 ${className}`}
+      aria-label="THE GUIDE — Your path to smarter learning"
+      className={`relative block shrink-0 overflow-hidden ${frame} ${className}`}
     >
-      <img
-        src="/logos/the-guide-mark.svg"
-        alt=""
-        aria-hidden="true"
-        className="h-11 w-11 shrink-0 object-contain sm:h-12 sm:w-12"
-      />
-      <span className="min-w-0">
-        <span
-          className={`block whitespace-nowrap text-lg font-extrabold leading-none tracking-[0.07em] sm:text-xl ${
-            inverse ? 'text-white' : 'text-[#151A3A] dark:text-white'
-          }`}
-        >
-          THE GUIDE
-        </span>
-        {!compact && (
-          <span
-            className={`mt-1 block whitespace-nowrap text-[9px] font-semibold uppercase tracking-[0.16em] sm:text-[10px] ${
-              inverse ? 'text-slate-200' : 'text-slate-500 dark:text-slate-300'
-            }`}
-          >
-            Your path to smarter learning
-          </span>
-        )}
-      </span>
+      {inverse ? (
+        <img
+          src="/logos/dark-mode-silver.jfif"
+          alt="THE GUIDE — Your path to smarter learning"
+          className="absolute inset-0 h-full w-full object-cover object-center"
+        />
+      ) : (
+        <>
+          <img
+            src="/logos/primary-logo.jfif"
+            alt="THE GUIDE — Your path to smarter learning"
+            className="absolute inset-0 h-full w-full object-cover object-center dark:hidden"
+          />
+          <img
+            src="/logos/dark-mode-silver.jfif"
+            alt="THE GUIDE — Your path to smarter learning"
+            className="absolute inset-0 hidden h-full w-full object-cover object-center dark:block"
+          />
+        </>
+      )}
     </Link>
   );
 }
