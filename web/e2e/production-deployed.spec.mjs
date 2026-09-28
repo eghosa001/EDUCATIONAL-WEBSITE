@@ -274,26 +274,65 @@ test.describe('deployed production learner QA', () => {
     await expectHealthy(page, failures);
   });
 
-  test('Flashcards generate through the real UI and can be reviewed', async ({ page }, testInfo) => {
-    test.setTimeout(180000);
+  test('Flashcards generate quickly from published lesson content and can be reviewed', async ({ page }, testInfo) => {
+    test.setTimeout(120000);
     const failures = watchRuntimeFailures(page);
+    const token = await accessToken(page);
+    expect(token).toBeTruthy();
+
+    const target = await page.evaluate(async ({ supabaseUrl, publishableKey, token }) => {
+      const headers = { apikey: publishableKey, Authorization: `Bearer ${token}` };
+      const lessonResponse = await fetch(
+        `${supabaseUrl}/rest/v1/lessons?select=topic_id,written_content&is_published=eq.true&topic_id=not.is.null&written_content=not.is.null&limit=200`,
+        { headers },
+      );
+      const lessons = await lessonResponse.json();
+      const lesson = (Array.isArray(lessons) ? lessons : [])
+        .find((row) => String(row?.written_content || '').length >= 1500);
+      if (!lesson?.topic_id) return null;
+
+      const topicResponse = await fetch(
+        `${supabaseUrl}/rest/v1/topics?select=id,name,subject_id&id=eq.${lesson.topic_id}&limit=1`,
+        { headers },
+      );
+      const topics = await topicResponse.json();
+      const topic = topics?.[0];
+      if (!topic?.subject_id) return null;
+
+      const subjectResponse = await fetch(
+        `${supabaseUrl}/rest/v1/subjects?select=id,name&id=eq.${topic.subject_id}&limit=1`,
+        { headers },
+      );
+      const subjects = await subjectResponse.json();
+      const subject = subjects?.[0];
+      return subject ? { subjectId: subject.id, topicId: topic.id, subjectName: subject.name, topicName: topic.name } : null;
+    }, { supabaseUrl, publishableKey, token });
+    expect(target).toBeTruthy();
+
     await page.goto('/dashboard/flashcards', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: /^Flashcards$/i })).toBeVisible();
     const selects = page.getByRole('combobox');
     const subject = selects.nth(0);
     const topic = selects.nth(1);
     await expect.poll(async () => await subject.locator('option').count(), { timeout: 20000 }).toBeGreaterThan(1);
-    await subject.selectOption({ index: 1 });
+    await subject.selectOption(target.subjectId);
     await expect.poll(async () => await topic.locator('option').count(), { timeout: 20000 }).toBeGreaterThan(1);
-    await topic.selectOption({ index: 1 });
-    await page.getByRole('button', { name: /Generate 20 cards/i }).click();
-    await expect(page.getByText(/Card 1 of 20/i)).toBeVisible({ timeout: 120000 });
+    await topic.selectOption(target.topicId);
+    await page.getByLabel('Number of flashcards').selectOption('10');
+
+    const started = Date.now();
+    await page.getByRole('button', { name: /Generate 10 cards/i }).click();
+    await expect(page.getByText(/Card 1 of 10/i)).toBeVisible({ timeout: 30000 });
+    const elapsedMs = Date.now() - started;
+    expect(elapsedMs, `Flashcard generation took ${elapsedMs}ms`).toBeLessThan(30000);
+
     const reveal = page.getByRole('button', { name: /Reveal answer/i });
     await expect(reveal).toBeVisible();
     await reveal.click();
     await page.getByRole('button', { name: /^Next/i }).click();
-    await expect(page.getByText(/Card 2 of 20/i)).toBeVisible();
-    await captureVisual(page, testInfo, 'flashcards-generated');
+    await expect(page.getByText(/Card 2 of 10/i)).toBeVisible();
+    await captureVisual(page, testInfo, 'flashcards-generated-fast');
+    await testInfo.attach('flashcard-generation-ms', { body: String(elapsedMs), contentType: 'text/plain' });
     await expectHealthy(page, failures);
   });
 
