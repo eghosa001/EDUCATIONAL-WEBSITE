@@ -40,18 +40,24 @@ const parseJson = (content: string): unknown => {
 };
 
 const openAI = async (messages: Array<{ role: string; content: string }>, maxTokens = 1000, temperature = 0.7) => {
-  const key = Deno.env.get('OPENAI_API_KEY');
-  if (!key) throw new Error('AI provider is not configured');
+  const key = Deno.env.get('BYNARA_API_KEY');
+  const baseUrl = (Deno.env.get('BYNARA_BASE_URL') || 'https://router.bynara.id/v1').replace(/\/$/, '');
+  const model = Deno.env.get('AI_DEFAULT_MODEL') || 'agnes-2.5-flash';
+  if (!key) throw new Error('Bynara AI provider is not configured');
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
+  const timeout = setTimeout(() => controller.abort(), 45_000);
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'gpt-4o-mini', messages, temperature, max_tokens: maxTokens }),
+      body: JSON.stringify({ model, messages, temperature, max_tokens: maxTokens }),
       signal: controller.signal,
     });
-    if (!response.ok) throw new Error('AI provider request failed');
+    if (!response.ok) {
+      const detail = (await response.text()).slice(0, 500);
+      console.error('Bynara request failed', response.status, detail);
+      throw new Error(`AI provider request failed with status ${response.status}`);
+    }
     return await response.json();
   } finally { clearTimeout(timeout); }
 };

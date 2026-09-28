@@ -45,9 +45,11 @@ Deno.serve(async (request) => {
     const url = Deno.env.get('SUPABASE_URL');
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const openAiKey = Deno.env.get('OPENAI_API_KEY');
+    const bynaraKey = Deno.env.get('BYNARA_API_KEY');
+    const bynaraBaseUrl = (Deno.env.get('BYNARA_BASE_URL') || 'https://router.bynara.id/v1').replace(/\/$/, '');
+    const aiModel = Deno.env.get('AI_DEFAULT_MODEL') || 'agnes-2.5-flash';
     const auth = request.headers.get('Authorization');
-    if (!url || !anonKey || !serviceKey || !openAiKey) return json({ error: 'Practice service configuration is incomplete' }, 500);
+    if (!url || !anonKey || !serviceKey || !bynaraKey) return json({ error: 'Practice service configuration is incomplete' }, 500);
     if (!auth?.startsWith('Bearer ')) return json({ error: 'Authentication required' }, 401);
 
     const userClient = createClient(url, anonKey, { global: { headers: { Authorization: auth } } });
@@ -90,10 +92,10 @@ Deno.serve(async (request) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 45_000);
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch(`${bynaraBaseUrl}/chat/completions`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${openAiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'gpt-4o-mini', temperature: 0.15, max_tokens: Math.min(4500, 500 * count), messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }] }),
+        headers: { Authorization: `Bearer ${bynaraKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: aiModel, temperature: 0.15, max_tokens: Math.min(4500, 500 * count), messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }] }),
         signal: controller.signal,
       });
       if (!response.ok) throw new Error(`Practice generation failed with provider status ${response.status}`);

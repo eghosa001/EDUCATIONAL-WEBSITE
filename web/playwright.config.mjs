@@ -6,7 +6,11 @@ export default defineConfig({
   expect: { timeout: 10000 },
   fullyParallel: false,
   workers: process.env.CI ? 2 : 1,
-  reporter: process.env.CI ? [['line'], ['html', { outputFolder: 'playwright-report', open: 'never' }]] : 'list',
+  reporter: process.env.CI ? [
+    ['line'],
+    ['html', { outputFolder: 'playwright-report', open: 'never' }],
+    ['json', { outputFile: 'playwright-report/results.json' }],
+  ] : 'list',
   use: {
     baseURL: process.env.BASE_URL || 'http://127.0.0.1:3000',
     trace: 'retain-on-failure',

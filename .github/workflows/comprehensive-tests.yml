@@ -14,6 +14,7 @@ concurrency:
 permissions:
   contents: read
   statuses: read
+  id-token: write
 
 jobs:
   web-tests:
@@ -161,8 +162,6 @@ jobs:
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://xanrzsszrysianxhpprk.supabase.co
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_-b8MMXYbJQKauBFjYVJ0vg_SG0GMpFs
-      TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
-      TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -190,20 +189,57 @@ jobs:
       - name: Install Chromium
         working-directory: web
         run: npx playwright install --with-deps chromium
-      - name: Run Playwright against deployed production
+      - name: Create temporary production QA student
+        shell: bash
+        run: |
+          set -euo pipefail
+          oidc_json=$(curl --fail-with-body -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=the-guide-production-qa")
+          oidc_token=$(node -e 'const d=JSON.parse(process.argv[1]); if(!d.value) process.exit(1); process.stdout.write(d.value)' "$oidc_json")
+          qa_json=$(curl --fail-with-body -sS -X POST "${NEXT_PUBLIC_SUPABASE_URL}/functions/v1/qa-user" \
+            -H "Authorization: Bearer $oidc_token" \
+            -H "apikey: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" \
+            -H "Content-Type: application/json" \
+            --data '{"action":"create"}')
+          QA_USER_ID=$(node -e 'const d=JSON.parse(process.argv[1]); if(!d.userId) process.exit(1); process.stdout.write(d.userId)' "$qa_json")
+          QA_EMAIL=$(node -e 'const d=JSON.parse(process.argv[1]); if(!d.email) process.exit(1); process.stdout.write(d.email)' "$qa_json")
+          QA_PASSWORD=$(node -e 'const d=JSON.parse(process.argv[1]); if(!d.password) process.exit(1); process.stdout.write(d.password)' "$qa_json")
+          echo "::add-mask::$QA_EMAIL"
+          echo "::add-mask::$QA_PASSWORD"
+          echo "QA_USER_ID=$QA_USER_ID" >> "$GITHUB_ENV"
+          echo "QA_EMAIL=$QA_EMAIL" >> "$GITHUB_ENV"
+          echo "QA_PASSWORD=$QA_PASSWORD" >> "$GITHUB_ENV"
+      - name: Run authenticated Playwright against deployed production
         working-directory: web
         env:
           BASE_URL: https://web-ogs7.vercel.app
           PRODUCTION_SMOKE: '1'
           NEXT_PUBLIC_SUPABASE_URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-          TEST_EMAIL: ${{ env.TEST_EMAIL }}
-          TEST_PASSWORD: ${{ env.TEST_PASSWORD }}
+          QA_EMAIL: ${{ env.QA_EMAIL }}
+          QA_PASSWORD: ${{ env.QA_PASSWORD }}
         run: npx playwright test e2e/production-deployed.spec.mjs --workers=1
+      - name: Delete temporary production QA student
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${QA_USER_ID:-}" ]; then
+            echo "No temporary QA user was created."
+            exit 0
+          fi
+          oidc_json=$(curl --fail-with-body -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=the-guide-production-qa")
+          oidc_token=$(node -e 'const d=JSON.parse(process.argv[1]); if(!d.value) process.exit(1); process.stdout.write(d.value)' "$oidc_json")
+          curl --fail-with-body -sS -X POST "${NEXT_PUBLIC_SUPABASE_URL}/functions/v1/qa-user" \
+            -H "Authorization: Bearer $oidc_token" \
+            -H "apikey: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" \
+            -H "Content-Type: application/json" \
+            --data "{"action":"delete","userId":"$QA_USER_ID"}"
       - name: Upload production Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: production-playwright-report
-          path: web/playwright-report/
+          path: |
+            web/playwright-report/
+            web/test-results/
           if-no-files-found: ignore

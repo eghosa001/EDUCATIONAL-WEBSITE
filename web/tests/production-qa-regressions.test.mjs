@@ -144,3 +144,34 @@ test('flashcard invocation forwards the current learner access token', () => {
   const service = read('src/services/api/aiService.ts');
   assert.match(service, /headers: token \? \{ Authorization: `Bearer \$\{token\}` \} : undefined/);
 });
+
+
+test('Supabase AI edge functions use Bynara instead of OpenAI', () => {
+  for (const relative of [
+    '../supabase/functions/ai/index.ts',
+    '../supabase/functions/flashcards/index.ts',
+    '../supabase/functions/lesson-practice/index.ts',
+    '../supabase/functions/lesson-worker/index.ts',
+    '../supabase/functions/lesson-quality-audit/index.ts',
+  ]) {
+    const source = read(relative);
+    assert.match(source, /BYNARA_API_KEY/);
+    assert.match(source, /BYNARA_BASE_URL/);
+    assert.match(source, /AI_DEFAULT_MODEL/);
+    assert.doesNotMatch(source, /api\.openai\.com/);
+    assert.doesNotMatch(source, /OPENAI_API_KEY/);
+  }
+});
+
+test('production QA creates a mandatory temporary authenticated learner', () => {
+  const workflow = read('../.github/workflows/comprehensive-tests.yml');
+  const spec = read('e2e/production-deployed.spec.mjs');
+  const qaUser = read('../supabase/functions/qa-user/index.ts');
+  assert.match(workflow, /id-token: write/);
+  assert.match(workflow, /Create temporary production QA student/);
+  assert.match(workflow, /Delete temporary production QA student/);
+  assert.doesNotMatch(spec, /test\.skip\(!testEmail/);
+  assert.match(spec, /QA_EMAIL/);
+  assert.match(qaUser, /token\.actions\.githubusercontent\.com/);
+  assert.match(qaUser, /eghosa001\/EDUCATIONAL-WEBSITE/);
+});

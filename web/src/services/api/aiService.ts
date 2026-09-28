@@ -5,9 +5,27 @@ import type { PaginatedResponse } from '@/types/api/api';
 /**
  * AI is a privileged capability. The browser never receives an AI provider key.
  */
+const edgeFunctionErrorMessage = async (error: unknown, fallback: string) => {
+  const context = (error as { context?: Response } | null)?.context;
+  if (context instanceof Response) {
+    try {
+      const cloned = context.clone();
+      const body = await cloned.json();
+      if (body?.error) return String(body.error);
+      if (body?.message) return String(body.message);
+    } catch {
+      try {
+        const text = await context.clone().text();
+        if (text.trim()) return text.trim().slice(0, 500);
+      } catch {}
+    }
+  }
+  return error instanceof Error && error.message ? error.message : fallback;
+};
+
 const invokeAi = async <T>(body: Record<string, unknown>): Promise<T> => {
   const { data, error } = await getSupabase().functions.invoke('ai', { body });
-  if (error) throw new Error(error.message || 'AI request failed');
+  if (error) throw new Error(await edgeFunctionErrorMessage(error, 'AI request failed'));
   if (data?.error) throw new Error(String(data.error));
   return data as T;
 };
@@ -28,7 +46,7 @@ export const sendAiTutorMessage = async (data: AiTutorRequest, _token?: string):
     const { data: practice, error } = await getSupabase().functions.invoke('lesson-practice', {
       body: { lessonId, count: 5 },
     });
-    if (error) throw new Error(error.message || 'Practice generation failed');
+    if (error) throw new Error(await edgeFunctionErrorMessage(error, 'Practice generation failed'));
     if (practice?.error) throw new Error(String(practice.error));
     const quiz = practice?.quiz as AiGeneratedQuiz | undefined;
     if (!quiz || !Array.isArray(quiz.questions)) throw new Error('Practice service returned an invalid quiz');
@@ -86,15 +104,14 @@ export const getAiExplanation = (data: AiExplainRequest, _token?: string) => inv
 
 export interface AiFlashcardRequest { subjectId: string; topicId?: string; count: number; }
 export interface AiFlashcard { id: string; front: string; back: string; subjectId: string; topicId?: string; difficulty?: string; }
-export const generateAiFlashcards = (data: AiFlashcardRequest, token?: string) => {
-  return getSupabase().functions.invoke('flashcards', {
+export const generateAiFlashcards = async (data: AiFlashcardRequest, token?: string) => {
+  const { data: result, error } = await getSupabase().functions.invoke('flashcards', {
     body: data,
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  }).then(({ data, error }) => {
-    if (error) throw new Error(error.message || 'Flashcard generation failed');
-    if (data?.error) throw new Error(String(data.error));
-    return data as { flashcards: AiFlashcard[] };
   });
+  if (error) throw new Error(await edgeFunctionErrorMessage(error, 'Flashcard generation failed'));
+  if (result?.error) throw new Error(String(result.error));
+  return result as { flashcards: AiFlashcard[] };
 };
 
 export interface SavedFlashcard { id: string; front: string; back: string; subjectId?: string; topicId?: string; courseId?: string; difficulty?: string; }
