@@ -111,7 +111,8 @@ test('AI tutor preserves the conversation and sends named curriculum context', (
 test('flashcard generation requires an explicit curriculum topic', () => {
   const source = read('src/app/dashboard/flashcards/page.tsx');
   assert.match(source, /from\('topics'\)/);
-  assert.match(source, /generateAiFlashcards\(\{ subjectId, topicId, count: 20 \}/);
+  assert.match(source, /generateAiFlashcards\(\{ subjectId, topicId, count: cardCount \}/);
+  assert.match(source, /const \[cardCount, setCardCount\] = useState\(10\)/);
   assert.match(source, /disabled=\{!subjectId \|\| !topicId \|\| generating\}/);
 });
 

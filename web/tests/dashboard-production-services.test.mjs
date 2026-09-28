@@ -81,11 +81,13 @@ test('parent, teacher, and school dashboards use the Supabase learner boundary f
   assert.doesNotMatch(school, /JSON\.stringify\(\{ schoolCode, credentials/);
 });
 
-test('flashcards have a published-curriculum fallback when the AI provider is unavailable', () => {
+test('flashcards are curriculum-first and AI is only a bounded rescue path', () => {
   const source = read('../../supabase/functions/flashcards/index.ts');
   assert.match(source, /groundedFallbackCards/);
-  assert.match(source, /AI flashcard generation failed; using published curriculum fallback/);
   assert.match(source, /from\("lessons"\)/);
+  assert.match(source, /cards\.length < Math\.min\(5, count\)/);
+  assert.match(source, /AI flashcard rescue failed/);
+  assert.match(source, /timeoutMs = 8_000/);
 });
 
 test('school browse and join are implemented in the Supabase web API', () => {
