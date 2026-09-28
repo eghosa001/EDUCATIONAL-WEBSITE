@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import BrandLogo from '@/components/BrandLogo';
 import { useSearchParams } from 'next/navigation';
 import { EyeIcon, EyeOff as EyeSlashIcon, CheckCircleIcon } from 'lucide-react';
 import { getSupabase } from '@/lib/supabase';
@@ -109,7 +110,7 @@ export default function ResetPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <Link href="/" aria-label="THE GUIDE home"><img src="/logos/the-guide-mark.svg" alt="THE GUIDE" className="mx-auto mb-4 h-20 w-20 rounded-[28%] shadow-brand-sm" /></Link>
+          <div className="mb-4 flex justify-center"><BrandLogo href="/" /></div>
           <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Reset password</h1>
           <p className="mt-1 text-slate-500 dark:text-slate-400">Enter your new password below</p>
         </div>

@@ -1,0 +1,31 @@
+name: OCR stored past questions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ocr-past-questions.yml'
+      - 'scripts/ocr_past_questions.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: ocr-past-questions
+  cancel-in-progress: false
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PDF and OCR tools
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils tesseract-ocr
+      - name: Extract remaining stored question papers
+        env:
+          EXTRACTOR_URL: https://xanrzsszrysianxhpprk.supabase.co/functions/v1/past-question-extractor
+          OIDC_AUDIENCE: the-guide-question-extractor
+        run: python scripts/ocr_past_questions.py

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import BrandLogo from '@/components/BrandLogo';
 import { ArrowLeftIcon, CheckCircleIcon } from 'lucide-react';
 import { forgotPassword } from '@/services/api/authService';
 
@@ -45,9 +46,7 @@ export default function ForgotPasswordPage() {
           ) : (
             <>
               <div className="mb-6 text-center">
-                <Link href="/" aria-label="THE GUIDE home">
-                  <img src="/logos/the-guide-mark.svg" alt="THE GUIDE" className="mx-auto mb-4 h-16 w-16 rounded-[28%] shadow-brand-sm" />
-                </Link>
+                <div className="mb-4 flex justify-center"><BrandLogo href="/" /></div>
                 <h1 className="mb-1 text-xl font-bold text-slate-950 dark:text-white">Forgot password?</h1>
                 <p className="text-sm text-slate-500 dark:text-slate-400">Enter your email and we&apos;ll send you a reset link.</p>
               </div>

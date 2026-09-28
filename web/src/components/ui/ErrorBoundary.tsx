@@ -16,7 +16,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       return (
         <div className="flex min-h-[60vh] items-center justify-center bg-stone-50 px-4 dark:bg-[#151A3A]">
           <div className="max-w-md text-center">
-            <img src="/logos/the-guide-mark.webp" alt="THE GUIDE" className="mx-auto mb-4 h-12 w-12 rounded-[28%] object-cover" />
+            <img src="/logos/app-icon.jfif" alt="THE GUIDE" className="mx-auto mb-4 h-12 w-12 rounded-[28%] object-cover" />
             <h2 className="mb-2 text-xl font-bold text-[#151A3A] dark:text-white">Something went wrong</h2>
             <p className="mb-5 text-sm text-slate-500 dark:text-slate-400">This page could not be displayed. You can retry without leaving the app.</p>
             <div className="flex justify-center gap-3">

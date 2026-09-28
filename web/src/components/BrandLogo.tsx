@@ -13,36 +13,31 @@ export default function BrandLogo({
   inverse = false,
   className = '',
 }: BrandLogoProps) {
-  const frame = compact
-    ? 'h-11 w-[180px] sm:h-12 sm:w-[205px]'
-    : 'h-14 w-[225px] sm:h-16 sm:w-[260px]';
-
+  const size = compact ? 'h-10 w-[158px] sm:h-11 sm:w-[174px]' : 'h-12 w-[210px] sm:h-14 sm:w-[245px]';
   return (
-    <Link
-      href={href}
-      aria-label="THE GUIDE — Your path to smarter learning"
-      className={`relative block shrink-0 overflow-hidden ${frame} ${className}`}
-    >
-      {inverse ? (
-        <img
-          src="/logos/dark-mode-silver.jfif"
-          alt="THE GUIDE — Your path to smarter learning"
-          className="absolute inset-0 h-full w-full object-cover object-center"
-        />
-      ) : (
-        <>
+    <Link href={href} aria-label="THE GUIDE" className={`inline-flex shrink-0 items-center ${className}`}>
+      <span className={`block overflow-visible ${size}`}>
+        {inverse ? (
           <img
-            src="/logos/primary-logo.jfif"
+            src="/logos/brand-dark.svg"
             alt="THE GUIDE — Your path to smarter learning"
-            className="absolute inset-0 h-full w-full object-cover object-center dark:hidden"
+            className="h-full w-full object-contain object-left"
           />
-          <img
-            src="/logos/dark-mode-silver.jfif"
-            alt="THE GUIDE — Your path to smarter learning"
-            className="absolute inset-0 hidden h-full w-full object-cover object-center dark:block"
-          />
-        </>
-      )}
+        ) : (
+          <>
+            <img
+              src="/logos/brand-light.svg"
+              alt="THE GUIDE — Your path to smarter learning"
+              className="h-full w-full object-contain object-left dark:hidden"
+            />
+            <img
+              src="/logos/brand-dark.svg"
+              alt="THE GUIDE — Your path to smarter learning"
+              className="hidden h-full w-full object-contain object-left dark:block"
+            />
+          </>
+        )}
+      </span>
     </Link>
   );
 }
