@@ -66,3 +66,32 @@ test('course completion issues certificates and certificate UI has working print
   assert.match(page, /Print \/ Save PDF/);
   assert.match(page, /navigator\.share/);
 });
+
+test('parent, teacher, and school dashboards use the Supabase learner boundary for their visible workflows', () => {
+  const parent = read('../src/services/api/parentService.ts');
+  const teacher = read('../src/services/api/teacherService.ts');
+  const school = read('../src/services/api/schoolService.ts');
+  assert.match(parent, /learnerApiConfig/);
+  assert.doesNotMatch(parent, /apiConfig\.baseUrl/);
+  for (const route of ['teachers/me', 'teachers/courses', 'teachers/students', 'teachers/earnings/summary', 'teachers/analytics']) {
+    assert.match(teacher, new RegExp(route.replaceAll('/', '\\/')));
+  }
+  assert.match(teacher, /teacherEdgeBaseUrl = learnerApiConfig\.baseUrl/);
+  assert.match(school, /learnerApiConfig\.baseUrl\/schools/);
+  assert.doesNotMatch(school, /JSON\.stringify\(\{ schoolCode, credentials/);
+});
+
+test('flashcards have a published-curriculum fallback when the AI provider is unavailable', () => {
+  const source = read('../../supabase/functions/flashcards/index.ts');
+  assert.match(source, /groundedFallbackCards/);
+  assert.match(source, /AI flashcard generation failed; using published curriculum fallback/);
+  assert.match(source, /from\("lessons"\)/);
+});
+
+test('school browse and join are implemented in the Supabase web API', () => {
+  const source = read('../../supabase/functions/web-api/index.ts');
+  assert.match(source, /path==='\/schools'/);
+  assert.match(source, /path==='\/schools\/join'/);
+  assert.match(source, /school_students/);
+  assert.match(source, /school_teachers/);
+});

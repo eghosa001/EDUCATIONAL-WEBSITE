@@ -124,6 +124,11 @@ export default function PlansPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-10 text-center"><h1 className="mb-2 text-3xl font-bold text-gray-900">Choose Your Plan</h1><p className="text-gray-600">Start your learning journey with the perfect plan for you</p></div>
+      {plans.some(plan => Number(plan.price || 0) > 0) && gateways.length === 0 && (
+        <div data-paid-checkout-unavailable role="status" className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          Paid checkout is temporarily unavailable. You can still use the Free plan while online payment setup is completed.
+        </div>
+      )}
       {error && <div role="alert" className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
       <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {plans.map(plan => (

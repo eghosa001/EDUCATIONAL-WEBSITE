@@ -1,7 +1,31 @@
-import { apiConfig, getAuthHeaders, handleApiError } from './config';
+import { apiConfig, getAuthHeaders, getLearnerApiHeaders, handleApiError, learnerApiConfig } from './config';
 import type { PaginatedResponse } from '@/types/api/api';
 
 const { baseUrl } = apiConfig;
+const teacherEdgeBaseUrl = learnerApiConfig.baseUrl;
+const teacherEdgeGet = async <T>(path: string, token: string): Promise<T> => {
+  const response = await fetch(`${teacherEdgeBaseUrl}${path}`, {
+    headers: getLearnerApiHeaders(token),
+    credentials: learnerApiConfig.credentials,
+  });
+  return handleApiError(response);
+};
+const teacherEdgePatch = async <T>(path: string, data: Record<string, unknown>, token: string): Promise<T> => {
+  const response = await fetch(`${teacherEdgeBaseUrl}${path}`, {
+    method: 'PATCH',
+    headers: getLearnerApiHeaders(token),
+    body: JSON.stringify(data),
+    credentials: learnerApiConfig.credentials,
+  });
+  return handleApiError(response);
+};
+const normalizePage = <T>(payload: any, key: string): PaginatedResponse<T> => ({
+  data: payload?.data?.[key] || [],
+  page: Number(payload?.pagination?.page || 1),
+  pageSize: Number(payload?.pagination?.limit || 20),
+  total: Number(payload?.pagination?.total || 0),
+  totalPages: Number(payload?.pagination?.totalPages || 0),
+});
 
 // ========== TEACHER PROFILE ==========
 
@@ -35,22 +59,16 @@ export interface UpdateTeacherProfileData {
 }
 
 export const fetchTeacherProfile = async (token: string): Promise<{ teacher: TeacherProfile }> => {
-  const response = await fetch(`${baseUrl}/teachers/me`, {
-    headers: getAuthHeaders(token), credentials: 'include'
-  });
-  return handleApiError(response);
+  const payload = await teacherEdgeGet<any>('/teachers/me', token);
+  return { teacher: payload.data.teacher };
 };
 
 export const updateTeacherProfile = async (
   data: UpdateTeacherProfileData,
   token: string
 ) => {
-  const response = await fetch(`${baseUrl}/teachers/me`, {
-    method: 'PATCH',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify(data), credentials: 'include'
-  });
-  return handleApiError(response);
+  const payload = await teacherEdgePatch<any>('/teachers/me', data as Record<string, unknown>, token);
+  return { teacher: payload.data.teacher };
 };
 
 // ========== TEACHER COURSES ==========
@@ -60,17 +78,13 @@ export const fetchTeacherCourses = async (
   limit: number = 20,
   token: string
 ): Promise<PaginatedResponse<any>> => {
-  const response = await fetch(`${baseUrl}/teachers/courses?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token), credentials: 'include'
-  });
-  return handleApiError(response);
+  const payload = await teacherEdgeGet<any>(`/teachers/courses?page=${page}&limit=${limit}`, token);
+  return normalizePage(payload, 'courses');
 };
 
 export const fetchTeacherCourseStats = async (courseId: string, token: string) => {
-  const response = await fetch(`${baseUrl}/teachers/courses/${courseId}/stats`, {
-    headers: getAuthHeaders(token), credentials: 'include'
-  });
-  return handleApiError(response);
+  const payload = await teacherEdgeGet<any>(`/teachers/courses/${courseId}/stats`, token);
+  return { stats: payload.data.stats };
 };
 
 // ========== TEACHER STUDENTS ==========
@@ -92,10 +106,8 @@ export const fetchTeacherStudents = async (
   limit: number = 20,
   token: string
 ): Promise<PaginatedResponse<TeacherStudent>> => {
-  const response = await fetch(`${baseUrl}/teachers/students?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token), credentials: 'include'
-  });
-  return handleApiError(response);
+  const payload = await teacherEdgeGet<any>(`/teachers/students?page=${page}&limit=${limit}`, token);
+  return normalizePage<TeacherStudent>(payload, 'students');
 };
 
 export const fetchTeacherStudentProgress = async (
@@ -252,10 +264,8 @@ export const fetchTeacherEarnings = async (
 };
 
 export const fetchTeacherEarningsSummary = async (token: string) => {
-  const response = await fetch(`${baseUrl}/teachers/earnings/summary`, {
-    headers: getAuthHeaders(token), credentials: 'include'
-  });
-  return handleApiError(response);
+  const payload = await teacherEdgeGet<any>('/teachers/earnings/summary', token);
+  return { summary: payload.data.summary };
 };
 
 // ========== TEACHER ANALYTICS ==========
@@ -272,10 +282,8 @@ export interface TeacherAnalytics {
 }
 
 export const fetchTeacherAnalytics = async (token: string): Promise<{ analytics: TeacherAnalytics }> => {
-  const response = await fetch(`${baseUrl}/teachers/analytics`, {
-    headers: getAuthHeaders(token), credentials: 'include'
-  });
-  return handleApiError(response);
+  const payload = await teacherEdgeGet<any>('/teachers/analytics', token);
+  return { analytics: payload.data.analytics };
 };
 
 // ========== TEACHER NOTIFICATIONS ==========

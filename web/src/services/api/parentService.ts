@@ -1,7 +1,7 @@
-import { apiConfig, getAuthHeaders, handleApiError } from './config';
+import { learnerApiConfig, getLearnerApiHeaders, handleApiError } from './config';
 import type { PaginatedResponse } from '@/types/api/api';
 
-const { baseUrl } = apiConfig;
+const { baseUrl } = learnerApiConfig;
 
 const parse = async <T>(response: Response): Promise<T> => handleApiError(response) as Promise<T>;
 
@@ -50,7 +50,7 @@ export interface UpdateParentProfileData {
 
 export const fetchParentProfile = async (token: string): Promise<{ parent: ParentProfile }> => {
   const response = await fetch(`${baseUrl}/parents/me`, {
-    headers: getAuthHeaders(token),
+    headers: getLearnerApiHeaders(token),
     credentials: 'include',
   });
   return unwrapData(response);
@@ -59,7 +59,7 @@ export const fetchParentProfile = async (token: string): Promise<{ parent: Paren
 export const updateParentProfile = async (data: UpdateParentProfileData, token: string): Promise<{ parent: ParentProfile }> => {
   const response = await fetch(`${baseUrl}/parents/me`, {
     method: 'PATCH',
-    headers: getAuthHeaders(token),
+    headers: getLearnerApiHeaders(token),
     body: JSON.stringify(data),
     credentials: 'include',
   });
@@ -93,7 +93,7 @@ export interface ChildPerformance {
 
 export const fetchParentChildren = async (token: string): Promise<{ children: Child[] }> => {
   const response = await fetch(`${baseUrl}/parents/children`, {
-    headers: getAuthHeaders(token),
+    headers: getLearnerApiHeaders(token),
     credentials: 'include',
   });
   return unwrapData(response);
@@ -102,7 +102,7 @@ export const fetchParentChildren = async (token: string): Promise<{ children: Ch
 export const addChild = async (childUserId: string, token: string) => {
   const response = await fetch(`${baseUrl}/parents/children`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getLearnerApiHeaders(token),
     body: JSON.stringify({ userId: childUserId }),
     credentials: 'include',
   });
@@ -112,7 +112,7 @@ export const addChild = async (childUserId: string, token: string) => {
 export const removeChild = async (childUserId: string, token: string) => {
   const response = await fetch(`${baseUrl}/parents/children/${childUserId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(token),
+    headers: getLearnerApiHeaders(token),
     credentials: 'include',
   });
   return parse<{ success: boolean; message: string }>(response);
@@ -120,7 +120,7 @@ export const removeChild = async (childUserId: string, token: string) => {
 
 export const fetchChildPerformance = async (childUserId: string, token: string): Promise<{ performance: ChildPerformance }> => {
   const response = await fetch(`${baseUrl}/parents/children/${childUserId}/performance`, {
-    headers: getAuthHeaders(token),
+    headers: getLearnerApiHeaders(token),
     credentials: 'include',
   });
   return unwrapData(response);
@@ -133,7 +133,7 @@ export const fetchChildCourses = async (
   token: string
 ): Promise<PaginatedResponse<any>> => {
   const response = await fetch(`${baseUrl}/parents/children/${childUserId}/courses?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token),
+    headers: getLearnerApiHeaders(token),
     credentials: 'include',
   });
   return unwrapPage(response, 'courses');
@@ -146,7 +146,7 @@ export const fetchChildExams = async (
   token: string
 ): Promise<PaginatedResponse<any>> => {
   const response = await fetch(`${baseUrl}/parents/children/${childUserId}/exams?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token),
+    headers: getLearnerApiHeaders(token),
     credentials: 'include',
   });
   return unwrapPage(response, 'exams');
@@ -154,7 +154,7 @@ export const fetchChildExams = async (
 
 export const fetchChildProgress = async (childUserId: string, token: string): Promise<{ progress: any }> => {
   const response = await fetch(`${baseUrl}/parents/children/${childUserId}/progress`, {
-    headers: getAuthHeaders(token),
+    headers: getLearnerApiHeaders(token),
     credentials: 'include',
   });
   return unwrapData(response);
@@ -177,7 +177,7 @@ export const fetchChildStudyTime = async (
   if (endDate) query.append('endDate', endDate);
   const suffix = query.toString() ? `?${query.toString()}` : '';
   const response = await fetch(`${baseUrl}/parents/children/${childUserId}/study-time${suffix}`, {
-    headers: getAuthHeaders(token),
+    headers: getLearnerApiHeaders(token),
     credentials: 'include',
   });
   return unwrapData(response);
@@ -202,7 +202,7 @@ export const fetchParentNotifications = async (
   token: string
 ): Promise<PaginatedResponse<ParentNotification>> => {
   const response = await fetch(`${baseUrl}/parents/notifications?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token),
+    headers: getLearnerApiHeaders(token),
     credentials: 'include',
   });
   return unwrapPage(response, 'notifications');
@@ -211,7 +211,7 @@ export const fetchParentNotifications = async (
 export const markParentNotificationAsRead = async (notificationId: string, token: string) => {
   const response = await fetch(`${baseUrl}/parents/notifications/${notificationId}/read`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getLearnerApiHeaders(token),
     credentials: 'include',
   });
   return unwrapData<{ notification: ParentNotification }>(response);
@@ -234,7 +234,7 @@ export const fetchParentReports = async (
   token: string
 ): Promise<PaginatedResponse<ParentReport>> => {
   const response = await fetch(`${baseUrl}/parents/reports?page=${page}&limit=${limit}`, {
-    headers: getAuthHeaders(token),
+    headers: getLearnerApiHeaders(token),
     credentials: 'include',
   });
   return unwrapPage(response, 'reports');
@@ -247,7 +247,7 @@ export const generateParentReport = async (
 ) => {
   const response = await fetch(`${baseUrl}/parents/reports`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getLearnerApiHeaders(token),
     body: JSON.stringify({ childId: childUserId, reportType }),
     credentials: 'include',
   });
@@ -256,7 +256,7 @@ export const generateParentReport = async (
 
 export const downloadParentReport = async (reportId: string, token: string) => {
   const response = await fetch(`${baseUrl}/parents/reports/${reportId}/download`, {
-    headers: getAuthHeaders(token),
+    headers: getLearnerApiHeaders(token),
     credentials: 'include',
   });
   return response;

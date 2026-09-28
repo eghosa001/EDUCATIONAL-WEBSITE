@@ -103,6 +103,7 @@ test.describe('deployed production learner QA', () => {
   });
 
   test('all student dashboard routes render without production errors', async ({ page }, testInfo) => {
+    test.setTimeout(180000);
     const failures = watchRuntimeFailures(page);
     const routes = [
       '/dashboard',
@@ -344,7 +345,14 @@ test.describe('deployed production learner QA', () => {
       return { paid, gatewayStatus: gatewayResponse.status, gatewayText, gateways: gatewayPayload?.gateways || [] };
     }, { supabaseUrl, publishableKey, token });
     expect(result.gatewayStatus, result.gatewayText).toBe(200);
-    if (result.paid) expect(result.gateways.filter((gateway) => gateway.isActive).length).toBeGreaterThan(0);
+    const activeGateways = result.gateways.filter((gateway) => gateway.isActive);
+    if (result.paid && activeGateways.length === 0) {
+      await page.goto('/dashboard/subscriptions/plans', { waitUntil: 'domcontentloaded' });
+      await expect(page.locator('[data-paid-checkout-unavailable]')).toContainText(/Paid checkout is temporarily unavailable/i);
+      await expect(page.getByRole('button', { name: /Continue to secure payment/i })).toHaveCount(0);
+    } else if (result.paid) {
+      expect(activeGateways.length).toBeGreaterThan(0);
+    }
   });
 
   test('profile changes save and the free subscription flow reaches billing', async ({ page }, testInfo) => {

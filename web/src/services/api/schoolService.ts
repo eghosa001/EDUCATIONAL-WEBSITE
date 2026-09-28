@@ -1,4 +1,4 @@
-import { apiConfig, getAuthHeaders, handleApiError } from './config';
+import { apiConfig, getAuthHeaders, getLearnerApiHeaders, handleApiError, learnerApiConfig } from './config';
 import type { School, SchoolClass, Subject, Topic } from '@/types/models/school';
 import type { PaginatedResponse } from '@/types/api/api';
 
@@ -22,17 +22,20 @@ export const fetchSchools = async (
   Object.entries(filters).forEach(([key, value]) => {
     if (value !== undefined && value !== null) params.append(key, String(value));
   });
-  const response = await fetch(`${baseUrl}/schools?${params.toString()}`, {
-    headers: getAuthHeaders(token), credentials: 'include'
+  const response = await fetch(`${learnerApiConfig.baseUrl}/schools?${params.toString()}`, {
+    headers: getLearnerApiHeaders(token),
+    credentials: learnerApiConfig.credentials,
   });
-  return handleApiError(response);
+  const payload = await handleApiError(response) as any;
+  return { data: payload?.data?.schools || [], pagination: payload?.pagination || {} };
 };
 
 export const joinSchool = async (schoolCode: string, token: string) => {
-  const response = await fetch(`${baseUrl}/schools/join`, {
+  const response = await fetch(`${learnerApiConfig.baseUrl}/schools/join`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
-    body: JSON.stringify({ schoolCode, credentials: 'include' }),
+    headers: getLearnerApiHeaders(token),
+    body: JSON.stringify({ schoolCode }),
+    credentials: learnerApiConfig.credentials,
   });
   return handleApiError(response);
 };
