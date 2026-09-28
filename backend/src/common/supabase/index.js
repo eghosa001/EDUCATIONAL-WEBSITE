@@ -24,7 +24,8 @@ export const createSupabaseClient = (useServiceRole = false) => {
   });
 };
 
-export const supabase = supabaseUrl && supabaseAnonKey ? createSupabaseClient(false) : null;
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+export const supabase = isSupabaseConfigured ? createSupabaseClient(false) : null;
 export const supabaseAdmin = supabaseUrl && supabaseServiceRoleKey ? createSupabaseClient(true) : null;
 
-export default { createSupabaseClient, supabase, supabaseAdmin };
+export default { createSupabaseClient, isSupabaseConfigured, supabase, supabaseAdmin };
