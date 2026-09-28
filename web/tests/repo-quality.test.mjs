@@ -74,7 +74,7 @@ test('paid subscriptions are not activated before payment', () => {
   assert.match(source, /paymentRequired:\s*true/);
   assert.doesNotMatch(source, /status:\s*'trialing'.*insert/s);
   assert.match(source, /\.eq\('status', 'pending'\)/);
-  assert.doesNotMatch(source, /payment\.status === 'completed'[\s\S]*?activateSubscription/);
+  assert.match(source, /if \(payment\.status === 'completed'\) \{[\s\S]*?\.from\('subscriptions'\)[\s\S]*?return json/);
 });
 
 test('obsolete lesson regenerator is fail-closed', () => {

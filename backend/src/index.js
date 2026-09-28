@@ -51,6 +51,7 @@ app.use('/api', (req, res, next) => {
 });
 
 app.get('/health', async (_req, res) => {
+  const startedAt = Date.now();
   let healthy = false;
   try {
     await poolReady;
@@ -68,6 +69,8 @@ app.get('/health', async (_req, res) => {
   res.status(healthy ? 200 : 503).json({
     success: healthy,
     message: healthy ? 'Educational Platform API is running' : 'API database connectivity degraded',
+    databaseMode: useSupabase ? 'supabase-rest' : 'postgres',
+    latencyMs: Date.now() - startedAt,
     timestamp: new Date().toISOString(),
   });
 });
