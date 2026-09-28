@@ -136,7 +136,10 @@ test.describe('deployed production learner QA', () => {
         await page.waitForTimeout(300);
         expect(new URL(page.url()).pathname, `${route} unexpectedly redirected`).toBe(route);
         await expect(page.locator('body')).not.toContainText(fatalText);
-        await expect(page.locator('[role="alert"]:visible')).toHaveCount(0);
+        // Next.js injects a clipped 1x1 route announcer with role="alert". It is
+        // accessibility infrastructure, not an application error. Keep the release
+        // gate strict for every real visible alert while excluding only that element.
+        await expect(page.locator('[role="alert"]:visible:not(#__next-route-announcer__)')).toHaveCount(0);
         await expect(page.locator('body')).not.toContainText(/An error occurred|Failed to load|Unable to load/i);
         await expectBrandVisible(page);
         await captureVisual(page, testInfo, route);

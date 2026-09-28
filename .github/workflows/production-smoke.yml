@@ -18,7 +18,6 @@ jobs:
     timeout-minutes: 10
     env:
       WEB_URL: https://web-ogs7.vercel.app
-      BACKEND_URL: https://backend-ogs7.vercel.app
       SUPABASE_URL: https://xanrzsszrysianxhpprk.supabase.co
       SUPABASE_PUBLISHABLE_KEY: sb_publishable_-b8MMXYbJQKauBFjYVJ0vg_SG0GMpFs
     steps:
@@ -33,13 +32,20 @@ jobs:
           printf '%s' "$login" | grep -q 'THE GUIDE'
           echo 'Canonical Vercel web application is reachable.'
 
-      - name: Smoke test backend health
+      - name: Smoke test learner Edge APIs
         shell: bash
         run: |
           set -euo pipefail
-          health="$(curl --fail --silent --show-error --retry 4 --retry-delay 5 --retry-all-errors "$BACKEND_URL/health")"
-          printf '%s' "$health" | jq -e '.success == true' > /dev/null
-          echo 'Backend health check passed.'
+          exams="$(curl --fail --silent --show-error --retry 4 --retry-delay 5 --retry-all-errors \
+            "$SUPABASE_URL/functions/v1/web-api/exams?limit=1" \
+            -H "apikey: $SUPABASE_PUBLISHABLE_KEY")"
+          printf '%s' "$exams" | jq -e '.data.exams | type == "array" and length >= 1' > /dev/null
+
+          past_questions="$(curl --fail --silent --show-error --retry 4 --retry-delay 5 --retry-all-errors \
+            "$SUPABASE_URL/functions/v1/web-api/past-questions?board=jamb&limit=1" \
+            -H "apikey: $SUPABASE_PUBLISHABLE_KEY")"
+          printf '%s' "$past_questions" | jq -e '.data.questions | type == "array" and length >= 1' > /dev/null
+          echo 'Learner Edge API checks passed.'
 
       - name: Smoke test Supabase auth and curriculum API
         shell: bash
