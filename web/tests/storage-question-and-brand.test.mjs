@@ -8,7 +8,8 @@ test('learner question API excludes generic filler and never exposes stored PDFs
   assert.doesNotMatch(api, /past-question-files/);
   const page = fs.readFileSync(new URL('../src/app/dashboard/past-questions/page.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(page, /publicUrl|Original source papers|\.pdf/);
-  assert.match(page, /\/past-questions\?/);
+  assert.match(page, /\/past-questions\/session/);
+  assert.match(page, /\/past-questions\/grade/);
 });
 
 test('visible branding uses the supplied raster artwork directly', () => {

@@ -18,8 +18,11 @@ test('auth screens no longer use generic book or user marks', () => {
   }
 });
 
-test('ungraded source questions remain practice-only', () => {
+test('timed past-question CBT excludes ungraded source questions', () => {
+  const api = fs.readFileSync(new URL('../../supabase/functions/web-api/index.ts', import.meta.url), 'utf8');
   const page = fs.readFileSync(new URL('../src/app/dashboard/past-questions/page.tsx', import.meta.url), 'utf8');
-  assert.match(page, /current\.hasAnswer===false/);
-  assert.match(page, /practice-only/);
+  assert.match(api, /path==='\/past-questions\/session'/);
+  assert.match(api, /not\('correct_answer','is',null\)/);
+  assert.match(api, /scalarAnswer\(row\.correct_answer\)/);
+  assert.match(page, /past-questions\/session/);
 });
