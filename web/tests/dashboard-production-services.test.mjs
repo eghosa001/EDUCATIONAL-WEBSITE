@@ -171,3 +171,12 @@ test('extracted source questions have a dedicated in-site question bank instead 
   assert.match(api, /questionType/);
   assert.match(api, /storageBacked/);
 });
+
+test('OCR-extracted questions are filtered for artifacts and never trusted for CBT answer keys', () => {
+  const source = read('../../supabase/functions/past-question-extractor/index.ts');
+  assert.match(source, /trustExtractedAnswer = !\/\^tesseract\/i\.test\(extractionMethod\)/);
+  assert.match(source, /if \(!trustExtractedAnswer\) correctAnswer = ""/);
+  assert.match(source, /Download\\s\+MySchoolGist/);
+  assert.match(source, /ANSWER\\s\+KEYS/);
+  assert.match(source, /textQualityOk/);
+});

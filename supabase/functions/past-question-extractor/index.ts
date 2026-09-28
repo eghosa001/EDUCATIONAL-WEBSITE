@@ -58,15 +58,27 @@ const cleanText = (value: unknown, max = 2200) => String(value ?? "")
   .replace(/www\.[^\s]+/gi, " ")
   .replace(/PDF to Word/gi, " ")
   .replace(/Uploaded online by[^\n]*/gi, " ")
+  .replace(/Download\s+MySchoolGist[^\n]*/gi, " ")
+  .replace(/ANSWER\s+KEYS?[^\n]*/gi, " ")
   .replace(/\s+/g, " ")
   .trim()
   .slice(0, max);
 
-const artifactPattern = /(WAEC.{0,45}Past|Uploaded\s+on|UNTIL\s+YOU\s+ARE\s+TOLD|PRINT\s+IN\s+BLOCK\s+LETTERS|INSTRUCTIONS\s+TO\s+CANDIDATES)/i;
+const artifactPattern = /(WAEC.{0,45}Past|Uploaded\s+on|UNTIL\s+YOU\s+ARE\s+TOLD|PRINT\s+IN\s+BLOCK\s+LETTERS|INSTRUCTIONS\s+TO\s+CANDIDATES|Download\s+MySchoolGist|ANSWER\s+KEYS?|Question\s+Paper\s+Type)/i;
 const cleanOptionText = (value: unknown) => cleanText(value, 900)
   .replace(/\s+(w\.m|t\.co)$/i, "")
-  .replace(/\s+(Turn\s+over|UNTIL\s+YOU\s+ARE\s+TOLD|Uploaded\s+on|[0-9]{0,5}[\s\W]*WAEC.{0,45}Past).*$/i, "")
+  .replace(/\s+(Turn\s+over|UNTIL\s+YOU\s+ARE\s+TOLD|Uploaded\s+on|Download\s+MySchoolGist|ANSWER\s+KEYS?|[0-9]{0,5}[\s\W]*WAEC.{0,45}Past).*$/i, "")
+  .replace(/\s+\d{1,3}\s*[.)]\s+(?=[A-Z])/i, "")
   .trim();
+
+const textQualityOk = (value: string) => {
+  if (!value || artifactPattern.test(value)) return false;
+  const letters = (value.match(/[A-Za-z]/g) || []).length;
+  const noisy = (value.match(/[{}|\\]/g) || []).length;
+  if (letters < 6 || letters / Math.max(1, value.length) < 0.42) return false;
+  if (noisy >= 4) return false;
+  return true;
+};
 
 const isLikelyQuestionFile = (file: any) => {
   const name = String(file.file_name || "").toLowerCase();
@@ -145,6 +157,8 @@ Deno.serve(async (request) => {
       if (deleteError) throw deleteError;
 
       const rows: any[] = [];
+      const extractionMethod = String(body?.method || "ocr");
+      const trustExtractedAnswer = !/^tesseract/i.test(extractionMethod);
       let answered = 0;
       let active = 0;
       for (let i = 0; i < questions.length; i++) {
@@ -159,6 +173,7 @@ Deno.serve(async (request) => {
         }).filter((option: any) => option.id && option.text && !seen.has(option.id) && seen.add(option.id)).slice(0, 5);
         let correctAnswer = String(q.correctAnswer || q.correct_answer || "").toUpperCase().trim();
         if (!options.some((option: any) => option.id === correctAnswer)) correctAnswer = "";
+        if (!trustExtractedAnswer) correctAnswer = "";
         if (correctAnswer) answered++;
         const looksLikeReference = /(topics\/contents\/notes objectives|candidates should be able to|learning objectives|definition of .* salient features|assessment would include)/i.test(questionText);
         const isMcq = options.length > 0;
@@ -166,7 +181,8 @@ Deno.serve(async (request) => {
         const coreOptionsOrdered = optionIds.slice(0, 4).join("") === "ABCD";
         const hasExtractionArtifacts = artifactPattern.test(questionText) ||
           options.some((option: any) => artifactPattern.test(option.text) || option.text.length > 500);
-        const isActive = questionText.length >= 10 && questionText.length <= 1800 && !looksLikeReference && !hasExtractionArtifacts &&
+        const optionsReadable = !isMcq || options.every((option: any) => textQualityOk(option.text));
+        const isActive = questionText.length >= 10 && questionText.length <= 1800 && textQualityOk(questionText) && !looksLikeReference && !hasExtractionArtifacts && optionsReadable &&
           ((!isMcq && /\?|\b(state|explain|describe|calculate|find|determine|list|define|write|draw|discuss|give|outline|compare|mention)\b/i.test(questionText)) ||
            (isMcq && options.length >= 4 && coreOptionsOrdered && questionText.length <= 1000));
         if (isActive) active++;
@@ -197,7 +213,7 @@ Deno.serve(async (request) => {
         ...(file.metadata || {}),
         status: "ocr_extracted",
         processed_at: new Date().toISOString(),
-        extraction_method: String(body?.method || "ocr"),
+        extraction_method: extractionMethod,
         extracted_total: rows.length,
         active_questions: active,
         answered_questions: answered,
