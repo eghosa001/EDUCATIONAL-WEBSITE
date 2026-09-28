@@ -38,10 +38,11 @@ test('Playwright is installed as a real project dependency', () => {
   assert.equal(pkg.scripts?.['test:e2e'], 'playwright test');
 });
 
-test('public Supabase storage helper has no hard-coded project host', () => {
-  const source = fs.readFileSync(path.join(ROOT, 'src', 'api', 'past-questions', 'files.ts'), 'utf8');
-  assert.doesNotMatch(source, /https:\/\/[a-z0-9]+\.supabase\.co/i);
-  assert.match(source, /NEXT_PUBLIC_SUPABASE_URL is required/);
+test('learner web source has no past-question PDF storage helper', () => {
+  const helper = path.join(ROOT, 'src', 'api', 'past-questions', 'files.ts');
+  assert.equal(fs.existsSync(helper), false);
+  const page = fs.readFileSync(path.join(ROOT, 'src', 'app', 'dashboard', 'past-questions', 'page.tsx'), 'utf8');
+  assert.doesNotMatch(page, /publicUrl|storage\/v1\/object|\.pdf/i);
 });
 
 test('web source contains no committed private-key shaped values', () => {
