@@ -73,8 +73,7 @@ const isLikelyQuestionFile = (file: any) => {
   if (!["waec", "jamb"].includes(String(file.board || "").toLowerCase())) return false;
   if (/syllabus|selected[- _]?text|nerdc|scheme|2021[- _]?2025/.test(name)) return false;
   if (String(file.board).toLowerCase() === "jamb") return /past[- _]?questions?|questions?[- _]?and[- _]?answers?/.test(name);
-  const knownUnyearTaggedPaper = /^(data-processing-1|hausa-1|igbo-1|shorthand|technical-drawing-1)\.pdf$/.test(name);
-  return (Boolean(file.year) || knownUnyearTaggedPaper) && !/allproblems|document[_-]?compress/.test(name);
+  return Boolean(file.year) && !/allproblems|document[_-]?compress/.test(name);
 };
 
 Deno.serve(async (request) => {
