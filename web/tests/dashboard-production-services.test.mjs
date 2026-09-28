@@ -77,7 +77,7 @@ test('parent, teacher, and school dashboards use the Supabase learner boundary f
     assert.match(teacher, new RegExp(route.replaceAll('/', '\\/')));
   }
   assert.match(teacher, /teacherEdgeBaseUrl = learnerApiConfig\.baseUrl/);
-  assert.match(school, /learnerApiConfig\.baseUrl\/schools/);
+  assert.match(school, /learnerApiConfig\.baseUrl\}\/schools/);
   assert.doesNotMatch(school, /JSON\.stringify\(\{ schoolCode, credentials/);
 });
 
