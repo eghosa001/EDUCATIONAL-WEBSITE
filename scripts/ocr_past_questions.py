@@ -80,12 +80,14 @@ def clean_text(value):
     value = re.sub(r"https?://\S+|www\.\S+", " ", value, flags=re.I)
     value = re.sub(r"PDF to Word", " ", value, flags=re.I)
     value = re.sub(r"Uploaded online by[^\n]*", " ", value, flags=re.I)
+    value = re.sub(r"Download\s+MySchoolGist[^\n]*", " ", value, flags=re.I)
+    value = re.sub(r"ANSWER\s+KEYS?[^\n]*", " ", value, flags=re.I)
     value = re.sub(r"[ \t]+", " ", value)
     value = re.sub(r"\n{3,}", "\n\n", value)
     return value.strip()
 
 ARTIFACT_RE = re.compile(
-    r"(WAEC.{0,45}Past|Uploaded\s+on|UNTIL\s+YOU\s+ARE\s+TOLD|PRINT\s+IN\s+BLOCK\s+LETTERS|INSTRUCTIONS\s+TO\s+CANDIDATES)",
+    r"(WAEC.{0,45}Past|Uploaded\s+on|UNTIL\s+YOU\s+ARE\s+TOLD|PRINT\s+IN\s+BLOCK\s+LETTERS|INSTRUCTIONS\s+TO\s+CANDIDATES|Download\s+MySchoolGist|ANSWER\s+KEYS?|Question\s+Paper\s+Type)",
     re.I,
 )
 
@@ -164,6 +166,49 @@ def parse_questions(raw):
         })
     return results
 
+MERGED_NEXT_RE = re.compile(
+    r"\b\d{1,3}\s*[.)]\s+(?:The|Which|What|When|Where|Why|How|If|In|From|Under|During|Use|Find|Calculate|State|Explain|A|An)\b"
+)
+MID_START_RE = re.compile(
+    r".{15}\b(?:The|Which|What|When|Where|Why|How|If|In|From|Under|During|Use|Find|Calculate|State|Explain)\b"
+)
+REFERENCE_RE = re.compile(
+    r"(candidates should|learning objectives|assessment would include|topics[ /]contents|question paper type)",
+    re.I,
+)
+NOISE_RE = re.compile(r"(?:[._—-]{4,}\s*\d*|\b(?:w\.m|ww|www|t\.co)\b)", re.I)
+
+def quality_text(value, max_len):
+    value = str(value or "").strip()
+    if not value or len(value) > max_len:
+        return False
+    if ARTIFACT_RE.search(value) or REFERENCE_RE.search(value) or MERGED_NEXT_RE.search(value):
+        return False
+    if re.search(r"[a-z][A-Z][a-z]", value) or NOISE_RE.search(value):
+        return False
+    letters = len(re.findall(r"[A-Za-z]", value))
+    if letters < 6 or letters / max(1, len(value)) < 0.42:
+        return False
+    return True
+
+def quality_questions(items):
+    clean = []
+    for item in items:
+        question = str(item.get("questionText") or "").strip()
+        options = item.get("options") or []
+        if not quality_text(question, 420):
+            continue
+        if options:
+            if [str(opt.get("id") or "").upper() for opt in options[:4]] != ["A", "B", "C", "D"]:
+                continue
+            option_texts = [str(opt.get("text") or "").strip() for opt in options]
+            if any(not quality_text(text, 160) or MID_START_RE.search(text) for text in option_texts):
+                continue
+        elif re.match(r"(?i)^which\s+of\s+the\s+following\b", question):
+            continue
+        clean.append(item)
+    return clean
+
 SUBJECT_ALIASES = [
     ("agricultural science", "Agricultural Science"),
     ("agriculture", "Agricultural Science"),
@@ -230,26 +275,14 @@ def main():
                 pdf = work / "source.pdf"
                 download(file["public_url"], pdf)
                 embedded_text = pdf_text(pdf)
-                text = embedded_text
-                method = "pdf-text"
-                questions = parse_questions(embedded_text)
-                if should_ocr(file, embedded_text):
-                    ocr_text = ocr_pdf(pdf, work, psm=6)
-                    ocr_questions = parse_questions(ocr_text)
-                    if len(ocr_questions) >= len(questions):
-                        text = ocr_text
-                        questions = ocr_questions
-                        method = "tesseract-ocr-psm6"
-                if not questions:
-                    for psm in (3, 4, 11):
+                candidates = [("pdf-text", embedded_text, quality_questions(parse_questions(embedded_text)))]
+                if should_ocr(file, embedded_text) or len(candidates[0][2]) < 10:
+                    for psm in (6, 3, 4, 11):
                         layout_text = ocr_pdf(pdf, work, psm=psm)
-                        layout_questions = parse_questions(layout_text)
-                        if len(layout_questions) > len(questions):
-                            text = layout_text
-                            questions = layout_questions
-                            method = "tesseract-ocr-psm%d" % psm
-                        if questions:
-                            break
+                        layout_questions = quality_questions(parse_questions(layout_text))
+                        candidates.append(("tesseract-ocr-psm%d" % psm, layout_text, layout_questions))
+                method, text, questions = max(candidates, key=lambda item: len(item[2]))
+                print("  extraction candidates:", json.dumps({name: len(rows) for name, _, rows in candidates}, sort_keys=True))
                 if not questions:
                     api({
                         "action": "fail",
