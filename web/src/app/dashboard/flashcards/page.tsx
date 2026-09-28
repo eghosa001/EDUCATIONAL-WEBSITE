@@ -24,6 +24,7 @@ export default function FlashcardsPage() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const [generated, setGenerated] = useState(false);
+  const [cardCount, setCardCount] = useState(10);
 
   useEffect(() => {
     if (authLoading || !token) return;
@@ -81,7 +82,7 @@ export default function FlashcardsPage() {
     if (!token || !subjectId || !topicId || generating) return;
     setGenerating(true); setError('');
     try {
-      const res = await generateAiFlashcards({ subjectId, topicId, count: 20 }, token);
+      const res = await generateAiFlashcards({ subjectId, topicId, count: cardCount }, token);
       const cards = (res.flashcards || []).filter((card: any) => String(card.front || '').trim() && String(card.back || '').trim()) as Flashcard[];
       if (!cards.length) throw new Error('No usable flashcards were generated. Please try again.');
       setFlashcards(cards); setGenerated(true); setCurrentIndex(0); setIsFlipped(false);
@@ -115,11 +116,14 @@ export default function FlashcardsPage() {
         <select value={topicId} onChange={e => setTopicId(e.target.value)} disabled={!subjectId || topicsLoading} className="flex-1 rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-stone-50 disabled:text-slate-400 dark:border-slate-700 dark:bg-[#151A3A] dark:text-white">
           <option value="">{topicsLoading ? 'Loading topics…' : subjectId ? 'Select a topic' : 'Choose a subject first'}</option>{topics.map(topic => <option key={topic.id} value={topic.id}>{topic.name}</option>)}
         </select>
+        <select value={cardCount} onChange={e => setCardCount(Number(e.target.value))} className="rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-slate-800 dark:border-slate-700 dark:bg-[#151A3A] dark:text-white" aria-label="Number of flashcards">
+          <option value={10}>10 cards</option><option value={15}>15 cards</option><option value={20}>20 cards</option>
+        </select>
         <button onClick={handleGenerate} disabled={!subjectId || !topicId || generating} className="rounded-xl bg-[#151A3A] px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
-          {generating ? <><Loader2 className="mr-2 inline h-4 w-4 animate-spin"/>Generating...</> : 'Generate 20 cards'}
+          {generating ? <><Loader2 className="mr-2 inline h-4 w-4 animate-spin"/>Building from lesson…</> : `Generate ${cardCount} cards`}
         </button>
       </div>
-      <p className="mt-2 text-xs text-slate-500">Cards are generated from the selected curriculum topic and saved to your account for later review.</p>
+      <p className="mt-2 text-xs text-slate-500">Cards are built from the published lesson first for fast, reliable generation. AI is used only when lesson content is insufficient.</p>
     </section>
 
     {current ? <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-[#1b2045] sm:p-8">

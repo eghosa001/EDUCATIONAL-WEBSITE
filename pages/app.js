@@ -18,6 +18,7 @@ let profile = null;
 let curriculumCache = { classes: null, subjects: null, terms: null };
 let currentTopics = [];
 let cbtState = null;
+let cbtSetupState = null;
 let cbtTimer = null;
 
 const esc = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
@@ -26,6 +27,18 @@ const go = path => { location.hash = path.startsWith('/') ? path : `/${path}`; }
 const baseUrl = () => `${location.origin}${location.pathname}`;
 const optionValue = (option, index) => option?.id ?? option?.value ?? option?.label ?? String.fromCharCode(65 + index);
 const optionText = option => typeof option === 'string' ? option : option?.text ?? option?.label ?? option?.value ?? String(option ?? '');
+async function learnerApi(path, options={}) {
+  const headers = {
+    apikey: SUPABASE_PUBLISHABLE_KEY,
+    'content-type': 'application/json',
+    ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+    ...(options.headers || {}),
+  };
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/web-api${path}`, { ...options, headers });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error?.message || payload?.error || `Request failed (${response.status})`);
+  return payload;
+}
 
 function setBusy(message='Loading…') {
   app.innerHTML = `<div class="view shell"><div class="spinner"></div><div class="empty">${esc(message)}</div></div>`;
@@ -165,26 +178,61 @@ function renderQuestion(q,i){
 
 async function renderCbtSetup(){
   if(!requireAuth()) return;
-  clearCbtTimer(); cbtState=null; setBusy('Preparing CBT…');
+  clearCbtTimer(); cbtState=null; cbtSetupState=null; setBusy('Preparing CBT…');
   try{
     const lists=await loadCurriculumLists();
-    app.innerHTML=`<main class="shell view"><div class="dashboard-head"><div><p class="eyebrow">Computer-Based Test</p><h1 style="margin:10px 0 4px">Curriculum CBT</h1><p class="muted">Choose a class and subject. Questions are drawn randomly from the active curriculum bank and graded securely after submission.</p></div><span class="notice">Answer keys stay server-side</span></div><div class="card form-card" style="max-width:760px"><div id="cbt-notice"></div><div class="field"><label>Class</label><select id="cbt-class"><option value="">Choose class</option>${lists.classes.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select></div><div class="field"><label>Subject</label><select id="cbt-subject"><option value="">Choose subject</option>${lists.subjects.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select></div><div class="field"><label>Number of questions</label><select id="cbt-count"><option>10</option><option selected>20</option><option>30</option><option>40</option><option>50</option></select></div><div class="notice">Timing: 1 minute per question. The test submits automatically when time expires.</div><button id="start-cbt" class="btn primary" style="margin-top:18px">Start CBT</button></div></main>`;
-    document.getElementById('start-cbt').addEventListener('click',startCbt);
+    app.innerHTML=`<main class="shell view"><div class="dashboard-head"><div><p class="eyebrow">Computer-Based Test</p><h1 style="margin:10px 0 4px">Choose what to practise</h1><p class="muted">Select a question source and subject first. You will choose the number of questions on the next screen.</p></div><span class="notice">Secure server-side grading</span></div><div class="card form-card" style="max-width:760px"><div id="cbt-notice"></div><div class="field"><label>Question source</label><select id="cbt-source"><option value="curriculum">Curriculum practice</option><option value="jamb">JAMB past questions</option><option value="waec">WAEC past questions</option></select></div><div id="cbt-class-field" class="field"><label>Class</label><select id="cbt-class"><option value="">Choose class</option>${lists.classes.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select></div><div class="field"><label>Subject</label><select id="cbt-subject"><option value="">Choose subject</option>${lists.subjects.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select></div><button id="continue-cbt" class="btn primary" style="margin-top:18px">Continue →</button></div></main>`;
+    const source=document.getElementById('cbt-source');
+    const classField=document.getElementById('cbt-class-field');
+    source.addEventListener('change',()=>{classField.style.display=source.value==='curriculum'?'':'none';});
+    document.getElementById('continue-cbt').addEventListener('click',()=>{
+      const sourceValue=source.value;
+      const classEl=document.getElementById('cbt-class');
+      const subjectEl=document.getElementById('cbt-subject');
+      const classId=classEl.value, subjectId=subjectEl.value;
+      const notice=document.getElementById('cbt-notice');
+      if(!subjectId||(sourceValue==='curriculum'&&!classId)){notice.innerHTML='<div class="notice error">Choose the required class and subject before continuing.</div>';return;}
+      cbtSetupState={
+        source:sourceValue,
+        classId:sourceValue==='curriculum'?classId:null,
+        className:sourceValue==='curriculum'?(classEl.selectedOptions[0]?.textContent||'Class'):(sourceValue.toUpperCase()),
+        subjectId,
+        subjectName:subjectEl.selectedOptions[0]?.textContent||'Subject',
+      };
+      go('/cbt/count');
+    });
   }catch(error){app.innerHTML=`<main class="shell view"><div class="notice error">Unable to prepare CBT: ${esc(error.message)}</div></main>`;}
 }
 
+function renderCbtCountSetup(){
+  if(!requireAuth()) return;
+  if(!cbtSetupState) return go('/cbt');
+  const sourceLabel=cbtSetupState.source==='curriculum'?'Curriculum practice':`${cbtSetupState.source.toUpperCase()} past questions`;
+  app.innerHTML=`<main class="shell view"><div class="row space"><a href="#/cbt" class="btn">← Change selection</a><span class="notice">${esc(sourceLabel)}</span></div><div class="card form-card" style="max-width:720px;margin-top:24px"><p class="eyebrow">CBT setup</p><h1>How many questions?</h1><p class="muted">${esc(cbtSetupState.subjectName)} · ${esc(cbtSetupState.className)}</p><div id="cbt-notice"></div><div class="field"><label>Number of questions</label><select id="cbt-count"><option>10</option><option selected>20</option><option>30</option><option>40</option><option>50</option></select></div><div class="notice">Timing: 1 minute per question. The test submits automatically when time expires.</div><button id="start-cbt" class="btn primary" style="margin-top:18px;width:100%">Start CBT</button></div></main>`;
+  document.getElementById('start-cbt').addEventListener('click',startCbt);
+}
+
 async function startCbt(){
-  const classId=document.getElementById('cbt-class').value, subjectId=document.getElementById('cbt-subject').value, count=Number(document.getElementById('cbt-count').value||20), notice=document.getElementById('cbt-notice'), btn=document.getElementById('start-cbt');
-  if(!classId||!subjectId){notice.innerHTML='<div class="notice error">Choose both class and subject.</div>';return;}
+  if(!cbtSetupState) return go('/cbt');
+  const count=Number(document.getElementById('cbt-count')?.value||20), notice=document.getElementById('cbt-notice'), btn=document.getElementById('start-cbt');
   btn.disabled=true; notice.innerHTML='<div class="notice">Loading random questions…</div>';
-  const {data,error}=await supabase.rpc('cbt_get_questions',{p_class_id:classId,p_subject_id:subjectId,p_count:count});
-  btn.disabled=false;
-  if(error){notice.innerHTML=`<div class="notice error">${esc(error.message)}</div>`;return;}
-  if(!data?.length){notice.innerHTML='<div class="notice error">No active multiple-choice questions are available for this class and subject yet.</div>';return;}
-  const className=document.getElementById('cbt-class').selectedOptions[0]?.textContent||'Class';
-  const subjectName=document.getElementById('cbt-subject').selectedOptions[0]?.textContent||'Subject';
-  cbtState={questions:data,answers:{},flagged:new Set(),current:0,seconds:data.length*60,className,subjectName,startedAt:Date.now()};
-  renderCbtExam(); startCbtTimer();
+  try{
+    let questions=[];
+    if(cbtSetupState.source==='curriculum'){
+      const result=await supabase.rpc('cbt_get_questions',{p_class_id:cbtSetupState.classId,p_subject_id:cbtSetupState.subjectId,p_count:count});
+      if(result.error) throw result.error;
+      questions=result.data||[];
+    }else{
+      const payload=await learnerApi('/past-questions/session',{method:'POST',body:JSON.stringify({board:cbtSetupState.source,subjectId:cbtSetupState.subjectId,count})});
+      questions=payload?.data?.questions||[];
+    }
+    if(!questions.length) throw new Error('No graded multiple-choice questions are available for this selection yet.');
+    cbtState={questions,answers:{},flagged:new Set(),current:0,seconds:questions.length*60,className:cbtSetupState.className,subjectName:cbtSetupState.subjectName,source:cbtSetupState.source,startedAt:Date.now()};
+    go('/cbt/exam');
+  }catch(error){
+    btn.disabled=false;
+    notice.innerHTML=`<div class="notice error">${esc(error.message||'Unable to start CBT')}</div>`;
+  }
 }
 
 function startCbtTimer(){
@@ -201,6 +249,7 @@ function formatTime(seconds){return `${Math.floor(seconds/60)}:${String(seconds%
 
 function renderCbtExam(){
   if(!cbtState) return go('/cbt');
+  if(!cbtTimer) startCbtTimer();
   const q=cbtState.questions[cbtState.current], options=Array.isArray(q.options)?q.options:[], answered=Object.values(cbtState.answers).filter(v=>v!==undefined&&v!=='').length;
   app.innerHTML=`<main class="shell view"><div class="card" style="position:sticky;top:10px;z-index:5;display:flex;justify-content:space-between;gap:16px;align-items:center"><div><strong>${esc(cbtState.subjectName)} CBT</strong><div class="muted">${esc(cbtState.className)} · Answered ${answered}/${cbtState.questions.length}</div></div><div id="cbt-timer" class="notice" style="font-size:18px;font-weight:800">${formatTime(cbtState.seconds)}</div></div><div style="display:grid;grid-template-columns:minmax(180px,240px) 1fr;gap:20px;margin-top:20px" class="cbt-layout"><aside class="card"><strong>Questions</strong><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px">${cbtState.questions.map((item,i)=>`<button class="btn cbt-jump" data-index="${i}" style="padding:8px;${i===cbtState.current?'outline:2px solid var(--gold);':''}${cbtState.answers[item.id]!==undefined?'background:rgba(34,197,94,.12);':''}">${i+1}${cbtState.flagged.has(item.id)?' ⚑':''}</button>`).join('')}</div></aside><section class="card"><div class="row space"><span class="muted">Question ${cbtState.current+1} of ${cbtState.questions.length}</span><button id="flag-question" class="btn">${cbtState.flagged.has(q.id)?'⚑ Flagged':'⚑ Flag for review'}</button></div><h2 style="margin-top:22px">${esc(q.question_text)}</h2><div class="options" style="margin-top:20px">${options.map((o,i)=>{const value=String(optionValue(o,i));const selected=String(cbtState.answers[q.id]??'')===value;return `<button class="option cbt-option" data-value="${esc(value)}" style="width:100%;text-align:left;${selected?'border-color:var(--gold);background:rgba(202,154,70,.12);':''}"><strong>${esc(value)}.</strong> ${esc(optionText(o))}</button>`}).join('')}</div><div class="row space" style="margin-top:24px"><button id="cbt-prev" class="btn" ${cbtState.current===0?'disabled':''}>← Previous</button><div class="row"><button id="cbt-next" class="btn" ${cbtState.current===cbtState.questions.length-1?'disabled':''}>Next →</button><button id="cbt-submit" class="btn primary">Submit CBT</button></div></div></section></div></main>`;
   document.querySelectorAll('.cbt-jump').forEach(b=>b.addEventListener('click',()=>{cbtState.current=Number(b.dataset.index);renderCbtExam();}));
@@ -216,10 +265,23 @@ async function submitCbt(automatic=false){
   const unanswered=cbtState.questions.filter(q=>cbtState.answers[q.id]===undefined||cbtState.answers[q.id]==='').length;
   if(!automatic&&!window.confirm(`Submit this CBT? ${unanswered} question(s) are unanswered.`)) return;
   clearCbtTimer(); setBusy('Grading your CBT securely…');
-  const payload=cbtState.questions.map(q=>({question_id:q.id,answer:cbtState.answers[q.id]??''}));
-  const {data,error}=await supabase.rpc('cbt_grade',{p_answers:payload});
-  if(error){app.innerHTML=`<main class="shell view"><div class="notice error">Unable to grade CBT: ${esc(error.message)}</div><button id="retry-cbt" class="btn">Return to CBT</button></main>`;document.getElementById('retry-cbt').addEventListener('click',()=>{renderCbtExam();startCbtTimer();});return;}
-  cbtState.result=data; cbtState.elapsed=Math.max(0,Math.round((Date.now()-cbtState.startedAt)/1000)); renderCbtResults();
+  try{
+    let result;
+    if(cbtState.source==='curriculum'){
+      const payload=cbtState.questions.map(q=>({question_id:q.id,answer:cbtState.answers[q.id]??''}));
+      const response=await supabase.rpc('cbt_grade',{p_answers:payload});
+      if(response.error) throw response.error;
+      result=response.data;
+    }else{
+      const answers=cbtState.questions.map(q=>({questionId:q.id,answer:cbtState.answers[q.id]??''}));
+      const response=await learnerApi('/past-questions/grade',{method:'POST',body:JSON.stringify({answers})});
+      result=response?.data?.result;
+    }
+    cbtState.result=result; cbtState.elapsed=Math.max(0,Math.round((Date.now()-cbtState.startedAt)/1000)); go('/cbt/results');
+  }catch(error){
+    app.innerHTML=`<main class="shell view"><div class="notice error">Unable to grade CBT: ${esc(error.message||'Unknown error')}</div><button id="retry-cbt" class="btn">Return to CBT</button></main>`;
+    document.getElementById('retry-cbt').addEventListener('click',()=>go('/cbt/exam'));
+  }
 }
 
 function renderCbtResults(){
@@ -239,6 +301,8 @@ async function render(){
   if(path==='/dashboard') return renderDashboard();
   if(path==='/curriculum') return renderCurriculum();
   if(path==='/cbt') return renderCbtSetup();
+  if(path==='/cbt/count') return renderCbtCountSetup();
+  if(path==='/cbt/exam') return renderCbtExam();
   if(path==='/cbt/results') return renderCbtResults();
   if(path.startsWith('/topic/')) return renderTopic(path.split('/')[2]);
   renderNotFound();

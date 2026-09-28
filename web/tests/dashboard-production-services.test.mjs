@@ -95,3 +95,32 @@ test('school browse and join are implemented in the Supabase web API', () => {
   assert.match(source, /school_students/);
   assert.match(source, /school_teachers/);
 });
+
+test('root CBT uses a separate question-count screen and can draw storage-backed past questions', () => {
+  const source = read('../../pages/app.js');
+  assert.match(source, /renderCbtCountSetup/);
+  assert.match(source, /path==='\/cbt\/count'/);
+  assert.match(source, /path==='\/cbt\/exam'/);
+  assert.match(source, /past-questions\/session/);
+  assert.match(source, /past-questions\/grade/);
+  const setupBlock = source.slice(source.indexOf('async function renderCbtSetup'), source.indexOf('function renderCbtCountSetup'));
+  assert.doesNotMatch(setupBlock, /id="cbt-count"/);
+});
+
+test('flashcard generation is curriculum-first and does not wait on AI when lessons are sufficient', () => {
+  const fn = read('../../supabase/functions/flashcards/index.ts');
+  const page = read('../src/app/dashboard/flashcards/page.tsx');
+  assert.match(fn, /groundedFallbackCards\(topic as Record<string, unknown>, lessonRows \|\| \[\], count\)/);
+  assert.match(fn, /cards\.length < Math\.min\(5, count\)/);
+  assert.match(fn, /timeoutMs = 8_000/);
+  assert.match(page, /useState\(10\)/);
+  assert.match(page, /Building from lesson/);
+});
+
+test('past-question CBT session and grading stay server-side', () => {
+  const source = read('../../supabase/functions/web-api/index.ts');
+  assert.match(source, /path==='\/past-questions\/session'/);
+  assert.match(source, /path==='\/past-questions\/grade'/);
+  assert.match(source, /correct_answer/);
+  assert.match(source, /const\{correct_answer,\.\.\.safe\}=row/);
+});

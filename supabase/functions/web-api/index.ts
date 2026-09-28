@@ -33,6 +33,67 @@ Deno.serve(async(request)=>{const origin=safeOrigin(request);if(request.method==
 if(request.method==='GET'&&path==='/questions'){const page=asInt(url.searchParams.get('page'),1,1,10000),limit=asInt(url.searchParams.get('limit'),20,1,100),classId=url.searchParams.get('classId'),subjectId=url.searchParams.get('subjectId'),from=(page-1)*limit;let query=admin.from('questions').select('id,subject_id,topic_id,class_id,question_type,question_text,question_image_url,options,difficulty,marks,source,exam_year,exam_name,tags',{count:'exact'}).eq('is_active',true).not('source','in','("THE GUIDE Curriculum Practice","NERDC_GENERATED","SYLLABUS_GENERATED")').order('created_at',{ascending:false}).range(from,from+limit-1);if(classId)query=query.eq('class_id',classId);if(subjectId)query=query.eq('subject_id',subjectId);const{data,error,count}=await query;if(error)throw error;const questions=(data||[]).map((row:any)=>({id:row.id,subjectId:row.subject_id,topicId:row.topic_id,classId:row.class_id,questionType:row.question_type,questionText:row.question_text,questionImageUrl:row.question_image_url,options:row.options,difficulty:row.difficulty,marks:row.marks,source:row.source,examYear:row.exam_year,examName:row.exam_name,tags:row.tags}));const total=count||0;return json({data:{questions},pagination:{page,limit,total,totalPages:Math.ceil(total/limit)}},200,origin)}
 if(request.method==='GET'&&path==='/past-questions'){const page=asInt(url.searchParams.get('page'),1,1,10000),limit=asInt(url.searchParams.get('limit'),20,1,100),board=url.searchParams.get('board'),subjectId=url.searchParams.get('subjectId'),year=url.searchParams.get('year'),from=(page-1)*limit;let query=admin.from('past_questions').select('id,board,year,subject_id,topic_id,question_type,question_text,question_image_url,options,difficulty,marks,source,tags,correct_answer',{count:'exact'}).eq('is_active',true).order('year',{ascending:false}).range(from,from+limit-1);if(board)query=query.ilike('board',board);if(subjectId)query=query.eq('subject_id',subjectId);if(year)query=query.eq('year',Number(year));const{data,error,count}=await query;if(error)throw error;const questions=(data||[]).map((row:any)=>{const{correct_answer,...safe}=row;return{...safe,hasAnswer:Boolean(scalarAnswer(correct_answer))}});const total=count||0;return json({data:{questions},pagination:{page,limit,total,totalPages:Math.ceil(total/limit)}},200,origin)}
 if(request.method==='GET'&&path==='/past-question-availability'){const availability:Record<string,{subjectIds:string[];years:number[]}>={};for(let from=0;from<50000;from+=1000){const{data,error}=await admin.from('past_questions').select('board,subject_id,year').eq('is_active',true).range(from,from+999);if(error)throw error;for(const row of data||[]){const board=String(row.board||'').toLowerCase();if(!board)continue;const item=availability[board]||(availability[board]={subjectIds:[],years:[]});const subject=String(row.subject_id||'');if(subject&&!item.subjectIds.includes(subject))item.subjectIds.push(subject);const year=Number(row.year||0);if(year&&!item.years.includes(year))item.years.push(year)}if((data||[]).length<1000)break}for(const item of Object.values(availability))item.years.sort((a,b)=>b-a);return json({data:{availability}},200,origin)}
+
+if(request.method==='POST'&&path==='/past-questions/session'){
+  await requireUser();
+  const body=await request.json().catch(()=>null);
+  const board=String(body?.board||'').toLowerCase();
+  const subjectId=String(body?.subjectId||'');
+  const year=body?.year?Number(body.year):null;
+  const requested=asInt(String(body?.count||20),20,5,100);
+  if(!['jamb','waec','neco','nabteb'].includes(board))return json({error:{message:'Valid examination board is required'}},400,origin);
+  if(!/^[0-9a-f-]{36}$/i.test(subjectId))return json({error:{message:'Valid subject is required'}},400,origin);
+  const applyFilters=(query:any)=>{
+    let q=query.eq('is_active',true).ilike('board',board).eq('subject_id',subjectId).eq('question_type','mcq').not('correct_answer','is',null);
+    if(year)q=q.eq('year',year);
+    return q;
+  };
+  const countResult=await applyFilters(admin.from('past_questions').select('id',{count:'exact',head:true}));
+  if(countResult.error)throw countResult.error;
+  const total=countResult.count||0;
+  if(!total)return json({error:{message:'No graded multiple-choice questions are available for this selection yet'}},404,origin);
+  const columns='id,board,year,subject_id,question_type,question_text,question_image_url,options,difficulty,marks,source,correct_answer';
+  const pool:any[]=[]; const seen=new Set<string>();
+  const windowSize=Math.min(200,Math.max(requested*3,60));
+  const windows=total<=windowSize?1:Math.min(5,Math.ceil((requested*5)/windowSize));
+  for(let i=0;i<windows;i++){
+    const offset=total<=windowSize?0:Math.floor(Math.random()*Math.max(1,total-windowSize+1));
+    const query=applyFilters(admin.from('past_questions').select(columns)).range(offset,Math.min(total-1,offset+windowSize-1));
+    const{data,error}=await query;if(error)throw error;
+    for(const row of data||[]){
+      if(seen.has(row.id))continue;
+      const answer=scalarAnswer(row.correct_answer),options=Array.isArray(row.options)?row.options:[];
+      if(!answer||options.length<2)continue;
+      seen.add(row.id);pool.push(row);
+    }
+  }
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}
+  const selected=pool.slice(0,Math.min(requested,pool.length)).map((row:any)=>{const{correct_answer,...safe}=row;return safe});
+  if(!selected.length)return json({error:{message:'No usable graded questions were found for this selection'}},404,origin);
+  return json({data:{questions:selected,requestedCount:requested,returnedCount:selected.length,availableCount:total}},200,origin)
+}
+if(request.method==='POST'&&path==='/past-questions/grade'){
+  await requireUser();
+  const body=await request.json().catch(()=>null);
+  const answers=Array.isArray(body?.answers)?body.answers.slice(0,100):[];
+  if(!answers.length)return json({error:{message:'Answers are required'}},400,origin);
+  const ids=[...new Set(answers.map((item:any)=>String(item?.questionId||'')).filter((id:string)=>/^[0-9a-f-]{36}$/i.test(id)))];
+  if(!ids.length)return json({error:{message:'Valid question IDs are required'}},400,origin);
+  const{data,error}=await admin.from('past_questions').select('id,question_text,correct_answer,explanation,is_active').in('id',ids).eq('is_active',true);
+  if(error)throw error;
+  const byId=new Map((data||[]).map((row:any)=>[String(row.id),row]));
+  let correct=0,incorrect=0,unanswered=0;
+  const results=answers.map((item:any)=>{
+    const id=String(item?.questionId||''),row:any=byId.get(id),submitted=scalarAnswer(item?.answer);
+    const expected=row?scalarAnswer(row.correct_answer):null;
+    if(!row||!submitted){unanswered++;return{question_id:id,is_correct:false,correct_answer:expected,explanation:row?.explanation||null}}
+    const ok=Boolean(expected&&submitted.toLowerCase()===expected.toLowerCase());
+    if(ok)correct++;else incorrect++;
+    return{question_id:id,is_correct:ok,correct_answer:expected,explanation:row.explanation||null}
+  });
+  const total=answers.length,percentage=total?Math.round(correct/total*10000)/100:0;
+  return json({data:{result:{total,correct,incorrect,unanswered,percentage,results}}},200,origin)
+}
 const questionCheck=path.match(/^\/(questions|past-questions)\/([0-9a-f-]+)\/check$/i);if(request.method==='POST'&&questionCheck){await requireUser();const payload=await request.json().catch(()=>({}));const submitted=scalarAnswer(payload?.answer);if(!submitted)return json({error:{message:'Answer is required'}},400,origin);const table=questionCheck[1]==='past-questions'?'past_questions':'questions';const columns=table==='past_questions'?'id,correct_answer,explanation,is_active':'id,correct_answer,explanation,explanation_image_url,is_active';const{data:row,error}=await admin.from(table).select(columns).eq('id',questionCheck[2]).eq('is_active',true).maybeSingle();if(error||!row)return json({error:{message:'Question not found'}},404,origin);const correctAnswer=scalarAnswer((row as any).correct_answer);if(!correctAnswer)return json({data:{result:{isCorrect:null,correctAnswer:null,explanation:(row as any).explanation||'This source question does not include a verified answer key yet. Your response is kept as practice and is not marked right or wrong.',explanationImageUrl:(row as any).explanation_image_url||null}}},200,origin);const isCorrect=submitted.toLowerCase()===correctAnswer.toLowerCase();return json({data:{result:{isCorrect,correctAnswer,explanation:(row as any).explanation||null,explanationImageUrl:(row as any).explanation_image_url||null}}},200,origin)}
 
 if(request.method==='GET'&&path==='/exams'){
