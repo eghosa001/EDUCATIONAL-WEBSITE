@@ -189,3 +189,13 @@ test('AI Tutor allows Bynara production latency above the old 45-second limit', 
   const source = read('../supabase/functions/ai/index.ts');
   assert.match(source, /controller\.abort\(\), 100_000/);
 });
+
+
+test('AI Tutor uses fast free Bynara models with fallback', () => {
+  const source = read('../supabase/functions/ai/index.ts');
+  assert.match(source, /AI_TUTOR_MODEL/);
+  assert.match(source, /ling-3\.0-flash-fin-free/);
+  assert.match(source, /AI_TUTOR_FALLBACK_MODEL/);
+  assert.match(source, /laguna-s-2\.1/);
+  assert.match(source, /openAITutor\(messages\)/);
+});

@@ -39,13 +39,19 @@ const parseJson = (content: string): unknown => {
   }
 };
 
-const openAI = async (messages: Array<{ role: string; content: string }>, maxTokens = 1000, temperature = 0.7) => {
+const openAI = async (
+  messages: Array<{ role: string; content: string }>,
+  maxTokens = 1000,
+  temperature = 0.7,
+  modelOverride?: string,
+  timeoutMs = 100_000,
+) => {
   const key = Deno.env.get('BYNARA_API_KEY');
   const baseUrl = (Deno.env.get('BYNARA_BASE_URL') || 'https://router.bynara.id/v1').replace(/\/$/, '');
-  const model = Deno.env.get('AI_DEFAULT_MODEL') || 'agnes-2.5-flash';
+  const model = modelOverride || Deno.env.get('AI_DEFAULT_MODEL') || 'agnes-2.5-flash';
   if (!key) throw new Error('Bynara AI provider is not configured');
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 100_000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
@@ -60,6 +66,22 @@ const openAI = async (messages: Array<{ role: string; content: string }>, maxTok
     }
     return await response.json();
   } finally { clearTimeout(timeout); }
+};
+
+const openAITutor = async (messages: Array<{ role: string; content: string }>) => {
+  const preferred = Deno.env.get('AI_TUTOR_MODEL') || 'ling-3.0-flash-fin-free';
+  const fallback = Deno.env.get('AI_TUTOR_FALLBACK_MODEL') || 'laguna-s-2.1';
+  const models = [...new Set([preferred, fallback])];
+  let lastError: unknown = null;
+  for (const model of models) {
+    try {
+      return await openAI(messages, 700, 0.6, model, 30_000);
+    } catch (error) {
+      lastError = error;
+      console.warn('Tutor model failed; trying fallback if available:', model, error instanceof Error ? error.message : String(error));
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('AI tutor provider request failed');
 };
 
 const validateQuiz = (value: unknown, expectedCount: number) => {
@@ -185,7 +207,7 @@ Deno.serve(async (request) => {
         ...((previous || []).reverse() as Array<{ role: string; content: string }>),
         { role: 'user', content: message },
       ];
-      const response = await openAI(messages, 1000, 0.7);
+      const response = await openAITutor(messages);
       const answer = cleanString(response.choices?.[0]?.message?.content, 12000);
       if (!answer) throw new Error('AI returned an empty response');
       tokensUsed = Number(response.usage?.total_tokens || 0);
