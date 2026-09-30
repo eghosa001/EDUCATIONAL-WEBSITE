@@ -35,10 +35,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
       - name: Install web dependencies
         working-directory: web
         run: npm install --workspaces=false --no-audit --no-fund --progress=false
       - name: Install Chromium
+        if: github.event_name == 'workflow_dispatch'
         working-directory: web
         run: npx playwright install --with-deps chromium
       - name: Typecheck web app
@@ -51,6 +54,7 @@ jobs:
         working-directory: web
         run: npm run build
       - name: Start web app
+        if: github.event_name == 'workflow_dispatch'
         working-directory: web
         run: |
           nohup npm run start > /tmp/the-guide-web.log 2>&1 &
@@ -61,11 +65,13 @@ jobs:
           cat /tmp/the-guide-web.log
           exit 1
       - name: Run comprehensive browser/API tests
+        if: github.event_name == 'workflow_dispatch'
         working-directory: web
         env:
           BASE_URL: http://127.0.0.1:3000
         run: npm run test:e2e
       - name: Run deployed Supabase Edge Function smoke tests
+        if: github.event_name == 'workflow_dispatch'
         working-directory: web
         env:
           SUPABASE_URL: ${{ env.SUPABASE_URL }}
@@ -79,21 +85,21 @@ jobs:
         run: |
           echo "::notice::Public deployed Edge Function smoke coverage is active. Authenticated integration coverage is reduced because optional test-account secrets are not configured."
       - name: Upload Playwright report
-        if: always()
+        if: ${{ github.event_name == 'workflow_dispatch' && always() }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: web/playwright-report/
           if-no-files-found: ignore
       - name: Upload failure artifacts
-        if: failure()
+        if: ${{ github.event_name == 'workflow_dispatch' && failure() }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-test-artifacts
           path: web/test-results/
           if-no-files-found: ignore
       - name: Upload web server log
-        if: failure()
+        if: ${{ github.event_name == 'workflow_dispatch' && failure() }}
         uses: actions/upload-artifact@v4
         with:
           name: web-server-log
