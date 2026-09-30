@@ -1,11 +1,6 @@
 name: OCR stored past questions
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/ocr-past-questions.yml'
-      - 'scripts/ocr_past_questions.py'
   workflow_dispatch:
 
 permissions:
