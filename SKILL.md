@@ -27,9 +27,9 @@ Before editing anything:
 
 If the user points to a visible UI problem, verify which deployed surface owns that UI before editing.
 
-### 2. Parallelize independent work
+### 2. Use one direct path unless parallelism is demonstrably faster
 
-When tools support parallel work, split independent tasks immediately.
+Start with one direct implementation path. Batch independent reads when useful, but do not create parallel workstreams unless doing so will materially shorten the critical path.
 
 Good parallel tracks include:
 
@@ -39,9 +39,9 @@ Good parallel tracks include:
 - Vercel deployment inspection
 - regression-test inspection
 
-Use subagents when available for independent workstreams. Give each subagent a narrow, non-overlapping task and merge only the useful results.
+Subagents are not a default. Use them only when the canonical fast-production skill's subagent gate is fully satisfied; otherwise continue with one coordinator.
 
-If subagents are unavailable, batch independent connector/tool calls concurrently rather than doing them one by one.
+When safe, batch independent connector/tool reads without creating extra agents.
 
 Never have two agents investigate the same thing unless the first result is inconclusive.
 
