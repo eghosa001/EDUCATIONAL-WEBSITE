@@ -3,8 +3,24 @@ name: Comprehensive Tests
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
+      - 'GEMINI.md'
+      - '.agents/**'
+      - '.github/copilot-instructions.md'
+      - '.github/workflows/fast-policy.yml'
+      - 'scripts/fast_path_guard.py'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
+      - 'GEMINI.md'
+      - '.agents/**'
+      - '.github/copilot-instructions.md'
+      - '.github/workflows/fast-policy.yml'
+      - 'scripts/fast_path_guard.py'
   workflow_dispatch:
 
 concurrency:
@@ -35,8 +51,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: web/package-lock.json
       - name: Install web dependencies
         working-directory: web
         run: npm install --workspaces=false --no-audit --no-fund --progress=false
