@@ -24,6 +24,6 @@ from candidates c
 where l.id=c.id
   and c.body_heading is not null
   and length(c.body_heading) between 20 and 220
-  and c.body_heading ~* '^(Primary|JSS|SSS|Junior|Senior)\b'
+  and c.body_heading ~* '^(Primary|JSS|SSS|Junior|Senior)([[:space:]]|[0-9])'
   and c.body_heading <> c.old_title
   and c.body_heading !~* '(definition|introduction|summary|conclusion)$';
