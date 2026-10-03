@@ -137,50 +137,344 @@ if(request.method==='POST'&&startExamMatch){
   const now=Date.now();
   if(exam.start_time&&new Date(exam.start_time).getTime()>now)return json({error:{message:'Exam has not started yet'}},400,origin);
   if(exam.end_time&&new Date(exam.end_time).getTime()<now)return json({error:{message:'Exam has ended'}},400,origin);
-  const{count:attemptCount,error:attemptCountError}=await admin.from('exam_attempts').select('id',{count:'exact',head:true}).eq('exam_id',examId).eq('student_id',user.id);
-  if(attemptCountError)throw attemptCountError;
-  const attempts=attemptCount||0; const maxAttempts=Number(exam.max_attempts||5);
-  if(attempts>=maxAttempts)return json({error:{message:'Maximum attempts reached for this exam'}},400,origin);
-  const{data:links,error:linksError}=await admin.from('exam_questions').select('id,question_id,order_index,marks,section_name,question:questions(id,question_text,question_type,options,difficulty,is_active,source)').eq('exam_id',examId).order('order_index',{ascending:true});
+
+  const{data:attemptRows,error:attemptRowsError}=await admin.from('exam_attempts')
+    .select('id,exam_id,student_id,attempt_number,status,started_at,submitted_at,time_spent_seconds,score,percentage,is_passed,metadata')
+    .eq('exam_id',examId).eq('student_id',user.id).order('attempt_number',{ascending:false});
+  if(attemptRowsError)throw attemptRowsError;
+  const attempts=attemptRows||[];
+  const maxAttempts=Math.max(1,Number(exam.max_attempts||5));
+  const durationSeconds=Math.max(60,Number(exam.duration_minutes||60)*60);
+  let active:any=attempts.find((row:any)=>row.status==='in_progress')||null;
+  let finalized=attempts.filter((row:any)=>row.status==='submitted'||row.status==='expired').length;
+
+  if(active&&exam.is_timed){
+    const meta=(active.metadata&&typeof active.metadata==='object')?active.metadata:{};
+    const startedMs=new Date(active.started_at).getTime();
+    const deadlineMs=Date.parse(String(meta.deadlineAt||''))||startedMs+durationSeconds*1000;
+    if(now>deadlineMs){
+      const expiredMeta={...meta,timedOut:true,deadlineAt:new Date(deadlineMs).toISOString()};
+      const expired=await admin.from('exam_attempts').update({
+        status:'expired',
+        submitted_at:new Date(deadlineMs).toISOString(),
+        time_spent_seconds:durationSeconds,
+        metadata:expiredMeta,
+      }).eq('id',active.id).eq('student_id',user.id);
+      if(expired.error)throw expired.error;
+      active=null;
+      finalized+=1;
+    }
+  }
+  if(!active&&finalized>=maxAttempts)return json({error:{message:'Maximum attempts reached for this exam'}},400,origin);
+
+  const{data:links,error:linksError}=await admin.from('exam_questions')
+    .select('id,question_id,order_index,marks,section_name,question:questions(id,question_text,question_type,options,difficulty,is_active,source)')
+    .eq('exam_id',examId).order('order_index',{ascending:true});
   if(linksError)throw linksError;
-  const questions=(links||[]).filter((row:any)=>row.question?.is_active&&isVerifiedExamSource(row.question?.source)).map((row:any)=>({id:row.id,questionId:row.question_id,questionText:row.question?.question_text||'',questionType:row.question?.question_type||'mcq',options:row.question?.options||[],marks:Number(row.marks||1),orderIndex:Number(row.order_index||0),sectionName:row.section_name||undefined,difficulty:row.question?.difficulty||undefined}));
-  if(!questions.length)return json({error:{message:'This exam has no available questions'}},400,origin);
-  if(exam.shuffle_questions)questions.sort(()=>Math.random()-0.5);
-  const{data:attempt,error:attemptError}=await admin.from('exam_attempts').insert({exam_id:examId,student_id:user.id,attempt_number:attempts+1,status:'in_progress',started_at:new Date().toISOString()}).select('id,exam_id,student_id,attempt_number,status,started_at').single();
-  if(attemptError)throw attemptError;
-  return json({data:{attempt,exam:{id:exam.id,title:exam.title,durationMinutes:Number(exam.duration_minutes||60),isTimed:Boolean(exam.is_timed),totalQuestions:questions.length},questions}},201,origin);
+  const available=(links||[]).filter((row:any)=>row.question?.is_active&&isVerifiedExamSource(row.question?.source));
+  if(!available.length)return json({error:{message:'This exam has no available questions'}},400,origin);
+
+  let selected:any[]=[];
+  let attempt:any=active;
+  let metadata:any=(active?.metadata&&typeof active.metadata==='object')?active.metadata:{};
+  if(active){
+    const ids=Array.isArray(metadata.questionIds)?metadata.questionIds.map((id:any)=>String(id)):[];
+    if(ids.length){
+      const byId=new Map(available.map((row:any)=>[String(row.question_id),row]));
+      selected=ids.map((id:string)=>byId.get(id)).filter(Boolean);
+    }
+    if(!selected.length)selected=[...available];
+  }else{
+    selected=[...available];
+    if(exam.shuffle_questions)selected.sort(()=>Math.random()-0.5);
+    const startedAt=new Date();
+    const deadlineAt=exam.is_timed?new Date(startedAt.getTime()+durationSeconds*1000).toISOString():null;
+    metadata={
+      questionIds:selected.map((row:any)=>String(row.question_id)),
+      deadlineAt,
+      durationSeconds,
+      timed:Boolean(exam.is_timed),
+    };
+    const nextAttemptNumber=Math.max(0,...attempts.map((row:any)=>Number(row.attempt_number||0)))+1;
+    const created=await admin.from('exam_attempts').insert({
+      exam_id:examId,
+      student_id:user.id,
+      attempt_number:nextAttemptNumber,
+      status:'in_progress',
+      started_at:startedAt.toISOString(),
+      metadata,
+    }).select('id,exam_id,student_id,attempt_number,status,started_at,metadata').single();
+    if(created.error)throw created.error;
+    attempt=created.data;
+  }
+
+  if(!Array.isArray(metadata.questionIds)||!metadata.questionIds.length){
+    metadata={
+      ...metadata,
+      questionIds:selected.map((row:any)=>String(row.question_id)),
+      durationSeconds,
+      timed:Boolean(exam.is_timed),
+      deadlineAt:exam.is_timed
+        ? new Date(new Date(attempt.started_at).getTime()+durationSeconds*1000).toISOString()
+        : null,
+    };
+    const patched=await admin.from('exam_attempts').update({metadata}).eq('id',attempt.id).eq('student_id',user.id);
+    if(patched.error)throw patched.error;
+  }
+
+  const{data:savedAnswerRows,error:savedAnswerError}=await admin.from('exam_answers')
+    .select('question_id,student_answer')
+    .eq('attempt_id',attempt.id);
+  if(savedAnswerError)throw savedAnswerError;
+  const savedAnswers=(savedAnswerRows||[]).map((row:any)=>({questionId:String(row.question_id),studentAnswer:row.student_answer}));
+
+  const questions=selected.map((row:any)=>({
+    id:row.id,
+    questionId:row.question_id,
+    questionText:row.question?.question_text||'',
+    questionType:row.question?.question_type||'mcq',
+    options:row.question?.options||[],
+    marks:Number(row.marks||1),
+    orderIndex:Number(row.order_index||0),
+    sectionName:row.section_name||undefined,
+    difficulty:row.question?.difficulty||undefined,
+  }));
+  const deadlineMs=exam.is_timed
+    ? (Date.parse(String(metadata.deadlineAt||''))||new Date(attempt.started_at).getTime()+durationSeconds*1000)
+    : null;
+  const remainingSeconds=exam.is_timed?Math.max(0,Math.ceil(((deadlineMs as number)-Date.now())/1000)):0;
+  return json({data:{
+    attempt,
+    exam:{
+      id:exam.id,
+      title:exam.title,
+      durationMinutes:Number(exam.duration_minutes||60),
+      isTimed:Boolean(exam.is_timed),
+      totalQuestions:questions.length,
+      remainingSeconds,
+    },
+    questions,
+    savedAnswers,
+    resumed:Boolean(active),
+  }},active?200:201,origin);
 }
+
+const saveExamAnswerMatch=path.match(/^\/exams\/([0-9a-f-]+)\/attempts\/([0-9a-f-]+)\/answer$/i);
+if(request.method==='PATCH'&&saveExamAnswerMatch){
+  const user=await requireUser(); const examId=saveExamAnswerMatch[1],attemptId=saveExamAnswerMatch[2];
+  const payload=await request.json().catch(()=>({}));
+  const questionId=String(payload?.questionId||'');
+  if(!/^[0-9a-f-]{36}$/i.test(questionId))return json({error:{message:'Valid question ID is required'}},400,origin);
+  const{data:attempt,error:attemptError}=await admin.from('exam_attempts')
+    .select('id,status,started_at,metadata')
+    .eq('id',attemptId).eq('exam_id',examId).eq('student_id',user.id).maybeSingle();
+  if(attemptError||!attempt)return json({error:{message:'Attempt not found'}},404,origin);
+  if(attempt.status!=='in_progress')return json({error:{message:'This attempt is no longer active'}},409,origin);
+
+  const{data:exam,error:examError}=await admin.from('exams').select('is_timed,duration_minutes').eq('id',examId).maybeSingle();
+  if(examError||!exam)return json({error:{message:'Exam not found'}},404,origin);
+  const metadata=(attempt.metadata&&typeof attempt.metadata==='object')?attempt.metadata:{};
+  if(exam.is_timed){
+    const deadlineMs=Date.parse(String(metadata.deadlineAt||''))||new Date(attempt.started_at).getTime()+Math.max(60,Number(exam.duration_minutes||60)*60)*1000;
+    if(Date.now()>deadlineMs)return json({error:{message:'Time is up for this attempt'}},409,origin);
+  }
+  const assigned=Array.isArray(metadata.questionIds)?metadata.questionIds.map((id:any)=>String(id)):[];
+  if(assigned.length&&!assigned.includes(questionId))return json({error:{message:'Question is not part of this attempt'}},400,origin);
+  const{data:link,error:linkError}=await admin.from('exam_questions').select('question_id').eq('exam_id',examId).eq('question_id',questionId).maybeSingle();
+  if(linkError||!link)return json({error:{message:'Question is not part of this exam'}},400,origin);
+
+  const answer=payload?.studentAnswer;
+  if(answer===undefined||answer===null||String(answer).trim()===''){
+    const deleted=await admin.from('exam_answers').delete().eq('attempt_id',attemptId).eq('question_id',questionId);
+    if(deleted.error)throw deleted.error;
+    return json({data:{saved:true,cleared:true}},200,origin);
+  }
+
+  const saved=await admin.from('exam_answers').upsert({
+    attempt_id:attemptId,
+    question_id:questionId,
+    student_answer:answer,
+    is_correct:null,
+    marks_obtained:0,
+    time_spent_seconds:Number(payload?.timeSpentSeconds||0)||null,
+    answered_at:new Date().toISOString(),
+  },{onConflict:'attempt_id,question_id'}).select('id,question_id,answered_at').single();
+  if(saved.error)throw saved.error;
+  return json({data:{saved:true,answer:saved.data}},200,origin);
+}
+
 const submitExamMatch=path.match(/^\/exams\/([0-9a-f-]+)\/attempts\/([0-9a-f-]+)\/submit$/i);
 if(request.method==='POST'&&submitExamMatch){
   const user=await requireUser(); const examId=submitExamMatch[1],attemptId=submitExamMatch[2];
   const payload=await request.json().catch(()=>({})); const submittedAnswers=Array.isArray(payload?.answers)?payload.answers:[];
-  const{data:attempt,error:attemptError}=await admin.from('exam_attempts').select('*').eq('id',attemptId).eq('exam_id',examId).eq('student_id',user.id).maybeSingle();
+
+  const{data:attempt,error:attemptError}=await admin.from('exam_attempts').select('*')
+    .eq('id',attemptId).eq('exam_id',examId).eq('student_id',user.id).maybeSingle();
   if(attemptError||!attempt)return json({error:{message:'Attempt not found'}},404,origin);
   if(attempt.status==='submitted')return json({error:{message:'Attempt already submitted'}},409,origin);
-  const{data:exam,error:examError}=await admin.from('exams').select('id,title,passing_marks,total_marks,show_results_immediately,allow_review').eq('id',examId).maybeSingle();
+  if(attempt.status==='expired'&&attempt.score!==null)return json({error:{message:'Attempt already finalized'}},409,origin);
+
+  const{data:exam,error:examError}=await admin.from('exams')
+    .select('id,title,passing_marks,total_marks,show_results_immediately,allow_review,is_timed,duration_minutes,end_time')
+    .eq('id',examId).maybeSingle();
   if(examError||!exam)return json({error:{message:'Exam not found'}},404,origin);
-  const{data:links,error:linksError}=await admin.from('exam_questions').select('question_id,marks,question:questions(id,question_text,question_type,options,correct_answer,explanation,is_active,source)').eq('exam_id',examId);
-  if(linksError)throw linksError;
-  const questionRows=(links||[]).filter((row:any)=>row.question?.is_active&&isVerifiedExamSource(row.question?.source));
-  const byId=new Map(submittedAnswers.map((a:any)=>[String(a?.questionId||''),a]));
-  let score=0,totalMarks=0,correctCount=0,incorrectCount=0;
-  const answerRows:any[]=[]; const review:any[]=[];
-  for(const row of questionRows as any[]){
-    const marks=Number(row.marks||1); totalMarks+=marks; const q=row.question; const submitted:any=byId.get(String(row.question_id));
-    if(!submitted)continue;
-    const isCorrect=answersEqual(q.correct_answer,submitted.studentAnswer,String(q.question_type||'mcq'));
-    const marksObtained=isCorrect?marks:0; score+=marksObtained; if(isCorrect)correctCount++; else incorrectCount++;
-    answerRows.push({attempt_id:attemptId,question_id:row.question_id,student_answer:submitted.studentAnswer??null,is_correct:isCorrect,marks_obtained:marksObtained,time_spent_seconds:Number(submitted.timeSpentSeconds||0)||null,answered_at:new Date().toISOString()});
-    if(exam.show_results_immediately&&exam.allow_review)review.push({questionId:row.question_id,questionText:q.question_text,studentAnswer:submitted.studentAnswer,isCorrect,correctAnswer:q.correct_answer,explanation:q.explanation||null});
+
+  const metadata=(attempt.metadata&&typeof attempt.metadata==='object')?attempt.metadata:{};
+  const durationSeconds=Math.max(60,Number(exam.duration_minutes||60)*60);
+  const deadlineMs=exam.is_timed
+    ? (Date.parse(String(metadata.deadlineAt||''))||new Date(attempt.started_at).getTime()+durationSeconds*1000)
+    : null;
+  const timedOut=Boolean(exam.is_timed&&deadlineMs&&Date.now()>deadlineMs);
+
+  if(!timedOut&&submittedAnswers.length){
+    const assigned=Array.isArray(metadata.questionIds)?metadata.questionIds.map((id:any)=>String(id)):[];
+    const rows=submittedAnswers
+      .map((item:any)=>({
+        questionId:String(item?.questionId||''),
+        studentAnswer:item?.studentAnswer,
+        timeSpentSeconds:Number(item?.timeSpentSeconds||0)||null,
+      }))
+      .filter((item:any)=>/^[0-9a-f-]{36}$/i.test(item.questionId)&&(!assigned.length||assigned.includes(item.questionId))&&item.studentAnswer!==undefined&&item.studentAnswer!==null&&String(item.studentAnswer).trim()!=='')
+      .map((item:any)=>({
+        attempt_id:attemptId,
+        question_id:item.questionId,
+        student_answer:item.studentAnswer,
+        is_correct:null,
+        marks_obtained:0,
+        time_spent_seconds:item.timeSpentSeconds,
+        answered_at:new Date().toISOString(),
+      }));
+    if(rows.length){
+      const saved=await admin.from('exam_answers').upsert(rows,{onConflict:'attempt_id,question_id'});
+      if(saved.error)throw saved.error;
+    }
   }
-  if(answerRows.length){const{error:answerError}=await admin.from('exam_answers').insert(answerRows);if(answerError)throw answerError;}
+
+  const{data:allLinks,error:linksError}=await admin.from('exam_questions')
+    .select('question_id,marks,question:questions(id,question_text,question_type,options,correct_answer,explanation,is_active,source)')
+    .eq('exam_id',examId);
+  if(linksError)throw linksError;
+  const verified=(allLinks||[]).filter((row:any)=>row.question?.is_active&&isVerifiedExamSource(row.question?.source));
+  const assigned=Array.isArray(metadata.questionIds)?metadata.questionIds.map((id:any)=>String(id)):[];
+  const byQuestion=new Map(verified.map((row:any)=>[String(row.question_id),row]));
+  const questionRows=(assigned.length?assigned.map((id:string)=>byQuestion.get(id)).filter(Boolean):verified) as any[];
+  if(!questionRows.length)return json({error:{message:'No gradable questions remain for this attempt'}},409,origin);
+
+  const{data:persisted,error:persistedError}=await admin.from('exam_answers')
+    .select('id,question_id,student_answer,time_spent_seconds')
+    .eq('attempt_id',attemptId);
+  if(persistedError)throw persistedError;
+  const submittedById=new Map((persisted||[]).map((row:any)=>[String(row.question_id),row]));
+
+  let score=0,totalMarks=0,correctCount=0,incorrectCount=0;
+  const gradedRows:any[]=[]; const review:any[]=[];
+  for(const row of questionRows){
+    const marks=Number(row.marks||1); totalMarks+=marks; const q=row.question;
+    const saved:any=submittedById.get(String(row.question_id));
+    if(!saved)continue;
+    const isCorrect=answersEqual(q.correct_answer,saved.student_answer,String(q.question_type||'mcq'));
+    const marksObtained=isCorrect?marks:0;
+    score+=marksObtained;
+    if(isCorrect)correctCount++;else incorrectCount++;
+    gradedRows.push({
+      attempt_id:attemptId,
+      question_id:row.question_id,
+      student_answer:saved.student_answer,
+      is_correct:isCorrect,
+      marks_obtained:marksObtained,
+      time_spent_seconds:saved.time_spent_seconds||null,
+      answered_at:new Date().toISOString(),
+    });
+    if(exam.show_results_immediately&&exam.allow_review)review.push({
+      questionId:row.question_id,
+      questionText:q.question_text,
+      studentAnswer:saved.student_answer,
+      isCorrect,
+      correctAnswer:q.correct_answer,
+      explanation:q.explanation||null,
+    });
+  }
+  if(gradedRows.length){
+    const graded=await admin.from('exam_answers').upsert(gradedRows,{onConflict:'attempt_id,question_id'});
+    if(graded.error)throw graded.error;
+  }
+
   const percentage=totalMarks>0?Math.round((score/totalMarks)*10000)/100:0;
   const passMarks=Number(exam.passing_marks||0); const isPassed=score>=passMarks;
-  const timeSpentSeconds=Math.max(0,Number(payload?.timeSpentSeconds||Math.round((Date.now()-new Date(attempt.started_at).getTime())/1000)));
-  const{data:finalAttempt,error:updateError}=await admin.from('exam_attempts').update({status:'submitted',submitted_at:new Date().toISOString(),time_spent_seconds:timeSpentSeconds,score,percentage,is_passed:isPassed}).eq('id',attemptId).eq('student_id',user.id).select('*').single();
+  const serverElapsed=Math.max(0,Math.round((Date.now()-new Date(attempt.started_at).getTime())/1000));
+  const timeSpentSeconds=exam.is_timed?Math.min(durationSeconds,serverElapsed):serverElapsed;
+  const finalMetadata={...metadata,timedOut};
+  const{data:finalAttempt,error:updateError}=await admin.from('exam_attempts').update({
+    status:'submitted',
+    submitted_at:new Date().toISOString(),
+    time_spent_seconds:timeSpentSeconds,
+    score,
+    percentage,
+    is_passed:isPassed,
+    metadata:finalMetadata,
+  }).eq('id',attemptId).eq('student_id',user.id).select('*').single();
   if(updateError)throw updateError;
-  return json({data:{attempt:finalAttempt,result:{score,totalMarks,percentage,isPassed,correctCount,incorrectCount,unansweredCount:Math.max(0,questionRows.length-answerRows.length),showResults:Boolean(exam.show_results_immediately),answers:review}}},200,origin);
+  return json({data:{attempt:finalAttempt,result:{
+    score,totalMarks,percentage,isPassed,correctCount,incorrectCount,
+    unansweredCount:Math.max(0,questionRows.length-gradedRows.length),
+    showResults:Boolean(exam.show_results_immediately),
+    timedOut,
+    answers:review,
+  }}},200,origin);
 }
+
+const latestExamResultMatch=path.match(/^\/exams\/([0-9a-f-]+)\/attempts\/latest\/result$/i);
+const examResultMatch=path.match(/^\/exams\/([0-9a-f-]+)\/attempts\/([0-9a-f-]+)\/result$/i);
+if(request.method==='GET'&&(latestExamResultMatch||examResultMatch)){
+  const user=await requireUser();
+  const examId=latestExamResultMatch?latestExamResultMatch[1]:examResultMatch![1];
+  const attemptId=examResultMatch?examResultMatch[2]:null;
+  let attemptQuery=admin.from('exam_attempts').select('*').eq('exam_id',examId).eq('student_id',user.id).eq('status','submitted').order('submitted_at',{ascending:false}).limit(1);
+  if(attemptId)attemptQuery=admin.from('exam_attempts').select('*').eq('id',attemptId).eq('exam_id',examId).eq('student_id',user.id).eq('status','submitted').limit(1);
+  const{data:attemptRows,error:attemptError}=await attemptQuery;
+  if(attemptError)throw attemptError;
+  const attempt=(attemptRows||[])[0];
+  if(!attempt)return json({error:{message:'No completed result found for this exam'}},404,origin);
+
+  const{data:exam,error:examError}=await admin.from('exams')
+    .select('id,title,show_results_immediately,allow_review')
+    .eq('id',examId).maybeSingle();
+  if(examError||!exam)return json({error:{message:'Exam not found'}},404,origin);
+
+  const{data:answers,error:answersError}=await admin.from('exam_answers')
+    .select('question_id,student_answer,is_correct,marks_obtained,time_spent_seconds,question:questions(question_text,correct_answer,explanation)')
+    .eq('attempt_id',attempt.id).order('answered_at',{ascending:true});
+  if(answersError)throw answersError;
+  const answerRows=answers||[];
+  const correctCount=answerRows.filter((row:any)=>row.is_correct===true).length;
+  const incorrectCount=answerRows.filter((row:any)=>row.is_correct===false).length;
+  const metadata=(attempt.metadata&&typeof attempt.metadata==='object')?attempt.metadata:{};
+  const assignedCount=Array.isArray(metadata.questionIds)?metadata.questionIds.length:answerRows.length;
+  const canReview=Boolean(exam.show_results_immediately&&exam.allow_review);
+  const review=canReview?answerRows.map((row:any)=>({
+    questionId:String(row.question_id),
+    questionText:row.question?.question_text||'Question',
+    studentAnswer:row.student_answer,
+    isCorrect:Boolean(row.is_correct),
+    correctAnswer:row.question?.correct_answer,
+    explanation:row.question?.explanation||null,
+  })):[];
+  return json({data:{result:{
+    examTitle:exam.title,
+    attemptId:attempt.id,
+    score:Number(attempt.score||0),
+    percentage:Number(attempt.percentage||0),
+    isPassed:Boolean(attempt.is_passed),
+    correctCount,
+    incorrectCount,
+    unansweredCount:Math.max(0,assignedCount-answerRows.length),
+    showResults:Boolean(exam.show_results_immediately),
+    timedOut:Boolean(metadata.timedOut),
+    timeSpentSeconds:Number(attempt.time_spent_seconds||0),
+    answers:review,
+  }}},200,origin);
+}
+
 if(request.method==='GET'&&path==='/progress/lessons'){const user=await requireUser();const limit=asInt(url.searchParams.get('limit'),20,1,100);const{data,error}=await admin.from('lesson_progress').select('id,lesson_id,course_id,status,progress_percentage,completed_at,updated_at,lesson:lessons(id,title,slug)').eq('student_id',user.id).order('updated_at',{ascending:false}).limit(limit);if(error)throw error;return json({data:data||[]},200,origin)}
 const completeCourseLesson=path.match(/^\/progress\/courses\/([0-9a-f-]+)\/lessons\/([0-9a-f-]+)\/complete$/i);const completeLesson=path.match(/^\/lessons\/([0-9a-f-]+)\/complete$/i);if(request.method==='POST'&&(completeCourseLesson||completeLesson)){const user=await requireUser();const lessonId=completeCourseLesson?completeCourseLesson[2]:completeLesson![1];let courseId=completeCourseLesson?completeCourseLesson[1]:null;if(!courseId){const{data:lesson,error}=await admin.from('lessons').select('id,course_id,is_published').eq('id',lessonId).eq('is_published',true).maybeSingle();if(error||!lesson?.course_id)return json({error:{message:'Lesson not found'}},404,origin);courseId=lesson.course_id}const{data:enrollment,error:enrollmentError}=await admin.from('student_courses').select('id').eq('student_id',user.id).eq('course_id',courseId).maybeSingle();if(enrollmentError||!enrollment)return json({error:{message:'You are not enrolled in this course'}},403,origin);const now=new Date().toISOString();const{data:progress,error:progressError}=await admin.from('lesson_progress').upsert({student_id:user.id,lesson_id:lessonId,course_id:courseId,status:'completed',progress_percentage:100,completed_at:now,updated_at:now},{onConflict:'student_id,lesson_id'}).select().single();if(progressError)throw progressError;const[{count:totalLessons},{count:completedLessons}]=await Promise.all([admin.from('lessons').select('id',{count:'exact',head:true}).eq('course_id',courseId).eq('is_published',true),admin.from('lesson_progress').select('id',{count:'exact',head:true}).eq('student_id',user.id).eq('course_id',courseId).eq('status','completed')]);const total=totalLessons||0,completed=completedLessons||0,percentage=total>0?Math.min(100,Math.round(completed/total*100)):0;const update:Record<string,unknown>={progress_percentage:percentage,last_accessed_at:now};if(percentage>=100){update.completed_at=now;update.certificate_issued_at=now;}await admin.from('student_courses').update(update).eq('id',enrollment.id).eq('student_id',user.id);return json({data:{progress,courseProgress:{courseId,completedLessons:completed,totalLessons:total,progressPercentage:percentage,courseCompleted:percentage>=100}}},200,origin)}
 if(request.method==='GET'&&path==='/parents/children'){const user=await requireUser();const{data:parent,error:parentError}=await admin.from('parents').select('id').eq('user_id',user.id).maybeSingle();if(parentError)throw parentError;if(!parent)return json({data:{children:[]}},200,origin);const{data:links,error}=await admin.from('parent_children').select('id,child_user_id,relationship,preferred_contact_method,notifications_enabled,created_at').eq('parent_id',parent.id).order('created_at',{ascending:true});if(error)throw error;const ids=(links||[]).map((link:any)=>link.child_user_id).filter(Boolean);let users:any[]=[];if(ids.length){const result=await admin.from('users').select('id,first_name,last_name,avatar_url').in('id',ids);if(result.error)throw result.error;users=result.data||[]}const byId=new Map(users.map((child:any)=>[child.id,child]));const children=(links||[]).map((link:any)=>{const child:any=byId.get(link.child_user_id)||{};return{id:link.id,userId:link.child_user_id,firstName:child.first_name||'',lastName:child.last_name||'',avatar:child.avatar_url||null,relationship:link.relationship,preferredContactMethod:link.preferred_contact_method,notificationsEnabled:link.notifications_enabled,joinedAt:link.created_at}});return json({data:{children}},200,origin)}
