@@ -139,6 +139,12 @@ as $$
     and lower(pq.board)='jamb'
     and pq.question_type='mcq'
     and pq.correct_answer is not null
+    and (pq.source like 'storage:%' or pq.source ~ '^JAMB [0-9]{4}
+$$;
+
+revoke execute on function public.get_jamb_subject_availability() from public, anon, authenticated;
+grant execute on function public.get_jamb_subject_availability() to service_role;
+)
   group by pq.subject_id;
 $$;
 
