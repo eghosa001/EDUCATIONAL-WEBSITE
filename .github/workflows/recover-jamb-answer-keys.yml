@@ -1,0 +1,30 @@
+name: Recover JAMB answer keys
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/recover_jamb_answer_keys.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: recover-jamb-answer-keys
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PDF text tools
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - name: Recover trusted embedded JAMB answer keys
+        env:
+          EXTRACTOR_URL: https://xanrzsszrysianxhpprk.supabase.co/functions/v1/past-question-extractor
+          OIDC_AUDIENCE: the-guide-question-extractor
+        run: python scripts/recover_jamb_answer_keys.py
