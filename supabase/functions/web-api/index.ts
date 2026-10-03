@@ -114,6 +114,180 @@ const answersEqual=(correct:unknown,submitted:unknown,type:string)=>{
 
 Deno.serve(async(request)=>{const origin=safeOrigin(request);if(request.method==='OPTIONS')return json({ok:true},200,origin);const supabaseUrl=Deno.env.get('SUPABASE_URL');const anonKey=Deno.env.get('SUPABASE_ANON_KEY');const serviceRoleKey=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');if(!supabaseUrl||!anonKey||!serviceRoleKey)return json({error:{message:'API configuration is incomplete'}},500,origin);const admin=createClient(supabaseUrl,serviceRoleKey,{auth:{persistSession:false}});const authorization=request.headers.get('Authorization')||'';let currentUser:{id:string;email?:string}|null=null;const requireUser=async()=>{if(currentUser)return currentUser;if(!authorization.startsWith('Bearer '))throw Object.assign(new Error('Authentication required'),{status:401});const userClient=createClient(supabaseUrl,anonKey,{auth:{persistSession:false},global:{headers:{Authorization:authorization}}});const{data,error}=await userClient.auth.getUser();if(error||!data.user)throw Object.assign(new Error('Authentication required'),{status:401});currentUser={id:data.user.id,email:data.user.email};return currentUser};try{const url=new URL(request.url);let path=url.pathname||'/';path=path.replace(/^\/functions\/v1\/web-api(?=\/|$)/,'');path=path.replace(/^\/web-api(?=\/|$)/,'');if(path.startsWith('/api/v1'))path=path.slice('/api/v1'.length)||'/';if(!path.startsWith('/'))path='/'+path;
 if(request.method==='GET'&&path==='/questions'){const page=asInt(url.searchParams.get('page'),1,1,10000),limit=asInt(url.searchParams.get('limit'),20,1,100),classId=url.searchParams.get('classId'),subjectId=url.searchParams.get('subjectId'),from=(page-1)*limit;let query=admin.from('questions').select('id,subject_id,topic_id,class_id,question_type,question_text,question_image_url,options,difficulty,marks,source,exam_year,exam_name,tags',{count:'exact'}).eq('is_active',true).not('source','in','("THE GUIDE Curriculum Practice","NERDC_GENERATED","SYLLABUS_GENERATED")').order('created_at',{ascending:false}).range(from,from+limit-1);if(classId)query=query.eq('class_id',classId);if(subjectId)query=query.eq('subject_id',subjectId);const{data,error,count}=await query;if(error)throw error;const questions=(data||[]).map((row:any)=>({id:row.id,subjectId:row.subject_id,topicId:row.topic_id,classId:row.class_id,questionType:row.question_type,questionText:row.question_text,questionImageUrl:row.question_image_url,options:row.options,difficulty:row.difficulty,marks:row.marks,source:row.source,examYear:row.exam_year,examName:row.exam_name,tags:row.tags}));const total=count||0;return json({data:{questions},pagination:{page,limit,total,totalPages:Math.ceil(total/limit)}},200,origin)}
+if(request.method==='POST'&&path==='/class-practice/session'){
+  const user=await requireUser();
+  const body=await request.json().catch(()=>null);
+  const classId=String(body?.classId||'');
+  const subjectId=String(body?.subjectId||'');
+  const requested=asInt(String(body?.count||20),20,5,50);
+  if(!/^[0-9a-f-]{36}$/i.test(classId)||!/^[0-9a-f-]{36}$/i.test(subjectId)){
+    return json({error:{message:'Valid class and subject are required'}},400,origin);
+  }
+
+  const{data:courseRows,error:courseError}=await admin.from('courses')
+    .select('id')
+    .eq('class_id',classId)
+    .eq('subject_id',subjectId)
+    .eq('status','published');
+  if(courseError)throw courseError;
+  const courseIds=(courseRows||[]).map((row:any)=>String(row.id));
+  if(!courseIds.length)return json({error:{message:'No published course is available for this class and subject'}},404,origin);
+
+  const{data:lessonRows,error:lessonError}=await admin.from('lessons')
+    .select('id,title,topic_id,course_id')
+    .in('course_id',courseIds)
+    .eq('is_published',true)
+    .neq('content_quality','needs_review');
+  if(lessonError)throw lessonError;
+  const candidates=[...(lessonRows||[])];
+  for(let i=candidates.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[candidates[i],candidates[j]]=[candidates[j],candidates[i]]}
+  if(!candidates.length)return json({error:{message:'No published lessons are available for this class and subject'}},404,origin);
+
+  const neededLessons=Math.min(candidates.length,Math.ceil(requested/5));
+  const selectedLessons=candidates.slice(0,neededLessons);
+  const generationResults=await Promise.all(selectedLessons.map(async(lesson:any)=>{
+    try{
+      const response=await fetch(`${supabaseUrl}/functions/v1/lesson-practice`,{
+        method:'POST',
+        headers:{Authorization:authorization,apikey:anonKey,'Content-Type':'application/json'},
+        body:JSON.stringify({lessonId:lesson.id,count:5}),
+      });
+      if(!response.ok)return{lesson,ok:false};
+      const payload=await response.json().catch(()=>null);
+      if(!payload?.quiz?.questions?.length)return{lesson,ok:false};
+      return{lesson,ok:true};
+    }catch{return{lesson,ok:false}}
+  }));
+
+  const usableLessons=generationResults.filter((item:any)=>item.ok).map((item:any)=>item.lesson);
+  if(!usableLessons.length)return json({error:{message:'Unable to build grounded class practice from the selected lessons right now'}},503,origin);
+
+  const setRows:any[]=[];
+  for(const lesson of usableLessons){
+    const{data:set,error:setError}=await admin.from('lesson_practice_sets')
+      .select('questions,generation_method,source_version')
+      .eq('lesson_id',lesson.id)
+      .maybeSingle();
+    if(setError)throw setError;
+    if(!set||(!Array.isArray(set.questions))||set.questions.length<3)continue;
+    if(set.generation_method!=='ai'&&Number(set.source_version||0)<2)continue;
+    setRows.push({lesson,set});
+  }
+  if(!setRows.length)return json({error:{message:'Grounded class-practice sets are not ready yet. Please try again.'}},503,origin);
+
+  const privateQuestions:any[]=[];
+  for(const entry of setRows){
+    const lesson:any=entry.lesson,set:any=entry.set;
+    for(let index=0;index<set.questions.length&&privateQuestions.length<requested;index++){
+      const question:any=set.questions[index];
+      const options=Array.isArray(question?.options)?question.options.map((value:any)=>String(value||'').trim()).filter(Boolean):[];
+      if(options.length!==4)continue;
+      const correctIndex=options.findIndex((value:string)=>value===String(question?.correctAnswer||''));
+      if(correctIndex<0)continue;
+      privateQuestions.push({
+        id:crypto.randomUUID(),
+        lessonId:String(lesson.id),
+        topicId:lesson.topic_id||null,
+        lessonTitle:String(lesson.title||'Lesson'),
+        questionText:String(question.questionText||'').trim(),
+        options:options.map((text:string,optionIndex:number)=>({id:String.fromCharCode(65+optionIndex),text})),
+        correctOptionId:String.fromCharCode(65+correctIndex),
+        practiceIndex:index,
+        explanation:String(question.explanation||'').trim(),
+        difficulty:String(question.difficulty||'medium'),
+        generationMethod:String(set.generation_method||'grounded-fallback'),
+      });
+    }
+  }
+  if(!privateQuestions.length)return json({error:{message:'No usable grounded questions were generated for this selection'}},503,origin);
+
+  const expiresAt=new Date(Date.now()+2*60*60*1000).toISOString();
+  const{data:session,error:sessionError}=await admin.from('class_practice_sessions').insert({
+    user_id:user.id,
+    class_id:classId,
+    subject_id:subjectId,
+    questions:privateQuestions,
+    question_count:privateQuestions.length,
+    status:'active',
+    expires_at:expiresAt,
+  }).select('id,started_at,expires_at').single();
+  if(sessionError)throw sessionError;
+
+  const questions=privateQuestions.map((question:any)=>({
+    id:question.id,
+    question_text:question.questionText,
+    options:question.options,
+    difficulty:question.difficulty,
+    lesson_title:question.lessonTitle,
+    source:'class',
+  }));
+  return json({data:{sessionId:session.id,questions,requestedCount:requested,returnedCount:questions.length,expiresAt}},201,origin);
+}
+
+const gradeClassPracticeMatch=path.match(/^\/class-practice\/([0-9a-f-]+)\/grade$/i);
+if(request.method==='POST'&&gradeClassPracticeMatch){
+  const user=await requireUser();
+  const sessionId=gradeClassPracticeMatch[1];
+  const body=await request.json().catch(()=>null);
+  const answers=Array.isArray(body?.answers)?body.answers.slice(0,50):[];
+  const{data:session,error:sessionError}=await admin.from('class_practice_sessions')
+    .select('*')
+    .eq('id',sessionId)
+    .eq('user_id',user.id)
+    .maybeSingle();
+  if(sessionError||!session)return json({error:{message:'Class practice session not found'}},404,origin);
+  if(session.status!=='active')return json({error:{message:'This class practice session has already been submitted'}},409,origin);
+  if(new Date(session.expires_at).getTime()<Date.now()){
+    await admin.from('class_practice_sessions').update({status:'expired'}).eq('id',sessionId).eq('user_id',user.id);
+    return json({error:{message:'This class practice session has expired'}},410,origin);
+  }
+
+  const questions=Array.isArray(session.questions)?session.questions:[];
+  const byId=new Map(answers.map((item:any)=>[String(item?.questionId||''),String(item?.answer||'').trim().toUpperCase()]));
+  let correct=0,answered=0;
+  const results:any[]=[];
+  const analyticsRows:any[]=[];
+  for(const question of questions){
+    const submitted=String(byId.get(String(question.id))||'');
+    const isAnswered=/^[A-D]$/.test(submitted);
+    const isCorrect=isAnswered&&submitted===String(question.correctOptionId||'');
+    if(isAnswered)answered++;
+    if(isCorrect)correct++;
+    results.push({
+      question_id:String(question.id),
+      is_correct:isCorrect,
+      correct_answer:String(question.correctOptionId||''),
+      explanation:String(question.explanation||''),
+    });
+    if(isAnswered)analyticsRows.push({
+      user_id:user.id,
+      lesson_id:question.lessonId,
+      topic_id:question.topicId||null,
+      subject_id:session.subject_id,
+      question_index:Number(question.practiceIndex||0),
+      selected_answer_id:submitted,
+      is_correct:isCorrect,
+      generation_method:String(question.generationMethod||'grounded-fallback'),
+    });
+  }
+  if(analyticsRows.length){
+    const{error:analyticsError}=await admin.from('lesson_practice_attempts').insert(analyticsRows);
+    if(analyticsError)console.error('Unable to record class-practice analytics',analyticsError.message);
+  }
+  const total=questions.length;
+  const incorrect=Math.max(0,answered-correct);
+  const unanswered=Math.max(0,total-answered);
+  const percentage=total?Math.round(correct/total*10000)/100:0;
+  const{error:updateError}=await admin.from('class_practice_sessions').update({
+    status:'submitted',
+    submitted_at:new Date().toISOString(),
+    score:correct,
+    percentage,
+  }).eq('id',sessionId).eq('user_id',user.id);
+  if(updateError)throw updateError;
+  return json({data:{result:{total,answered,correct,incorrect,unanswered,percentage,results}}},200,origin);
+}
+
 if(request.method==='GET'&&path==='/past-questions'){const page=asInt(url.searchParams.get('page'),1,1,10000),limit=asInt(url.searchParams.get('limit'),20,1,100),board=url.searchParams.get('board'),subjectId=url.searchParams.get('subjectId'),year=url.searchParams.get('year'),questionType=String(url.searchParams.get('questionType')||'').toLowerCase(),from=(page-1)*limit;let query=admin.from('past_questions').select('id,board,year,subject_id,topic_id,question_type,question_text,question_image_url,options,difficulty,marks,source,tags,correct_answer',{count:'exact'}).eq('is_active',true).order('year',{ascending:false}).range(from,from+limit-1);if(board)query=query.ilike('board',board);if(subjectId)query=query.eq('subject_id',subjectId);if(year)query=query.eq('year',Number(year));if(['mcq','essay'].includes(questionType))query=query.eq('question_type',questionType);const{data,error,count}=await query;if(error)throw error;const questions=(data||[]).map((row:any)=>{const{correct_answer,...safe}=row;return{...safe,hasAnswer:Boolean(scalarAnswer(correct_answer)),storageBacked:String(row.source||'').startsWith('storage:')}});const total=count||0;return json({data:{questions},pagination:{page,limit,total,totalPages:Math.ceil(total/limit)}},200,origin)}
 if(request.method==='GET'&&path==='/past-question-availability'){const availability:Record<string,{subjectIds:string[];years:number[]}>={};for(let from=0;from<50000;from+=1000){const{data,error}=await admin.from('past_questions').select('board,subject_id,year,question_type,correct_answer').eq('is_active',true).range(from,from+999);if(error)throw error;for(const row of data||[]){if(String(row.question_type||'').toLowerCase()!=='mcq'||!scalarAnswer(row.correct_answer))continue;const board=String(row.board||'').toLowerCase();if(!board)continue;const item=availability[board]||(availability[board]={subjectIds:[],years:[]});const subject=String(row.subject_id||'');if(subject&&!item.subjectIds.includes(subject))item.subjectIds.push(subject);const year=Number(row.year||0);if(year&&!item.years.includes(year))item.years.push(year)}if((data||[]).length<1000)break}for(const item of Object.values(availability))item.years.sort((a,b)=>b-a);return json({data:{availability}},200,origin)}
 
