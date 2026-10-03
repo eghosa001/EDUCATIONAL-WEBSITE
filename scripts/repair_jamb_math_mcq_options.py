@@ -78,6 +78,33 @@ def main():
 
         consensus = collect_consensus(variants)
         print("Two-pass option-consensus candidates:", len(consensus))
+
+        if not consensus:
+            anchors = [
+                "A regular polygon",
+                "What is the nth term",
+                "If cos",
+                "Write h in terms",
+                "sum to infinity",
+            ]
+            print("MATH_LAYOUT_DIAGNOSTIC_BEGIN")
+            for label, questions in variants:
+                print("VARIANT", label, "PARSED", len(questions))
+            raw_variants = [("pdf-text-raw", pdf_text(pdf))]
+            for psm in (6, 3, 4, 11):
+                raw_variants.append((f"ocr-psm{psm}-raw", ocr_pdf(pdf, work, psm=psm)))
+            for label, raw in raw_variants:
+                normalized = raw.replace("\\r", "")
+                for anchor in anchors:
+                    index = normalized.lower().find(anchor.lower())
+                    if index < 0:
+                        continue
+                    start = max(0, index - 220)
+                    end = min(len(normalized), index + 900)
+                    snippet = normalized[start:end].replace("\\x00", " ")
+                    print("CONTEXT", label, anchor, json.dumps(snippet))
+            print("MATH_LAYOUT_DIAGNOSTIC_END")
+
         result = api({
             "action": "repair_mcq_options",
             "fileId": FILE_ID,
