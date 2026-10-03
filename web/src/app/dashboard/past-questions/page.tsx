@@ -112,6 +112,7 @@ export default function PastQuestionsPage() {
   const [examAvailability, setExamAvailability] = useState<Record<string, string[]>>({});
   const [classAvailability, setClassAvailability] = useState<Record<string, string[]>>({});
   const [examYears, setExamYears] = useState<Record<string, number[]>>({});
+  const [examSubjectCounts, setExamSubjectCounts] = useState<Record<string, Record<string, number>>>({});
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedExam, setSelectedExam] = useState('jamb');
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
@@ -192,12 +193,17 @@ export default function PastQuestionsPage() {
 
       const bySubject: Record<string, string[]> = {};
       const byYear: Record<string, number[]> = {};
+      const byCount: Record<string, Record<string, number>> = {};
       for (const [board, value] of Object.entries(availability || {}) as [string, any][]) {
         bySubject[board] = Array.isArray(value?.subjectIds) ? value.subjectIds : [];
         byYear[board] = Array.isArray(value?.years) ? value.years : [];
+        byCount[board] = value?.subjectCounts && typeof value.subjectCounts === 'object'
+          ? Object.fromEntries(Object.entries(value.subjectCounts).map(([subjectId, count]) => [subjectId, Math.max(0, Number(count) || 0)]))
+          : {};
       }
       setExamAvailability(bySubject);
       setExamYears(byYear);
+      setExamSubjectCounts(byCount);
     })().catch((err) => {
       if (!cancelled) setError(err instanceof Error ? err.message : 'Unable to load practice setup');
     });
@@ -254,8 +260,8 @@ export default function PastQuestionsPage() {
   }, [secondsLeft, phase, isTimedSession]);
 
   const examConfig = EXAMS.find(item => item.code === selectedExam)!;
-  const visibleSubjects = mode === 'exam' && examAvailability[selectedExam]?.length
-    ? subjects.filter(subject => examAvailability[selectedExam].includes(subject.id))
+  const visibleSubjects = mode === 'exam'
+    ? subjects.filter(subject => (examAvailability[selectedExam] || []).includes(subject.id))
     : mode === 'class' && selectedClass
       ? subjects.filter(subject => (classAvailability[selectedClass] || []).includes(subject.id))
       : subjects;
@@ -263,6 +269,12 @@ export default function PastQuestionsPage() {
   const selectedNames = selectedSubjects.map(id => subjects.find(subject => subject.id === id)?.name).filter(Boolean) as string[];
   const isJambCbt = experience === 'jamb-cbt' || (experience === 'legacy' && mode === 'exam' && selectedExam === 'jamb');
   const singleSubjectExternal = experience === 'jamb-past' || experience === 'school-past' || experience === 'school-cbt';
+  const selectedExternalCapacity = singleSubjectExternal && mode === 'exam' && selectedSubjects.length === 1
+    ? Number(examSubjectCounts[selectedExam]?.[selectedSubjects[0]] || 0)
+    : 0;
+  const countChoices = singleSubjectExternal && mode === 'exam' && selectedExternalCapacity > 0
+    ? Array.from(new Set([...COUNTS.filter(count => count <= selectedExternalCapacity), selectedExternalCapacity])).sort((a, b) => a - b)
+    : COUNTS;
   const jambHasEnglish = selectedSubjects.some(id => {
     const name = subjects.find(subject => subject.id === id)?.name || jambPresets.flatMap(preset => preset.subjects).find(subject => subject.id === id)?.name || '';
     return /^(english language|use of english)$/i.test(name.trim());
@@ -272,8 +284,14 @@ export default function PastQuestionsPage() {
     : isJambCbt
       ? selectedSubjects.length === 4 && jambHasEnglish
       : singleSubjectExternal
-        ? selectedSubjects.length === 1
+        ? selectedSubjects.length === 1 && selectedExternalCapacity > 0
         : selectedSubjects.length > 0;
+
+  useEffect(() => {
+    if (!singleSubjectExternal || mode !== 'exam' || selectedExternalCapacity <= 0) return;
+    if (questionCount > selectedExternalCapacity) setQuestionCount(selectedExternalCapacity);
+  }, [singleSubjectExternal, mode, selectedExternalCapacity, questionCount]);
+
   const current = questions[index];
   const currentOptions = optionsOf(current?.options);
   const answeredCount = Object.values(answers).filter(Boolean).length;
@@ -699,8 +717,9 @@ export default function PastQuestionsPage() {
         <p className="text-xs font-bold uppercase tracking-wider text-brand-700">{isTimedSession ? 'CBT setup' : 'Past questions setup'}</p>
         <h1 className="mt-2 text-3xl font-extrabold text-[#151A3A] dark:text-white">Choose question count</h1>
         <p className="mt-2 text-slate-500">{mode === 'exam' ? selectedExam.toUpperCase() : classes.find(item => item.id === selectedClass)?.name} · {selectedNames.join(' • ')}{selectedYear ? ` · ${selectedYear}` : ''}</p>
+        {singleSubjectExternal && mode === 'exam' && selectedExternalCapacity > 0 && <p className="mt-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">{selectedExternalCapacity} verified source-backed question{selectedExternalCapacity === 1 ? '' : 's'} available for this subject.</p>}
         {error && <div role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
-        <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-5">{COUNTS.map(count => <button key={count} onClick={() => setQuestionCount(count)} className={`rounded-xl border p-4 text-center font-bold transition ${questionCount === count ? 'border-[#151A3A] bg-[#151A3A] text-white' : 'border-stone-200 bg-stone-50 text-slate-700 dark:border-slate-700 dark:bg-[#151A3A] dark:text-white'}`}>{count}<span className="mt-1 block text-xs font-normal opacity-70">questions</span></button>)}</div>
+        <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-5">{countChoices.map(count => <button key={count} onClick={() => setQuestionCount(count)} className={`rounded-xl border p-4 text-center font-bold transition ${questionCount === count ? 'border-[#151A3A] bg-[#151A3A] text-white' : 'border-stone-200 bg-stone-50 text-slate-700 dark:border-slate-700 dark:bg-[#151A3A] dark:text-white'}`}>{count}<span className="mt-1 block text-xs font-normal opacity-70">questions</span></button>)}</div>
         <div className="mt-6 rounded-xl bg-brand-50 p-4 text-sm text-slate-700 dark:bg-brand-950/30 dark:text-slate-200">{isTimedSession ? <><b>Timing:</b> 1 minute per loaded question. Answers are graded only when you submit.</> : <><b>Study mode:</b> No countdown timer. Work at your own pace, then submit for grading and review.</>}</div>
         <button onClick={() => void startCbt()} disabled={loading} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#151A3A] py-3.5 font-semibold text-white disabled:opacity-50">{loading ? <><ClockIcon className="h-4 w-4 animate-spin"/>Loading questions…</> : <><PlayIcon className="h-4 w-4"/>{isTimedSession ? 'Start CBT' : 'Start Past Questions'}</>}</button>
       </section>
