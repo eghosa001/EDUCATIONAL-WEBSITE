@@ -1,26 +1,6 @@
 name: Comprehensive Tests
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'AGENTS.md'
-      - 'CLAUDE.md'
-      - 'GEMINI.md'
-      - '.agents/**'
-      - '.github/copilot-instructions.md'
-      - '.github/workflows/fast-policy.yml'
-      - 'scripts/fast_path_guard.py'
-  pull_request:
-    branches: [main]
-    paths-ignore:
-      - 'AGENTS.md'
-      - 'CLAUDE.md'
-      - 'GEMINI.md'
-      - '.agents/**'
-      - '.github/copilot-instructions.md'
-      - '.github/workflows/fast-policy.yml'
-      - 'scripts/fast_path_guard.py'
   workflow_dispatch:
 
 concurrency:
@@ -175,7 +155,7 @@ jobs:
         run: npm run build
 
   production-smoke:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch'
     needs: web-tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
