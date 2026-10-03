@@ -129,7 +129,7 @@ export default function PastQuestionAnalyticsPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-6 dark:border-emerald-950 dark:bg-emerald-950/10">
           <div className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-emerald-700" /><h2 className="font-bold text-[#151A3A] dark:text-white">Strong topics</h2></div>
-          <p className="mt-1 text-sm text-slate-500">Mapped topics with at least three answers and 75%+ accuracy.</p>
+          <p className="mt-1 text-sm text-slate-500">Topic areas with at least three answers and 75%+ accuracy.</p>
           <div className="mt-4 space-y-3">
             {insights.strongTopics.length ? insights.strongTopics.map((topic) => <div key={topic.topicId} className="rounded-xl border border-emerald-100 bg-white p-4 dark:border-emerald-950 dark:bg-[#1b2045]"><div className="flex items-center justify-between gap-4"><div><p className="font-semibold">{topic.topicName}</p><p className="text-xs text-slate-500">{topic.subjectName} · {topic.attempts} answers</p></div><b className="text-emerald-700">{topic.accuracy}%</b></div></div>) : <p className="rounded-xl bg-white/70 p-5 text-center text-sm text-slate-500">No topic has enough evidence yet.</p>}
           </div>
@@ -137,7 +137,7 @@ export default function PastQuestionAnalyticsPage() {
 
         <section className="rounded-2xl border border-amber-200 bg-amber-50/50 p-6 dark:border-amber-950 dark:bg-amber-950/10">
           <div className="flex items-center gap-2"><TrendingDown className="h-5 w-5 text-amber-700" /><h2 className="font-bold text-[#151A3A] dark:text-white">Needs attention</h2></div>
-          <p className="mt-1 text-sm text-slate-500">Mapped topics below 60% after at least three answers.</p>
+          <p className="mt-1 text-sm text-slate-500">Topic areas below 60% after at least three answers.</p>
           <div className="mt-4 space-y-3">
             {insights.weakTopics.length ? insights.weakTopics.map((topic) => <div key={topic.topicId} className="rounded-xl border border-amber-100 bg-white p-4 dark:border-amber-950 dark:bg-[#1b2045]"><div className="flex items-center justify-between gap-4"><div><p className="font-semibold">{topic.topicName}</p><p className="text-xs text-slate-500">{topic.subjectName} · {topic.correct}/{topic.attempts} correct</p></div><b className="text-amber-700">{topic.accuracy}%</b></div></div>) : insights.weakSubjects.length ? insights.weakSubjects.map((subject) => <div key={subject.subjectId} className="rounded-xl border border-amber-100 bg-white p-4 dark:border-amber-950 dark:bg-[#1b2045]"><div className="flex items-center justify-between gap-4"><div><p className="font-semibold">{subject.subjectName}</p><p className="text-xs text-slate-500">{subject.attempts} answered questions</p></div><b className="text-amber-700">{subject.accuracy}%</b></div></div>) : <p className="rounded-xl bg-white/70 p-5 text-center text-sm text-slate-500">No weak area has enough evidence yet.</p>}
           </div>
