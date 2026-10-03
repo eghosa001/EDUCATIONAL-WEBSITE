@@ -26,18 +26,26 @@ def page_count(pdf: Path) -> int:
     match = re.search(r"(?m)^Pages:\s+(\d+)\s*$", result.stdout)
     return int(match.group(1)) if match else 1
 
-def ocr_page_window(pdf: Path, work: Path, psm: int, first: int, last: int) -> str:
-    out_dir = work / f"psm-{psm}-{first}-{last}"
+def ocr_page_window(pdf: Path, work: Path, psm: int, first: int, last: int, dpi: int = 190, gray: bool = False) -> str:
+    mode = "gray" if gray else "color"
+    out_dir = work / f"psm-{psm}-{dpi}-{mode}-{first}-{last}"
     out_dir.mkdir(parents=True, exist_ok=True)
     prefix = out_dir / "page"
+    command = ["pdftoppm", "-f", str(first), "-l", str(last), "-r", str(dpi)]
+    if gray:
+        command.append("-gray")
+    else:
+        command.append("-jpeg")
+    command.extend([str(pdf), str(prefix)])
     subprocess.run(
-        ["pdftoppm", "-f", str(first), "-l", str(last), "-jpeg", "-r", "190", str(pdf), str(prefix)],
+        command,
         check=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
     chunks = []
-    for image in sorted(out_dir.glob("page-*.jpg")):
+    images = sorted(out_dir.glob("page-*.pgm" if gray else "page-*.jpg"))
+    for image in images:
         result = subprocess.run(
             ["tesseract", str(image), "stdout", "--psm", str(psm), "-l", "eng"],
             capture_output=True,
@@ -105,26 +113,39 @@ def main():
                 pdf = work / "source.pdf"
                 download(file["public_url"], pdf)
                 pages = page_count(pdf)
-                first = max(1, pages - 29)
                 embedded = pdf_text(pdf)
+                embedded_pages = embedded.split("\f")
+                heading_pages = [
+                    index + 1 for index, page in enumerate(embedded_pages)
+                    if re.search(r"(?im)^\s*(?:(?:correct|objective|section\s+[A-Z])\s+)?(?:answer\s*keys?|answers?)\b", page)
+                ]
+                windows = [(max(1, pages - 29), pages)]
+                for page_no in heading_pages[-6:]:
+                    window = (max(1, page_no - 2), min(pages, page_no + 4))
+                    if window not in windows:
+                        windows.append(window)
 
                 ocr_texts = []
                 key_maps = []
-                for psm in (6, 3):
-                    text = ocr_page_window(pdf, work, psm, first, pages)
-                    ocr_texts.append(text)
-                    mapping = answer_key(text)
-                    key_maps.append(mapping)
-                    print(f"  psm {psm}: {len(mapping)} answer-key entries in pages {first}-{pages}")
-
-                consensus = consensus_keys(key_maps)
-                if len(consensus) < 5:
-                    text = ocr_page_window(pdf, work, 4, first, pages)
+                variants = [
+                    (6, 190, False, "psm6-color"),
+                    (11, 240, True, "psm11-gray"),
+                    (12, 300, True, "psm12-gray"),
+                    (3, 260, True, "psm3-gray"),
+                ]
+                consensus = {}
+                for psm, dpi, gray, label in variants:
+                    combined = []
+                    for first, last in windows:
+                        combined.append(ocr_page_window(pdf, work, psm, first, last, dpi=dpi, gray=gray))
+                    text = "\n".join(combined)
                     ocr_texts.append(text)
                     mapping = answer_key(text)
                     key_maps.append(mapping)
                     consensus = consensus_keys(key_maps)
-                    print("  psm 4:", len(mapping), "entries; consensus:", len(consensus))
+                    print(f"  {label}: {len(mapping)} answer-key entries; consensus {len(consensus)}")
+                    if len(consensus) >= 5 and len(key_maps) >= 2:
+                        break
 
                 if len(consensus) < 5:
                     print("  no reliable two-pass answer-key consensus")
