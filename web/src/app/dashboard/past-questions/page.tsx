@@ -19,6 +19,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { learnerApiConfig, getLearnerApiHeaders, handleApiResponse } from '@/services/api/config';
 import { fetchPastQuestionExplanation } from '@/services/api/pastQuestionAnalyticsService';
 import { fetchExamBoardAvailability } from '@/services/api/examBoardService';
+import {
+  fetchJambCoursePresets,
+  gradeJambCbtSession,
+  startJambCbtSession,
+  type JambCoursePreset,
+} from '@/services/api/jambService';
 
 type Mode = 'class' | 'exam';
 type Experience = 'legacy' | 'class' | 'school-past' | 'school-cbt' | 'jamb-past' | 'jamb-cbt';
@@ -35,6 +41,7 @@ type Question = {
   board?: string | null;
   subject_id?: string | null;
   source: 'class' | 'exam';
+  subject_name?: string | null;
 };
 type GradeRow = { question_id: string; is_correct: boolean; correct_answer: unknown; explanation: string | null };
 type GradeResult = {
@@ -45,6 +52,9 @@ type GradeResult = {
   unanswered: number;
   percentage: number;
   attemptId?: string;
+  timedOut?: boolean;
+  timeSpentSeconds?: number;
+  subjectBreakdown?: Array<{ subjectId: string; subjectName: string; total: number; answered: number; correct: number; percentage: number }>;
   results: GradeRow[];
 };
 
@@ -108,6 +118,13 @@ export default function PastQuestionsPage() {
   const [questionCount, setQuestionCount] = useState(20);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [classPracticeSessionId, setClassPracticeSessionId] = useState<string | null>(null);
+  const [jambSessionId, setJambSessionId] = useState<string | null>(null);
+  const [jambPresets, setJambPresets] = useState<JambCoursePreset[]>([]);
+  const [jambSubjectAvailability, setJambSubjectAvailability] = useState<Record<string, number>>({});
+  const [selectedCoursePresetId, setSelectedCoursePresetId] = useState('');
+  const [subjectQuestionCounts, setSubjectQuestionCounts] = useState<Record<string, number>>({});
+  const [jambDurationMinutes, setJambDurationMinutes] = useState(40);
+  const [jambPresetLoading, setJambPresetLoading] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [flagged, setFlagged] = useState<Set<string>>(new Set());
   const [index, setIndex] = useState(0);
@@ -187,6 +204,25 @@ export default function PastQuestionsPage() {
   }, [token]);
 
   useEffect(() => {
+    if (!token || experience !== 'jamb-cbt') return;
+    let cancelled = false;
+    setJambPresetLoading(true);
+    void fetchJambCoursePresets(token)
+      .then((data) => {
+        if (cancelled) return;
+        setJambPresets(data.presets || []);
+        setJambSubjectAvailability(data.subjectAvailability || {});
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Unable to load JAMB course presets');
+      })
+      .finally(() => {
+        if (!cancelled) setJambPresetLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [token, experience]);
+
+  useEffect(() => {
     if (!subjects.length) return;
     const query = new URLSearchParams(window.location.search);
     const subject = decodeURIComponent(query.get('subject') || '').trim().toLowerCase();
@@ -240,6 +276,7 @@ export default function PastQuestionsPage() {
   const resetSession = () => {
     setQuestions([]);
     setClassPracticeSessionId(null);
+    setJambSessionId(null);
     setAnswers({});
     setFlagged(new Set());
     setIndex(0);
@@ -257,7 +294,63 @@ export default function PastQuestionsPage() {
     setSelectedSubjects([]);
     setSelectedYear('');
   };
+  const selectedPreset = jambPresets.find(item => item.id === selectedCoursePresetId) || null;
+  const selectedJambPlan = selectedSubjects.map(subjectId => ({
+    subjectId,
+    count: Math.max(0, Number(subjectQuestionCounts[subjectId] ?? 10)),
+    available: Number(jambSubjectAvailability[subjectId] || 0),
+    name: subjects.find(subject => subject.id === subjectId)?.name || selectedPreset?.subjects.find(subject => subject.id === subjectId)?.name || 'Subject',
+  }));
+  const jambQuestionTotal = selectedJambPlan.reduce((sum, item) => sum + item.count, 0);
+  const jambPlanValid = isJambCbt
+    ? selectedJambPlan.length === 4 &&
+      selectedJambPlan.every(item => item.count >= 1 && item.count <= item.available) &&
+      jambDurationMinutes >= 5 && jambDurationMinutes <= 240
+    : true;
+
+  const applyCoursePreset = (presetId: string) => {
+    setSelectedCoursePresetId(presetId);
+    const preset = jambPresets.find(item => item.id === presetId);
+    if (!preset) {
+      setSelectedSubjects([]);
+      setSubjectQuestionCounts({});
+      return;
+    }
+    const ids = preset.subjects.map(subject => subject.id);
+    const counts: Record<string, number> = {};
+    for (const subject of preset.subjects) {
+      counts[subject.id] = Math.min(10, Math.max(0, Number(subject.availableQuestions || 0)));
+    }
+    setSelectedSubjects(ids);
+    setSubjectQuestionCounts(counts);
+    setSelectedYear('');
+    setError(null);
+  };
+
+  const setJambSubjectCount = (subjectId: string, value: number) => {
+    const available = Number(jambSubjectAvailability[subjectId] || 0);
+    const next = Math.max(1, Math.min(100, Math.round(value || 1)));
+    setSubjectQuestionCounts(previous => ({ ...previous, [subjectId]: Math.min(next, Math.max(1, available || next)) }));
+  };
+
   const toggleSubject = (id: string) => {
+    if (isJambCbt) {
+      setSelectedCoursePresetId('');
+      setSelectedSubjects(previous => {
+        if (previous.includes(id)) {
+          setSubjectQuestionCounts(counts => {
+            const next = { ...counts };
+            delete next[id];
+            return next;
+          });
+          return previous.filter(value => value !== id);
+        }
+        if (previous.length >= 4) return previous;
+        setSubjectQuestionCounts(counts => ({ ...counts, [id]: Math.min(10, Math.max(1, Number(jambSubjectAvailability[id] || 10))) }));
+        return [...previous, id];
+      });
+      return;
+    }
     if (mode === 'class' || singleSubjectExternal) {
       setSelectedSubjects(previous => previous.includes(id) ? [] : [id]);
       return;
