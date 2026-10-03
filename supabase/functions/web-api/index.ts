@@ -390,7 +390,7 @@ if(request.method==='POST'&&path==='/jamb-cbt/session'){
         .eq('subject_id',item.subjectId)
         .eq('question_type','mcq')
         .not('correct_answer','is',null)
-        .or('source.like.storage:%,source.like.JAMB %')
+        .like('source','storage:%')
         .range(offset,Math.min(available-1,offset+windowSize-1));
       if(error)throw error;
       for(const row of data||[]){
@@ -593,7 +593,7 @@ if(request.method==='POST'&&gradeJambCbtMatch){
   }}},200,origin);
 }
 
-if(request.method==='GET'&&path==='/past-questions'){const page=asInt(url.searchParams.get('page'),1,1,10000),limit=asInt(url.searchParams.get('limit'),20,1,100),board=url.searchParams.get('board'),subjectId=url.searchParams.get('subjectId'),year=url.searchParams.get('year'),questionType=String(url.searchParams.get('questionType')||'').toLowerCase(),from=(page-1)*limit;let query=admin.from('past_questions').select('id,board,year,subject_id,topic_id,question_type,question_text,question_image_url,options,difficulty,marks,source,tags,correct_answer',{count:'exact'}).eq('is_active',true).order('year',{ascending:false}).range(from,from+limit-1);if(board)query=query.ilike('board',board);if(subjectId)query=query.eq('subject_id',subjectId);if(year)query=query.eq('year',Number(year));if(['mcq','essay'].includes(questionType))query=query.eq('question_type',questionType);const{data,error,count}=await query;if(error)throw error;const questions=(data||[]).map((row:any)=>{const{correct_answer,...safe}=row;return{...safe,hasAnswer:Boolean(scalarAnswer(correct_answer)),storageBacked:String(row.source||'').startsWith('storage:')}});const total=count||0;return json({data:{questions},pagination:{page,limit,total,totalPages:Math.ceil(total/limit)}},200,origin)}
+if(request.method==='GET'&&path==='/past-questions'){const page=asInt(url.searchParams.get('page'),1,1,10000),limit=asInt(url.searchParams.get('limit'),20,1,100),board=url.searchParams.get('board'),subjectId=url.searchParams.get('subjectId'),year=url.searchParams.get('year'),questionType=String(url.searchParams.get('questionType')||'').toLowerCase(),from=(page-1)*limit;let query=admin.from('past_questions').select('id,board,year,subject_id,topic_id,question_type,question_text,question_image_url,options,difficulty,marks,source,tags,correct_answer',{count:'exact'}).eq('is_active',true).order('year',{ascending:false}).range(from,from+limit-1);if(board){query=query.ilike('board',board);if(String(board).toLowerCase()==='jamb')query=query.like('source','storage:%')}if(subjectId)query=query.eq('subject_id',subjectId);if(year)query=query.eq('year',Number(year));if(['mcq','essay'].includes(questionType))query=query.eq('question_type',questionType);const{data,error,count}=await query;if(error)throw error;const questions=(data||[]).map((row:any)=>{const{correct_answer,...safe}=row;return{...safe,hasAnswer:Boolean(scalarAnswer(correct_answer)),storageBacked:String(row.source||'').startsWith('storage:')}});const total=count||0;return json({data:{questions},pagination:{page,limit,total,totalPages:Math.ceil(total/limit)}},200,origin)}
 if(request.method==='GET'&&path==='/past-question-availability'){const{data,error}=await admin.rpc('get_past_question_availability');if(error)throw error;return new Response(JSON.stringify({data:{availability:data||{}}}),{status:200,headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'GET, POST, PATCH, DELETE, OPTIONS','Cache-Control':'public, max-age=300, stale-while-revalidate=900','Vary':'Origin'}})}
 
 if(request.method==='POST'&&path==='/past-questions/session'){
@@ -607,6 +607,7 @@ if(request.method==='POST'&&path==='/past-questions/session'){
   if(!/^[0-9a-f-]{36}$/i.test(subjectId))return json({error:{message:'Valid subject is required'}},400,origin);
   const applyFilters=(query:any)=>{
     let q=query.eq('is_active',true).ilike('board',board).eq('subject_id',subjectId).eq('question_type','mcq').not('correct_answer','is',null);
+    if(board==='jamb')q=q.like('source','storage:%');
     if(year)q=q.eq('year',year);
     return q;
   };
@@ -642,10 +643,10 @@ if(request.method==='POST'&&path==='/past-questions/grade'){
   const ids=[...new Set(answers.map((item:any)=>String(item?.questionId||'')).filter((id:string)=>/^[0-9a-f-]{36}$/i.test(id)))];
   if(!ids.length)return json({error:{message:'Valid question IDs are required'}},400,origin);
   const{data,error}=await admin.from('past_questions')
-    .select('id,board,year,subject_id,topic_id,tags,question_text,correct_answer,explanation,is_active,subject:subjects(name),topic:topics(name)')
+    .select('id,board,year,subject_id,topic_id,tags,question_text,correct_answer,explanation,is_active,source,subject:subjects(name),topic:topics(name)')
     .in('id',ids).eq('is_active',true);
   if(error)throw error;
-  const rows=data||[];
+  const rows=(data||[]).filter((row:any)=>String(row.board||'').toLowerCase()!=='jamb'||String(row.source||'').startsWith('storage:'));
   const byId=new Map(rows.map((row:any)=>[String(row.id),row]));
   let correct=0,incorrect=0,unanswered=0;
   const analyticsAnswers:any[]=[];
