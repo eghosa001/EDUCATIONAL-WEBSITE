@@ -15,6 +15,89 @@ const asInt=(value:string|null,fallback:number,min=1,max=100)=>{const parsed=Num
 const scalarAnswer=(value:unknown):string=>{if(value===null||value===undefined)return '';if(typeof value==='string'||typeof value==='number'||typeof value==='boolean')return String(value).trim();if(typeof value==='object'){const record=value as Record<string,unknown>;for(const key of ['id','label','answer','value','correct_answer','correctAnswer'])if(record[key]!==undefined&&record[key]!==null)return scalarAnswer(record[key])}return ''};
 const normalizeAnswer=(value:unknown)=>scalarAnswer(value).toLowerCase().replace(/\s+/g,' ').trim();
 const isVerifiedExamSource=(source:unknown)=>/^(?:(WAEC|JAMB|NECO|NABTEB)\s+[0-9]{4}|SOURCE_PAPER:(WAEC|JAMB|NECO|NABTEB))$/i.test(String(source||'').trim());
+const inferPastQuestionTopic=(subject:unknown,tags:unknown,text:unknown)=>{
+  const subjectName=String(subject||'').trim();
+  const raw=String(text||'').toLowerCase();
+  const tagRows=Array.isArray(tags)?tags.map(value=>String(value||'').trim()).filter(Boolean):[];
+  const ignored=new Set(['jamb','waec','neco','nabteb','easy','medium','hard',subjectName.toLowerCase()]);
+  const topicalTag=tagRows.find(tag=>{
+    const lower=tag.toLowerCase();
+    return !ignored.has(lower)&&!lower.endsWith('.pdf')&&!lower.includes('past-question')&&!lower.includes('past question')&&tag.length<=48;
+  });
+  if(topicalTag)return topicalTag.replace(/[_-]+/g,' ').replace(/\b\w/g,char=>char.toUpperCase());
+
+  const has=(...terms:string[])=>terms.some(term=>raw.includes(term));
+  const subjectKey=subjectName.toLowerCase();
+  if(subjectKey.includes('economics')){
+    if(has('demand','supply','elastic','price mechanism','equilibrium price'))return 'Demand, Supply & Price';
+    if(has('utility','consumer','consumption'))return 'Consumer Behaviour';
+    if(has('cost','revenue','diminishing return','production','productivity'))return 'Production, Costs & Revenue';
+    if(has('monopoly','oligopoly','perfect competition','market structure'))return 'Market Structures';
+    if(has('money market','bank','money supply','central bank','commercial bank','credit'))return 'Money & Banking';
+    if(has('tax','public finance','government revenue','government expenditure','fiscal'))return 'Public Finance';
+    if(has('balance of payment','balance of trade','foreign trade','international trade','exchange rate','tariff'))return 'International Trade & Balance of Payments';
+    if(has('national income','gross domestic','gdp','gnp','per capita income'))return 'National Income';
+    if(has('inflation','unemployment','deflation'))return 'Inflation & Unemployment';
+    if(has('development','economic growth','development indicator'))return 'Economic Growth & Development';
+    if(has('population','labour','labor','wage','employment'))return 'Population & Labour';
+    if(has('co-operative','cooperative','company','business firm','sole propriet'))return 'Business Organisations';
+    if(has('capitalism','socialism','mixed economy','economic system'))return 'Economic Systems';
+    if(has('scarcity','opportunity cost','scale of preference','choice'))return 'Basic Economic Concepts';
+    if(has('frequency','mean','median','mode','index number','standard deviation','∑'))return 'Economic Statistics';
+  }
+  if(subjectKey.includes('english')){
+    if(has('nearest meaning','opposite meaning','synonym','antonym','meaning of'))return 'Vocabulary & Lexis';
+    if(has('stress','vowel','consonant','diphthong','rhymes','syllable'))return 'Oral English';
+    if(has('passage','comprehension','according to the passage'))return 'Comprehension';
+    if(has('noun','verb','pronoun','adjective','adverb','preposition','concord','tense','clause','phrase'))return 'Grammar & Structure';
+    if(has('character','novel','poem','drama','author','community','protagonist'))return 'Literature & Textual Study';
+  }
+  if(subjectKey.includes('mathematics')){
+    if(has('algebra','equation','factor','indices','logarithm','simplify','polynomial'))return 'Algebra';
+    if(has('triangle','circle','angle','geometry','trigon','sine','cosine','tangent'))return 'Geometry & Trigonometry';
+    if(has('probability','mean','median','mode','frequency','variance','standard deviation'))return 'Statistics & Probability';
+    if(has('differentiat','integrat','gradient','calculus'))return 'Calculus';
+    if(has('fraction','ratio','percentage','decimal','number','base'))return 'Numbers & Arithmetic';
+  }
+  if(subjectKey.includes('physics')){
+    if(has('force','motion','velocity','acceleration','momentum','pressure'))return 'Mechanics';
+    if(has('current','voltage','resistance','electric','circuit','charge'))return 'Electricity';
+    if(has('wave','sound','light','lens','mirror','frequency','wavelength'))return 'Waves, Sound & Optics';
+    if(has('heat','temperature','thermal','specific heat'))return 'Heat & Thermal Physics';
+    if(has('unit','dimension','measurement','s.i.','si unit'))return 'Measurements & Units';
+  }
+  if(subjectKey.includes('chemistry')){
+    if(has('acid','base','ph','salt'))return 'Acids, Bases & Salts';
+    if(has('reaction','oxidation','reduction','redox','zinc','hydrochloric'))return 'Chemical Reactions';
+    if(has('organic','hydrocarbon','alkane','alkene','alcohol','ester'))return 'Organic Chemistry';
+    if(has('periodic','element','atomic','electron','proton'))return 'Atomic Structure & Periodicity';
+    if(has('mole','stoichiometr','molar','mass','formula'))return 'Mole Concept & Stoichiometry';
+    if(has('electrolysis','electrode','electrolyte'))return 'Electrochemistry';
+  }
+  if(subjectKey.includes('biology')){
+    if(has('cell','tissue','organelle'))return 'Cell Biology';
+    if(has('ecology','ecosystem','habitat','food chain','population'))return 'Ecology';
+    if(has('gene','genetic','heredity','chromosome','inherit'))return 'Genetics & Heredity';
+    if(has('reproduction','fertilization','fertilisation','gamete'))return 'Reproduction';
+    if(has('photosynthesis','transpiration','plant','root','leaf'))return 'Plant Biology';
+    if(has('digestion','nutrition','respiration','circulation','excretion'))return 'Human & Animal Physiology';
+  }
+  if(subjectKey.includes('government')){
+    if(has('constitution','constitutional'))return 'Constitution';
+    if(has('election','electoral','voting','political party'))return 'Elections & Political Parties';
+    if(has('legislature','executive','judiciary','separation of powers'))return 'Organs of Government';
+    if(has('federal','federalism','unitary','confederation'))return 'Systems of Government';
+    if(has('colonial','nationalism','independence'))return 'Colonialism & Nationalism';
+    if(has('united nations','ecowas','african union','commonwealth'))return 'International Organisations';
+  }
+  if(subjectKey.includes('geography')){
+    if(has('climate','rainfall','weather','temperature'))return 'Weather & Climate';
+    if(has('map','scale','bearing','contour'))return 'Map Reading';
+    if(has('population','settlement','migration'))return 'Human Geography';
+    if(has('rock','soil','river','erosion','landform'))return 'Physical Geography';
+  }
+  return 'General ' + (subjectName||'Subject');
+};
 const answersEqual=(correct:unknown,submitted:unknown,type:string)=>{
   if(type==='multiple_select'){
     const expected=(Array.isArray(correct)?correct:[correct]).map(normalizeAnswer).filter(Boolean).sort();
@@ -80,7 +163,7 @@ if(request.method==='POST'&&path==='/past-questions/grade'){
   const ids=[...new Set(answers.map((item:any)=>String(item?.questionId||'')).filter((id:string)=>/^[0-9a-f-]{36}$/i.test(id)))];
   if(!ids.length)return json({error:{message:'Valid question IDs are required'}},400,origin);
   const{data,error}=await admin.from('past_questions')
-    .select('id,board,year,subject_id,topic_id,question_text,correct_answer,explanation,is_active')
+    .select('id,board,year,subject_id,topic_id,tags,question_text,correct_answer,explanation,is_active,subject:subjects(name),topic:topics(name)')
     .in('id',ids).eq('is_active',true);
   if(error)throw error;
   const rows=data||[];
@@ -97,6 +180,7 @@ if(request.method==='POST'&&path==='/past-questions/grade'){
         questionId:id,
         subjectId:row.subject_id||null,
         topicId:row.topic_id||null,
+        topicLabel:String(row.topic?.name||inferPastQuestionTopic(row.subject?.name,row.tags,row.question_text)),
         answered:false,
         isCorrect:false,
       });
@@ -108,6 +192,7 @@ if(request.method==='POST'&&path==='/past-questions/grade'){
       questionId:id,
       subjectId:row.subject_id||null,
       topicId:row.topic_id||null,
+      topicLabel:String(row.topic?.name||inferPastQuestionTopic(row.subject?.name,row.tags,row.question_text)),
       answered,
       isCorrect:ok,
     });
@@ -147,7 +232,7 @@ if(request.method==='GET'&&path==='/past-questions/insights'){
   if(attemptError)throw attemptError;
   const attempts=attemptRows||[];
   const subjectStats=new Map<string,{subjectId:string;attempts:number;correct:number}>();
-  const topicStats=new Map<string,{topicId:string;attempts:number;correct:number}>();
+  const topicStats=new Map<string,{key:string;topicId:string|null;topicName:string;subjectId:string;attempts:number;correct:number}>();
   const boardStats=new Map<string,{board:string;sessions:number;questions:number;correct:number}>();
   let questions=0,correct=0,timeSpentSeconds=0;
 
@@ -165,27 +250,25 @@ if(request.method==='GET'&&path==='/past-questions/insights'){
       if(!answer?.answered)continue;
       const subjectId=String(answer?.subjectId||'');
       const topicId=String(answer?.topicId||'');
+      const topicName=String(answer?.topicLabel||'').trim();
       if(subjectId){
         const row=subjectStats.get(subjectId)||{subjectId,attempts:0,correct:0};
         row.attempts+=1;if(answer?.isCorrect)row.correct+=1;subjectStats.set(subjectId,row);
       }
-      if(topicId){
-        const row=topicStats.get(topicId)||{topicId,attempts:0,correct:0};
-        row.attempts+=1;if(answer?.isCorrect)row.correct+=1;topicStats.set(topicId,row);
+      if(topicName){
+        const key=(topicId?'id:'+topicId:'label:'+subjectId+':'+topicName.toLowerCase());
+        const row=topicStats.get(key)||{key,topicId:topicId||null,topicName,subjectId,attempts:0,correct:0};
+        row.attempts+=1;if(answer?.isCorrect)row.correct+=1;topicStats.set(key,row);
       }
     }
   }
 
   const subjectIds=[...subjectStats.keys()];
-  const topicIds=[...topicStats.keys()];
-  const[{data:subjectRows,error:subjectError},{data:topicRows,error:topicError}]=await Promise.all([
-    subjectIds.length?admin.from('subjects').select('id,name').in('id',subjectIds):Promise.resolve({data:[],error:null}),
-    topicIds.length?admin.from('topics').select('id,name,subject_id').in('id',topicIds):Promise.resolve({data:[],error:null}),
-  ]);
-  if(subjectError)throw subjectError;if(topicError)throw topicError;
+  const{data:subjectRows,error:subjectError}=subjectIds.length
+    ?await admin.from('subjects').select('id,name').in('id',subjectIds)
+    :{data:[],error:null};
+  if(subjectError)throw subjectError;
   const subjectName=new Map((subjectRows||[]).map((row:any)=>[String(row.id),String(row.name||'Subject')]));
-  const topicName=new Map((topicRows||[]).map((row:any)=>[String(row.id),String(row.name||'Topic')]));
-  const topicSubject=new Map((topicRows||[]).map((row:any)=>[String(row.id),String(row.subject_id||'')]));
 
   const subjects=[...subjectStats.values()].map(row=>({
     subjectId:row.subjectId,
@@ -196,10 +279,10 @@ if(request.method==='GET'&&path==='/past-questions/insights'){
   })).sort((a,b)=>b.attempts-a.attempts);
 
   const topics=[...topicStats.values()].map(row=>({
-    topicId:row.topicId,
-    topicName:topicName.get(row.topicId)||'Topic',
-    subjectId:topicSubject.get(row.topicId)||null,
-    subjectName:subjectName.get(topicSubject.get(row.topicId)||'')||'Subject',
+    topicId:row.topicId||row.key,
+    topicName:row.topicName,
+    subjectId:row.subjectId||null,
+    subjectName:subjectName.get(row.subjectId)||'Subject',
     attempts:row.attempts,
     correct:row.correct,
     accuracy:row.attempts?Math.round(row.correct/row.attempts*10000)/100:0,
