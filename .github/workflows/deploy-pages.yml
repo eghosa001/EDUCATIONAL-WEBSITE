@@ -2,6 +2,11 @@ name: Deploy GitHub Pages fallback
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'pages/**'
+      - '.github/workflows/deploy-pages.yml'
 
 permissions:
   contents: read
