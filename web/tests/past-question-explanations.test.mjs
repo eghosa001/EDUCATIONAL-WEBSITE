@@ -8,7 +8,8 @@ const api = fs.readFileSync(new URL('../../supabase/functions/web-api/index.ts',
 const migration = fs.readFileSync(new URL('../../supabase/migrations/20261003174500_track_past_question_explanation_provenance.sql', import.meta.url), 'utf8');
 
 test('missing explanations are available only after a graded attempt', () => {
-  assert.match(api, /past-questions\\\/\\\(\[0-9a-f-\]\+\)/);
+  assert.match(api, /explainPastQuestionMatch/);
+  assert.match(api, /past-questions/);
   assert.match(api, /Submit this question in a graded CBT before requesting an explanation/);
   assert.match(api, /past_question_attempts/);
   assert.match(api, /contains\('answers',\[\{questionId\}\]\)/);
