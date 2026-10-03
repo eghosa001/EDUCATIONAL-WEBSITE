@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
+  BarChart3,
   BookOpenIcon,
   CheckCircleIcon,
   ClockIcon,
@@ -40,6 +41,7 @@ type GradeResult = {
   incorrect: number;
   unanswered: number;
   percentage: number;
+  attemptId?: string;
   results: GradeRow[];
 };
 
@@ -312,6 +314,9 @@ export default function PastQuestionsPage() {
           headers: getLearnerApiHeaders(token),
           credentials: learnerApiConfig.credentials,
           body: JSON.stringify({
+            board: selectedExam,
+            ...(selectedYear ? { year: Number(selectedYear) } : {}),
+            timeSpentSeconds: startedAt ? Math.max(0, Math.round((Date.now() - startedAt) / 1000)) : 0,
             answers: questions.map(question => ({ questionId: question.id, answer: answers[question.id] || '' })),
           }),
         });
@@ -329,7 +334,7 @@ export default function PastQuestionsPage() {
 
   if (phase === 'setup') {
     return <div className="space-y-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="text-2xl font-bold text-[#151A3A] dark:text-white">Past Questions CBT</h1><p className="mt-1 text-slate-500 dark:text-slate-400">Choose the exam source and subjects first. Question count comes on the next screen.</p></div><Link href="/dashboard/past-questions/library" className="inline-flex items-center justify-center rounded-xl border border-[#151A3A] px-4 py-2 text-sm font-semibold text-[#151A3A] transition hover:bg-[#151A3A] hover:text-white dark:border-slate-300 dark:text-slate-100">Browse extracted question bank</Link></header>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="text-2xl font-bold text-[#151A3A] dark:text-white">Past Questions CBT</h1><p className="mt-1 text-slate-500 dark:text-slate-400">Choose the exam source and subjects first. Question count comes on the next screen.</p></div><div className="flex flex-wrap gap-2"><Link href="/dashboard/past-questions/analytics" className="inline-flex items-center justify-center gap-2 rounded-xl border border-brand-200 px-4 py-2 text-sm font-semibold text-brand-700 transition hover:bg-brand-50"><BarChart3 className="h-4 w-4"/>Performance</Link><Link href="/dashboard/past-questions/library" className="inline-flex items-center justify-center rounded-xl border border-[#151A3A] px-4 py-2 text-sm font-semibold text-[#151A3A] transition hover:bg-[#151A3A] hover:text-white dark:border-slate-300 dark:text-slate-100">Browse extracted question bank</Link></div></header>
       {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">{error}</div>}
       <div className="flex w-fit gap-1 rounded-xl bg-stone-100 p-1 dark:bg-slate-800">
         <button onClick={() => chooseMode('class')} className={`rounded-lg px-4 py-2 text-sm font-semibold ${mode === 'class' ? 'bg-white text-[#151A3A] shadow-sm dark:bg-[#1b2045] dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}><GraduationCapIcon className="mr-1.5 inline h-4 w-4"/>Class Practice</button>
@@ -379,7 +384,7 @@ export default function PastQuestionsPage() {
       <section className="rounded-2xl bg-gradient-to-br from-[#151A3A] to-[#30406f] p-7 text-white shadow-sm">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center"><div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-white/15 text-3xl font-extrabold">{Number(grade.percentage || 0)}%</div><div><TrophyIcon className="h-8 w-8 text-amber-300"/><h1 className="mt-2 text-2xl font-extrabold">CBT Results</h1><p className="mt-1 text-slate-200">{selectedNames.join(' • ')}</p><div className="mt-4 flex flex-wrap gap-5 text-sm"><span><b className="text-xl">{grade.correct}</b> correct</span><span><b className="text-xl">{grade.incorrect}</b> wrong</span><span><b className="text-xl">{grade.unanswered}</b> skipped</span></div></div></div>
       </section>
-      <div className="flex gap-3"><button onClick={() => { resetSession(); setPhase('count'); }} className="rounded-xl bg-[#151A3A] px-5 py-3 font-semibold text-white">Try another set</button><button onClick={() => { resetSession(); setPhase('setup'); }} className="rounded-xl border border-stone-300 px-5 py-3 font-semibold">Change selection</button></div>
+      <div className="flex flex-wrap gap-3"><button onClick={() => { resetSession(); setPhase('count'); }} className="rounded-xl bg-[#151A3A] px-5 py-3 font-semibold text-white">Try another set</button><button onClick={() => { resetSession(); setPhase('setup'); }} className="rounded-xl border border-stone-300 px-5 py-3 font-semibold">Change selection</button>{mode === 'exam' && <Link href="/dashboard/past-questions/analytics" className="inline-flex items-center gap-2 rounded-xl border border-brand-200 px-5 py-3 font-semibold text-brand-700"><BarChart3 className="h-4 w-4"/>View performance</Link>}</div>
       <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-[#1b2045]"><h2 className="text-xl font-bold text-[#151A3A] dark:text-white">Answer review</h2><div className="mt-5 space-y-4">{questions.map((question, position) => {
         const row = resultMap.get(question.id);
         const correctAnswer = scalar(row?.correct_answer);
