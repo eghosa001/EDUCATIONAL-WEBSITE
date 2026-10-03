@@ -205,7 +205,8 @@ export default function PastQuestionsPage() {
   }, [token]);
 
   useEffect(() => {
-    if (!token || experience !== 'jamb-cbt') return;
+    const needsJambSetup = experience === 'jamb-cbt' || (experience === 'legacy' && mode === 'exam' && selectedExam === 'jamb');
+    if (!token || !needsJambSetup) return;
     let cancelled = false;
     setJambPresetLoading(true);
     void fetchJambCoursePresets(token)
@@ -221,7 +222,7 @@ export default function PastQuestionsPage() {
         if (!cancelled) setJambPresetLoading(false);
       });
     return () => { cancelled = true; };
-  }, [token, experience]);
+  }, [token, experience, mode, selectedExam]);
 
   useEffect(() => {
     if (!subjects.length) return;
