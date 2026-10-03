@@ -1,10 +1,6 @@
 name: Recover JAMB OCR answer keys
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - scripts/recover_jamb_ocr_answer_keys.py
   workflow_dispatch:
 
 permissions:
