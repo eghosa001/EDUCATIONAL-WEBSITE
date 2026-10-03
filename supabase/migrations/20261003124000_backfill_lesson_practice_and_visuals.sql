@@ -8,67 +8,27 @@ create unique index if not exists lesson_resources_visual_summary_unique
   on public.lesson_resources (lesson_id, resource_type)
   where resource_type = 'visual-summary';
 
--- One lightweight SVG concept image per published lesson.
-with visual_source as (
-  select
-    l.id,
-    left(trim(l.title), 92) as title_text,
-    left(trim(coalesce(l.key_points->>0, l.learning_objectives->>0, 'Review the main concept in this lesson.')), 118) as p1,
-    left(trim(coalesce(l.key_points->>1, l.learning_objectives->>1, l.learning_objectives->>0, 'Connect the idea to the lesson examples.')), 118) as p2,
-    left(trim(coalesce(l.key_points->>2, l.learning_objectives->>2, l.key_points->>0, 'Apply the concept during practice.')), 118) as p3
-  from public.lessons l
-  where l.is_published = true
-),
-escaped as (
-  select
-    id,
-    replace(replace(replace(replace(title_text,'&','&amp;'),'<','&lt;'),'>','&gt;'),'"','&quot;') as title_text,
-    replace(replace(replace(replace(p1,'&','&amp;'),'<','&lt;'),'>','&gt;'),'"','&quot;') as p1,
-    replace(replace(replace(replace(p2,'&','&amp;'),'<','&lt;'),'>','&gt;'),'"','&quot;') as p2,
-    replace(replace(replace(replace(p3,'&','&amp;'),'<','&lt;'),'>','&gt;'),'"','&quot;') as p3
-  from visual_source
-),
-svg as (
-  select
-    id,
-    '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">' ||
-    '<rect width="1200" height="700" rx="36" fill="#f8fafc"/>' ||
-    '<rect x="60" y="55" width="1080" height="120" rx="28" fill="#151A3A"/>' ||
-    '<text x="100" y="105" font-family="Arial,sans-serif" font-size="25" font-weight="700" fill="#cbd5e1">LESSON VISUAL SUMMARY</text>' ||
-    '<text x="100" y="145" font-family="Arial,sans-serif" font-size="31" font-weight="700" fill="#ffffff">' || title_text || '</text>' ||
-    '<line x1="600" y1="175" x2="600" y2="230" stroke="#94a3b8" stroke-width="4"/>' ||
-    '<rect x="110" y="230" width="980" height="110" rx="24" fill="#ffffff" stroke="#cbd5e1" stroke-width="3"/>' ||
-    '<circle cx="165" cy="285" r="26" fill="#151A3A"/><text x="157" y="295" font-family="Arial,sans-serif" font-size="25" font-weight="700" fill="#ffffff">1</text>' ||
-    '<text x="215" y="295" font-family="Arial,sans-serif" font-size="23" fill="#334155">' || p1 || '</text>' ||
-    '<line x1="600" y1="340" x2="600" y2="385" stroke="#94a3b8" stroke-width="4"/>' ||
-    '<rect x="110" y="385" width="980" height="110" rx="24" fill="#ffffff" stroke="#cbd5e1" stroke-width="3"/>' ||
-    '<circle cx="165" cy="440" r="26" fill="#151A3A"/><text x="157" y="450" font-family="Arial,sans-serif" font-size="25" font-weight="700" fill="#ffffff">2</text>' ||
-    '<text x="215" y="450" font-family="Arial,sans-serif" font-size="23" fill="#334155">' || p2 || '</text>' ||
-    '<line x1="600" y1="495" x2="600" y2="540" stroke="#94a3b8" stroke-width="4"/>' ||
-    '<rect x="110" y="540" width="980" height="110" rx="24" fill="#ffffff" stroke="#cbd5e1" stroke-width="3"/>' ||
-    '<circle cx="165" cy="595" r="26" fill="#151A3A"/><text x="157" y="605" font-family="Arial,sans-serif" font-size="25" font-weight="700" fill="#ffffff">3</text>' ||
-    '<text x="215" y="605" font-family="Arial,sans-serif" font-size="23" fill="#334155">' || p3 || '</text>' ||
-    '</svg>' as payload
-  from escaped
-)
+-- One short resource URL per published lesson. The Next.js route renders
+-- the SVG dynamically from the lesson's own objectives/key points.
 insert into public.lesson_resources (
   lesson_id,title,resource_type,file_url,file_size_bytes,mime_type,description,is_downloadable,order_index
 )
 select
-  s.id,
+  l.id,
   'Lesson visual summary',
   'visual-summary',
-  'data:image/svg+xml;base64,' || encode(convert_to(s.payload,'UTF8'),'base64'),
-  octet_length(s.payload),
+  '/lesson-visuals/' || l.id::text,
+  null,
   'image/svg+xml',
   'Concept-map image generated directly from this lesson''s objectives and key points.',
   true,
   0
-from svg s
-where not exists (
-  select 1 from public.lesson_resources r
-  where r.lesson_id=s.id and r.resource_type='visual-summary'
-);
+from public.lessons l
+where l.is_published=true
+  and not exists (
+    select 1 from public.lesson_resources r
+    where r.lesson_id=l.id and r.resource_type='visual-summary'
+  );
 
 -- High-quality grounded cloze items for lessons with enough distinct concepts.
 with line_matches as (
