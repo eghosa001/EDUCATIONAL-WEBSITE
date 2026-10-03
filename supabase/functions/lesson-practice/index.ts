@@ -397,13 +397,21 @@ Deno.serve(async request => {
       }
     }
 
-    const fallback = cachedFallback || groundedFallback(
-      lesson as Record<string, unknown>,
-      (siblingLessons || []) as Array<Record<string, unknown>>,
-      count,
-    );
+    let fallback: PracticeQuestion[];
+    let usedSeedCache = false;
+    try {
+      fallback = groundedFallback(
+        lesson as Record<string, unknown>,
+        (siblingLessons || []) as Array<Record<string, unknown>>,
+        count,
+      );
+    } catch (fallbackError) {
+      if (!cachedFallback) throw fallbackError;
+      fallback = cachedFallback;
+      usedSeedCache = true;
+    }
 
-    if (!cachedFallback) {
+    if (!usedSeedCache) {
       await admin.from('lesson_practice_sets').upsert({
         lesson_id: lessonId,
         content_fingerprint: fingerprint,
@@ -414,7 +422,7 @@ Deno.serve(async request => {
       }, { onConflict: 'lesson_id' });
     }
 
-    return quizResponse(lessonId, fallback, Boolean(cachedFallback), 'grounded-fallback');
+    return quizResponse(lessonId, fallback, usedSeedCache, 'grounded-fallback');
   } catch (error) {
     if (reserved && userId && admin) {
       try { await admin.rpc('release_ai_request', { p_user_id: userId }); } catch {}
