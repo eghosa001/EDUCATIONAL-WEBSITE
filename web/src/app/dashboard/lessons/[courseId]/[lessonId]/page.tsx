@@ -10,6 +10,7 @@ import { getSupabase } from '@/lib/supabase';
 import { sendAiTutorMessage } from '@/services/api/aiService';
 import { learnerApiConfig, getLearnerApiHeaders, handleApiResponse } from '@/services/api/config';
 import { useAuth } from '@/contexts/AuthContext';
+import { startStudySession, endStudySession } from '@/services/api/progressService';
 
 type Tab = 'learn' | 'practice' | 'video' | 'resources';
 type Question = {
@@ -189,6 +190,41 @@ export default function LessonPage() {
   const [attempted, setAttempted] = useState(0);
   const [practiceLoading, setPracticeLoading] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const studySessionRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!token || !lesson?.id || !course?.id) return;
+    let disposed = false;
+
+    const finishSession = () => {
+      const sessionId = studySessionRef.current;
+      if (!sessionId) return;
+      studySessionRef.current = null;
+      void endStudySession(sessionId, token).catch((error) => {
+        console.warn('Unable to close lesson study session', error);
+      });
+    };
+
+    void startStudySession({
+      courseId: course.id,
+      lessonId: lesson.id,
+      activityType: lesson.video_url ? 'watching' : 'reading',
+      metadata: { source: 'lesson-page' },
+    }, token).then(({ session }) => {
+      if (disposed) {
+        void endStudySession(session.id, token).catch(() => undefined);
+        return;
+      }
+      studySessionRef.current = session.id;
+    }).catch((error) => {
+      console.warn('Unable to start lesson study session', error);
+    });
+
+    return () => {
+      disposed = true;
+      finishSession();
+    };
+  }, [token, lesson?.id, lesson?.video_url, course?.id]);
 
   useEffect(() => {
     let cancelled = false;
