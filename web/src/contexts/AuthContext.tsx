@@ -38,16 +38,17 @@ export function useAuth() {
 }
 
 async function loadProfile(supabase: ReturnType<typeof getSupabase>, authUser: any): Promise<User> {
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', authUser.id)
-    .maybeSingle();
-
-  const { data: roleRows } = await supabase
-    .from('user_roles')
-    .select('roles(name, permissions)')
-    .eq('user_id', authUser.id);
+  const [{ data: profile }, { data: roleRows }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', authUser.id)
+      .maybeSingle(),
+    supabase
+      .from('user_roles')
+      .select('roles(name, permissions)')
+      .eq('user_id', authUser.id),
+  ]);
 
   const roleNames = (roleRows || []).map((row: any) => row.roles?.name).filter(Boolean) as string[];
   const role = primaryRole(roleNames, authUser.user_metadata?.role) as User['role'];
@@ -120,7 +121,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // restoreSession() owns the initial hydration. Ignoring INITIAL_SESSION here
+      // avoids a duplicate profile + role round trip on every dashboard load.
+      if (event === 'INITIAL_SESSION') return;
       try {
         await applySession(session);
       } catch (error) {
