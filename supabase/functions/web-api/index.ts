@@ -472,6 +472,27 @@ if(request.method==='POST'&&path==='/jamb-cbt/session'){
   }},201,origin);
 }
 
+const saveJambAnswerMatch=path.match(/^\/jamb-cbt\/([0-9a-f-]+)\/answer$/i);
+if(request.method==='POST'&&saveJambAnswerMatch){
+  const user=await requireUser();
+  const sessionId=saveJambAnswerMatch[1];
+  const body=await request.json().catch(()=>null);
+  const questionId=String(body?.questionId||'');
+  const answer=scalarAnswer(body?.answer).toUpperCase();
+  if(!/^[0-9a-f-]{36}$/i.test(sessionId)||!questionId||!/^[A-E]$/.test(answer)){
+    return json({error:{message:'Valid JAMB session, question and answer are required'}},400,origin);
+  }
+  const{data:saved,error:saveError}=await admin.rpc('save_jamb_cbt_answer',{
+    p_session_id:sessionId,
+    p_user_id:user.id,
+    p_question_id:questionId,
+    p_answer:answer,
+  });
+  if(saveError)throw saveError;
+  if(!saved)return json({error:{message:'Answer could not be saved because the session expired or the question is invalid'}},409,origin);
+  return json({data:{saved:true,questionId}},200,origin);
+}
+
 const gradeJambCbtMatch=path.match(/^\/jamb-cbt\/([0-9a-f-]+)\/grade$/i);
 if(request.method==='POST'&&gradeJambCbtMatch){
   const user=await requireUser();
@@ -484,7 +505,23 @@ if(request.method==='POST'&&gradeJambCbtMatch){
   if(session.status!=='active')return json({error:{message:'This JAMB CBT session has already been submitted'}},409,origin);
 
   const questions=Array.isArray(session.questions)?session.questions:[];
-  const byId=new Map(answers.map((item:any)=>[String(item?.questionId||''),scalarAnswer(item?.answer).toUpperCase()]));
+  const nowMs=Date.now();
+  const expiresMs=new Date(session.expires_at).getTime();
+  const timedOut=nowMs>expiresMs;
+  const savedAnswers=session.answers&&typeof session.answers==='object'&&!Array.isArray(session.answers)
+    ?session.answers as Record<string,unknown>
+    :{};
+  const finalAnswerMap=new Map<string,string>(
+    Object.entries(savedAnswers).map(([questionId,value])=>[questionId,scalarAnswer(value).toUpperCase()])
+  );
+  if(!timedOut){
+    for(const item of answers){
+      const questionId=String(item?.questionId||'');
+      const answer=scalarAnswer(item?.answer).toUpperCase();
+      if(questionId&&/^[A-E]$/.test(answer))finalAnswerMap.set(questionId,answer);
+    }
+  }
+  const byId=finalAnswerMap;
   let correct=0,answered=0;
   const analyticsAnswers:any[]=[];
   const subjectStats=new Map<string,{subjectId:string;subjectName:string;total:number;correct:number;answered:number}>();
@@ -521,10 +558,7 @@ if(request.method==='POST'&&gradeJambCbtMatch){
   const unanswered=Math.max(0,total-answered);
   const percentage=total?Math.round(correct/total*10000)/100:0;
   const startedMs=new Date(session.started_at).getTime();
-  const expiresMs=new Date(session.expires_at).getTime();
-  const nowMs=Date.now();
   const timeSpentSeconds=Math.max(0,Math.round((Math.min(nowMs,expiresMs)-startedMs)/1000));
-  const timedOut=nowMs>expiresMs;
   const{data:attempt,error:attemptError}=await admin.from('past_question_attempts').insert({
     user_id:user.id,
     board:'jamb',
