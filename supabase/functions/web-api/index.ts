@@ -390,6 +390,7 @@ if(request.method==='POST'&&path==='/jamb-cbt/session'){
         .eq('subject_id',item.subjectId)
         .eq('question_type','mcq')
         .not('correct_answer','is',null)
+        .or('source.like.storage:%,source.like.JAMB %')
         .range(offset,Math.min(available-1,offset+windowSize-1));
       if(error)throw error;
       for(const row of data||[]){
