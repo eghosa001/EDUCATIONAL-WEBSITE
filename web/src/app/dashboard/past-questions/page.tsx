@@ -411,10 +411,15 @@ export default function PastQuestionsPage() {
 
   async function startCbt() {
     if (!token || !selectionValid || loading) return;
+    if (isJambCbt && !jambPlanValid) {
+      setError('Adjust each subject question count to the verified JAMB bank capacity and choose a total time between 5 and 240 minutes.');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       let loaded: Question[] = [];
+      let sessionSeconds: number | null = null;
       if (mode === 'class') {
         const response = await fetch(`${learnerApiConfig.baseUrl}/class-practice/session`, {
           method: 'POST',
@@ -436,6 +441,27 @@ export default function PastQuestionsPage() {
           subject_id: selectedSubjects[0],
           source: 'class' as const,
         }));
+      } else if (isJambCbt) {
+        const session = await startJambCbtSession(token, {
+          ...(selectedCoursePresetId ? { coursePresetId: selectedCoursePresetId } : {}),
+          durationMinutes: jambDurationMinutes,
+          subjects: selectedJambPlan.map(item => ({ subjectId: item.subjectId, count: item.count })),
+        });
+        setJambSessionId(String(session.sessionId || ''));
+        loaded = (session.questions || []).map((question: any) => ({
+          id: String(question.id),
+          question_text: String(question.question_text || ''),
+          options: question.options,
+          difficulty: question.difficulty ?? null,
+          question_image_url: question.question_image_url ?? null,
+          year: question.year ?? null,
+          board: 'jamb',
+          subject_id: question.subject_id ?? null,
+          subject_name: question.subject_name ?? null,
+          source: 'exam' as const,
+        }));
+        const expiry = new Date(String(session.expiresAt || '')).getTime();
+        sessionSeconds = Number.isFinite(expiry) ? Math.max(1, Math.ceil((expiry - Date.now()) / 1000)) : jambDurationMinutes * 60;
       } else {
         loaded = await loadExamQuestions();
       }
@@ -445,7 +471,7 @@ export default function PastQuestionsPage() {
       setFlagged(new Set());
       setIndex(0);
       setGrade(null);
-      setSecondsLeft(isTimedSession ? loaded.length * 60 : 0);
+      setSecondsLeft(sessionSeconds ?? (isTimedSession ? loaded.length * 60 : 0));
       setStartedAt(Date.now());
       setPhase('exam');
     } catch (err: any) {
@@ -507,6 +533,13 @@ export default function PastQuestionsPage() {
         });
         const payload = await handleApiResponse<any>(response);
         result = payload.data.result as GradeResult;
+      } else if (isJambCbt) {
+        if (!jambSessionId) throw new Error('JAMB CBT session is missing. Please start a new exam.');
+        result = await gradeJambCbtSession(
+          token,
+          jambSessionId,
+          questions.map(question => ({ questionId: question.id, answer: answers[question.id] || '' })),
+        ) as GradeResult;
       } else {
         const response = await fetch(`${learnerApiConfig.baseUrl}/past-questions/grade`, {
           method: 'POST',
