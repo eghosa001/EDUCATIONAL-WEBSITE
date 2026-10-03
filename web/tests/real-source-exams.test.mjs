@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const api = fs.readFileSync(new URL('../supabase/functions/web-api/index.ts', import.meta.url), 'utf8');
-const migration = fs.readFileSync(new URL('../supabase/migrations/20261003114500_real_source_exam_bank.sql', import.meta.url), 'utf8');
+const api = fs.readFileSync(new URL('../../supabase/functions/web-api/index.ts', import.meta.url), 'utf8');
+const migration = fs.readFileSync(new URL('../../supabase/migrations/20261003114500_real_source_exam_bank.sql', import.meta.url), 'utf8');
 
 test('exam API accepts real source-paper provenance and rejects inactive questions', () => {
   assert.match(api, /SOURCE_PAPER:/);
