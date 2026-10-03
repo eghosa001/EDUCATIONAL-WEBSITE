@@ -25,7 +25,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ les
 
   const { data: lesson, error } = await supabase
     .from('lessons')
-    .select('id,title,learning_objectives,key_points,is_published')
+    .select('id,title,written_content,learning_objectives,key_points,is_published')
     .eq('id', lessonId)
     .eq('is_published', true)
     .maybeSingle();
@@ -34,10 +34,22 @@ export async function GET(_request: Request, { params }: { params: Promise<{ les
 
   const objectives = Array.isArray(lesson.learning_objectives) ? lesson.learning_objectives : [];
   const keyPoints = Array.isArray(lesson.key_points) ? lesson.key_points : [];
-  const points = [...keyPoints, ...objectives]
+  const content = String(lesson.written_content || '');
+  const headings = [...content.matchAll(/^#{1,4}\s+([^\n]+)$/gm)]
+    .map((match) => String(match[1] || '').replace(/^(Lesson Title:|Topic:)\s*/i, '').trim());
+  const firstClassHeading = headings.find((heading) => /^(Primary|JSS|SSS|Junior|Senior)\b/i.test(heading));
+  const meaningfulHeadings = headings.filter((heading) =>
+    heading.length >= 4 &&
+    !/^(introduction|definition|definition and introduction|lesson introduction|key concepts?|detailed explanations?|summary|conclusion|revision|practice|worked examples?|assessment|exercise)$/i.test(heading)
+  );
+  const boldTerms = [...content.matchAll(/\*\*([^*\n]{2,80})\*\*/g)]
+    .map((match) => String(match[1] || '').trim())
+    .filter((term) => term.length >= 3 && !/^(remember|note|tip|example|important)$/i.test(term));
+
+  const points = [...meaningfulHeadings.slice(1), ...boldTerms, ...keyPoints, ...objectives]
     .map((item) => shorten(item, 112))
     .filter(Boolean)
-    .filter((item, index, rows) => rows.indexOf(item) === index)
+    .filter((item, index, rows) => rows.findIndex((value) => value.toLowerCase() === item.toLowerCase()) === index)
     .slice(0, 3);
 
   while (points.length < 3) {
@@ -48,7 +60,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ les
     ][points.length]);
   }
 
-  const title = escapeXml(shorten(lesson.title, 88));
+  const title = escapeXml(shorten(firstClassHeading || lesson.title, 88));
   const p1 = escapeXml(points[0]);
   const p2 = escapeXml(points[1]);
   const p3 = escapeXml(points[2]);
