@@ -637,7 +637,7 @@ export default function PastQuestionsPage() {
       <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-[#1b2045]">
         <p className="text-xs font-bold uppercase tracking-wider text-brand-700">JAMB CBT configuration</p>
         <h1 className="mt-2 text-3xl font-extrabold text-[#151A3A] dark:text-white">Set questions per subject</h1>
-        <p className="mt-2 text-sm text-slate-500">Choose a different number for each subject. The combined paper will be randomized and use only verified JAMB past questions.</p>
+        <p className="mt-2 text-sm text-slate-500">Choose a different number for each subject — the counts do not have to be equal. The combined paper will be randomized and use only verified JAMB past questions.</p>
 
         {selectedPreset && <div className="mt-5 rounded-xl bg-brand-50 p-4 text-sm dark:bg-brand-950/30">
           <b className="text-[#151A3A] dark:text-white">{selectedPreset.courseName}</b>
