@@ -138,6 +138,9 @@ def inspect_workflows(errors: list[str]) -> None:
             continue
         broad = broad_pull(block) or broad_main_push(block)
         approved = (repository, rel) in OWNER_APPROVED_BROAD
+        if path.name == "comprehensive-tests.yml":
+            if trigger_body(block, "push") is not None or trigger_body(block, "pull_request") is not None:
+                errors.append(f"{rel} must remain workflow_dispatch-only under the owner-locked minimal CI policy.")
         if ALLOW_BROAD in text and not approved:
             errors.append(f"{rel} adds an unapproved broad-CI exception. Only the owner may allowlist one in the guard.")
         if broad:
