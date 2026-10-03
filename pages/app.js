@@ -218,16 +218,18 @@ async function startCbt(){
   btn.disabled=true; notice.innerHTML='<div class="notice">Loading random questions…</div>';
   try{
     let questions=[];
+    let curriculumSessionId=null;
     if(cbtSetupState.source==='curriculum'){
-      const result=await supabase.rpc('cbt_get_questions',{p_class_id:cbtSetupState.classId,p_subject_id:cbtSetupState.subjectId,p_count:count});
-      if(result.error) throw result.error;
-      questions=result.data||[];
+      const payload=await learnerApi('/class-practice/session',{method:'POST',body:JSON.stringify({classId:cbtSetupState.classId,subjectId:cbtSetupState.subjectId,count})});
+      questions=payload?.data?.questions||[];
+      curriculumSessionId=payload?.data?.sessionId||null;
+      if(!curriculumSessionId) throw new Error('Class practice session was not created.');
     }else{
       const payload=await learnerApi('/past-questions/session',{method:'POST',body:JSON.stringify({board:cbtSetupState.source,subjectId:cbtSetupState.subjectId,count})});
       questions=payload?.data?.questions||[];
     }
     if(!questions.length) throw new Error('No graded multiple-choice questions are available for this selection yet.');
-    cbtState={questions,answers:{},flagged:new Set(),current:0,seconds:questions.length*60,className:cbtSetupState.className,subjectName:cbtSetupState.subjectName,source:cbtSetupState.source,startedAt:Date.now()};
+    cbtState={questions,answers:{},flagged:new Set(),current:0,seconds:questions.length*60,className:cbtSetupState.className,subjectName:cbtSetupState.subjectName,source:cbtSetupState.source,curriculumSessionId,startedAt:Date.now()};
     go('/cbt/exam');
   }catch(error){
     btn.disabled=false;
@@ -268,10 +270,10 @@ async function submitCbt(automatic=false){
   try{
     let result;
     if(cbtState.source==='curriculum'){
-      const payload=cbtState.questions.map(q=>({question_id:q.id,answer:cbtState.answers[q.id]??''}));
-      const response=await supabase.rpc('cbt_grade',{p_answers:payload});
-      if(response.error) throw response.error;
-      result=response.data;
+      if(!cbtState.curriculumSessionId) throw new Error('Class practice session is missing. Please start a new set.');
+      const answers=cbtState.questions.map(q=>({questionId:q.id,answer:cbtState.answers[q.id]??''}));
+      const response=await learnerApi(`/class-practice/${cbtState.curriculumSessionId}/grade`,{method:'POST',body:JSON.stringify({answers})});
+      result=response?.data?.result;
     }else{
       const answers=cbtState.questions.map(q=>({questionId:q.id,answer:cbtState.answers[q.id]??''}));
       const response=await learnerApi('/past-questions/grade',{method:'POST',body:JSON.stringify({answers})});
