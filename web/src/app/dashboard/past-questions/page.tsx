@@ -96,6 +96,7 @@ export default function PastQuestionsPage() {
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [examAvailability, setExamAvailability] = useState<Record<string, string[]>>({});
+  const [classAvailability, setClassAvailability] = useState<Record<string, string[]>>({});
   const [examYears, setExamYears] = useState<Record<string, number[]>>({});
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedExam, setSelectedExam] = useState('jamb');
@@ -118,17 +119,27 @@ export default function PastQuestionsPage() {
 
   useEffect(() => {
     (async () => {
-      const [{ data: classRows, error: classError }, { data: subjectRows, error: subjectError }, availabilityResult] = await Promise.all([
+      const [{ data: classRows, error: classError }, { data: subjectRows, error: subjectError }, { data: courseRows, error: courseError }, availabilityResult] = await Promise.all([
         supabase.from('classes').select('id,name,code').eq('is_active', true).order('order_index'),
         supabase.from('subjects').select('id,name,code').eq('is_active', true).order('order_index'),
+        supabase.from('courses').select('class_id,subject_id').eq('status', 'published'),
         fetch(`${learnerApiConfig.baseUrl}/past-question-availability`, {
           headers: getLearnerApiHeaders(token ?? undefined),
           credentials: learnerApiConfig.credentials,
         }).then(handleApiResponse<any>).catch(() => null),
       ]);
-      if (classError || subjectError) setError((classError || subjectError)?.message || 'Unable to load CBT setup');
+      if (classError || subjectError || courseError) setError((classError || subjectError || courseError)?.message || 'Unable to load CBT setup');
       setClasses((classRows || []) as ClassRow[]);
       setSubjects((subjectRows || []) as SubjectRow[]);
+      const classSubjects: Record<string, string[]> = {};
+      for (const row of courseRows || []) {
+        const classId = String((row as any).class_id || '');
+        const subjectId = String((row as any).subject_id || '');
+        if (!classId || !subjectId) continue;
+        const values = classSubjects[classId] || (classSubjects[classId] = []);
+        if (!values.includes(subjectId)) values.push(subjectId);
+      }
+      setClassAvailability(classSubjects);
       const availability = availabilityResult?.data?.availability || {};
       const bySubject: Record<string, string[]> = {};
       const byYear: Record<string, number[]> = {};
@@ -175,7 +186,9 @@ export default function PastQuestionsPage() {
   const examConfig = EXAMS.find(item => item.code === selectedExam)!;
   const visibleSubjects = mode === 'exam' && examAvailability[selectedExam]?.length
     ? subjects.filter(subject => examAvailability[selectedExam].includes(subject.id))
-    : subjects;
+    : mode === 'class' && selectedClass
+      ? subjects.filter(subject => (classAvailability[selectedClass] || []).includes(subject.id))
+      : subjects;
   const availableYears = examYears[selectedExam] || [];
   const selectedNames = selectedSubjects.map(id => subjects.find(subject => subject.id === id)?.name).filter(Boolean) as string[];
   const selectionValid = mode === 'class'
