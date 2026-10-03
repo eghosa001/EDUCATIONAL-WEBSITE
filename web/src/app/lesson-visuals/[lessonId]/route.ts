@@ -12,6 +12,34 @@ const shorten = (value: unknown, max: number) => {
   return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
 };
 
+const markdownTableSummary = (content: string) => {
+  const lines = content.split('\n').map(line => line.trim()).filter(Boolean);
+  for (let index = 0; index < lines.length - 2; index += 1) {
+    if (!lines[index].startsWith('|') || !/^\|?\s*:?-{3,}/.test(lines[index + 1])) continue;
+    const cells = (line: string) => line.replace(/^\||\|$/g, '').split('|').map(cell => cell.replace(/[*_`]/g, '').trim());
+    const headers = cells(lines[index]).slice(0, 3);
+    const rows: string[][] = [];
+    for (let rowIndex = index + 2; rowIndex < lines.length && rows.length < 3; rowIndex += 1) {
+      if (!lines[rowIndex].startsWith('|')) break;
+      const row = cells(lines[rowIndex]).slice(0, headers.length);
+      if (row.some(Boolean)) rows.push(row);
+    }
+    if (headers.length >= 2 && rows.length) {
+      return rows.map(row => headers.map((header, cellIndex) => {
+        const value = row[cellIndex];
+        return header && value ? header + ': ' + value : value || header;
+      }).filter(Boolean).join(' • '));
+    }
+  }
+  return [] as string[];
+};
+
+const lessonEquation = (content: string) => content
+  .replace(/[*_`#|]/g, ' ')
+  .split('\n')
+  .map(line => line.replace(/\s+/g, ' ').trim())
+  .find(line => line.length >= 5 && line.length <= 120 && /[A-Za-z0-9πΔΣ²³)]\s*=\s*[^=]{1,70}$/.test(line) && !/https?:\/\//i.test(line)) || '';
+
 export async function GET(_request: Request, { params }: { params: Promise<{ lessonId: string }> }) {
   const { lessonId } = await params;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -46,11 +74,29 @@ export async function GET(_request: Request, { params }: { params: Promise<{ les
     .map((match) => String(match[1] || '').trim())
     .filter((term) => term.length >= 3 && !/^(remember|note|tip|example|important)$/i.test(term));
 
-  const points = [...meaningfulHeadings.slice(1), ...boldTerms, ...keyPoints, ...objectives]
+  const tablePoints = markdownTableSummary(content);
+  const equation = lessonEquation(content);
+  const sequenceLike = /\b(steps?|stages?|process|procedure|cycle|sequence|timeline|development|production)\b/i.test(String(lesson.title || '') + ' ' + content.slice(0, 3500));
+  const conceptPoints = [...meaningfulHeadings.slice(1), ...boldTerms, ...keyPoints, ...objectives]
     .map((item) => shorten(item, 112))
     .filter(Boolean)
-    .filter((item, index, rows) => rows.findIndex((value) => value.toLowerCase() === item.toLowerCase()) === index)
-    .slice(0, 3);
+    .filter((item, index, rows) => rows.findIndex((value) => value.toLowerCase() === item.toLowerCase()) === index);
+
+  let visualType = 'CONCEPT MAP';
+  let points: string[] = [];
+  if (tablePoints.length) {
+    visualType = 'REFERENCE TABLE';
+    points = tablePoints;
+  } else if (equation) {
+    visualType = 'FORMULA / RELATIONSHIP';
+    points = [equation, ...conceptPoints];
+  } else if (sequenceLike) {
+    visualType = 'SEQUENCE / PROCESS';
+    points = conceptPoints;
+  } else {
+    points = conceptPoints;
+  }
+  points = points.slice(0, 3).map((item) => shorten(item, 112));
 
   while (points.length < 3) {
     points.push([
@@ -61,15 +107,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ les
   }
 
   const title = escapeXml(shorten(firstClassHeading || lesson.title, 88));
+  const visualLabel = escapeXml(visualType);
   const p1 = escapeXml(points[0]);
   const p2 = escapeXml(points[1]);
   const p3 = escapeXml(points[2]);
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
-<title id="title">${title}</title><desc id="desc">Visual summary of three key ideas from this lesson.</desc>
+<title id="title">${title}</title><desc id="desc">Content-aware visual summary drawn only from this lesson.</desc>
 <rect width="1200" height="700" rx="36" fill="#f8fafc"/>
 <rect x="60" y="55" width="1080" height="120" rx="28" fill="#151A3A"/>
-<text x="100" y="105" font-family="Arial,sans-serif" font-size="25" font-weight="700" fill="#cbd5e1">LESSON VISUAL SUMMARY</text>
+<text x="100" y="105" font-family="Arial,sans-serif" font-size="25" font-weight="700" fill="#cbd5e1">LESSON VISUAL · ${visualLabel}</text>
 <text x="100" y="145" font-family="Arial,sans-serif" font-size="31" font-weight="700" fill="#ffffff">${title}</text>
 <line x1="600" y1="175" x2="600" y2="230" stroke="#94a3b8" stroke-width="4"/>
 <rect x="110" y="230" width="980" height="110" rx="24" fill="#ffffff" stroke="#cbd5e1" stroke-width="3"/>
