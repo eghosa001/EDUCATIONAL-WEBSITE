@@ -150,7 +150,7 @@ if(request.method==='POST'&&path==='/class-practice/session'){
       const response=await fetch(`${supabaseUrl}/functions/v1/lesson-practice`,{
         method:'POST',
         headers:{Authorization:authorization,apikey:anonKey,'Content-Type':'application/json'},
-        body:JSON.stringify({lessonId:lesson.id,count:5}),
+        body:JSON.stringify({lessonId:lesson.id,count:5,allowAi:false}),
       });
       if(!response.ok)return{lesson,ok:false};
       const payload=await response.json().catch(()=>null);

@@ -129,6 +129,19 @@ const rotated = (options: string[], offset: number) => {
   return [...options.slice(n), ...options.slice(0, n)];
 };
 
+const FALLBACK_STOPWORDS = new Set([
+  'about','after','again','against','because','before','being','between','could','during','first','from','have','into',
+  'lesson','more','most','other','over','same','should','their','there','these','they','this','those','through','under',
+  'using','very','what','when','where','which','while','with','would','your','understand','explain','identify','describe',
+  'important','topic','students','student','examples','example','following','different','include','includes','including',
+]);
+
+const sentenceTerms = (sentence: string) => unique(
+  [...stripMarkdown(sentence).matchAll(/\b[A-Za-z][A-Za-z-]{4,}\b/g)]
+    .map(match => clean(match[0], 80))
+    .filter(term => !FALLBACK_STOPWORDS.has(term.toLowerCase())),
+);
+
 function groundedFallback(
   lesson: Record<string, unknown>,
   siblingLessons: Array<Record<string, unknown>>,
@@ -193,8 +206,45 @@ function groundedFallback(
     }
   }
 
+  if (questions.length < expected) {
+    const siblingTerms = unique(siblingLessons.flatMap(row =>
+      emphasisPool(clean(row.written_content, 8000), row.key_points, clean(row.title, 160))
+    ));
+    const distractorPool = unique([...terms, ...siblingTerms]).filter(term => term.length >= 4 && term.length <= 80);
+
+    for (const sentence of sentences) {
+      if (questions.length >= expected) break;
+      const candidates = sentenceTerms(sentence)
+        .filter(term => new RegExp('\\b' + escapeRegExp(term) + '\\b', 'i').test(sentence))
+        .sort((a, b) => b.length - a.length);
+      const target = candidates[questions.length % Math.max(1, candidates.length)] || candidates[0];
+      if (!target) continue;
+
+      const distractors = distractorPool
+        .filter(candidate => candidate.toLowerCase() !== target.toLowerCase())
+        .filter(candidate => !new RegExp('\\b' + escapeRegExp(candidate) + '\\b', 'i').test(sentence))
+        .slice(questions.length % 7)
+        .concat(distractorPool)
+        .filter((candidate, index, rows) => rows.findIndex(value => value.toLowerCase() === candidate.toLowerCase()) === index)
+        .slice(0, 3);
+      if (distractors.length < 3) continue;
+
+      const cloze = sentence.replace(new RegExp('\\b' + escapeRegExp(target) + '\\b', 'i'), '____');
+      if (cloze === sentence) continue;
+      const options = rotated([target, ...distractors], questions.length % 4);
+      questions.push({
+        questionText: 'Complete this fact from "' + title + '": "' + clean(cloze, 520) + '"',
+        questionType: 'multiple-choice',
+        options,
+        correctAnswer: target,
+        explanation: 'The lesson states: "' + clean(sentence, 520) + '"',
+        difficulty: questions.length < 2 ? 'easy' : questions.length < 4 ? 'medium' : 'hard',
+      });
+    }
+  }
+
   if (questions.length !== expected) {
-    throw new Error('Lesson does not contain enough structured material for reliable fallback practice');
+    throw new Error('Lesson content could not produce a safe grounded practice set');
   }
   return validateQuestions(questions, expected);
 }
@@ -259,6 +309,7 @@ Deno.serve(async request => {
     const lessonId = clean(body.lessonId, 64);
     const action = clean(body.action || 'generate', 20).toLowerCase();
     const count = Number(body.count ?? 5);
+    const allowAi = body.allowAi !== false;
     if (!isUuid(lessonId)) return json({ error: 'A valid lessonId is required' }, 400);
     if (!['generate', 'check'].includes(action)) return json({ error: 'Unsupported practice action' }, 400);
     if (!Number.isInteger(count) || count < 3 || count > 10) return json({ error: 'count must be an integer from 3 to 10' }, 400);
@@ -293,7 +344,6 @@ Deno.serve(async request => {
       .eq('lesson_id', lessonId)
       .maybeSingle();
 
-    let cachedFallback: PracticeQuestion[] | null = null;
     let cachedQuestions: PracticeQuestion[] | null = null;
     if (cached?.content_fingerprint === fingerprint) {
       try {
@@ -339,10 +389,9 @@ Deno.serve(async request => {
       if (cached.generation_method === 'ai' || Number(cached.source_version || 0) >= 2) {
         return quizResponse(lessonId, cachedQuestions, true, String(cached.generation_method || 'grounded-fallback'));
       }
-      cachedFallback = cachedQuestions;
     }
 
-    if (bynaraKey) {
+    if (bynaraKey && allowAi) {
       const { data: consumed, error: consumeError } = await admin.rpc('consume_ai_request', { p_user_id: user.id, p_daily_limit: 100 });
       if (!consumeError && consumed === true) {
         reserved = true;
@@ -409,32 +458,22 @@ Deno.serve(async request => {
       }
     }
 
-    let fallback: PracticeQuestion[];
-    let usedSeedCache = false;
-    try {
-      fallback = groundedFallback(
-        lesson as Record<string, unknown>,
-        (siblingLessons || []) as Array<Record<string, unknown>>,
-        count,
-      );
-    } catch (fallbackError) {
-      if (!cachedFallback) throw fallbackError;
-      fallback = cachedFallback;
-      usedSeedCache = true;
-    }
+    const fallback = groundedFallback(
+      lesson as Record<string, unknown>,
+      (siblingLessons || []) as Array<Record<string, unknown>>,
+      count,
+    );
 
-    if (!usedSeedCache) {
-      await admin.from('lesson_practice_sets').upsert({
-        lesson_id: lessonId,
-        content_fingerprint: fingerprint,
-        questions: fallback,
-        generation_method: 'grounded-fallback',
-        source_version: 2,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'lesson_id' });
-    }
+    await admin.from('lesson_practice_sets').upsert({
+      lesson_id: lessonId,
+      content_fingerprint: fingerprint,
+      questions: fallback,
+      generation_method: 'grounded-fallback',
+      source_version: 2,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'lesson_id' });
 
-    return quizResponse(lessonId, fallback, usedSeedCache, 'grounded-fallback');
+    return quizResponse(lessonId, fallback, false, 'grounded-fallback');
   } catch (error) {
     if (reserved && userId && admin) {
       try { await admin.rpc('release_ai_request', { p_user_id: userId }); } catch {}
