@@ -5,6 +5,11 @@ on:
   push:
     branches: [main]
     paths:
+      - 'web/**'
+      - 'shared/**'
+      - 'vercel.json'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/deploy-web.yml'
 
 permissions:
