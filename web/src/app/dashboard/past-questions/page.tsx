@@ -17,6 +17,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { learnerApiConfig, getLearnerApiHeaders, handleApiResponse } from '@/services/api/config';
+import { fetchPastQuestionExplanation } from '@/services/api/pastQuestionAnalyticsService';
 
 type Mode = 'class' | 'exam';
 type Phase = 'setup' | 'count' | 'exam' | 'results';
@@ -111,6 +112,8 @@ export default function PastQuestionsPage() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [explanationOverrides, setExplanationOverrides] = useState<Record<string, string>>({});
+  const [explainingQuestionId, setExplainingQuestionId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -190,6 +193,8 @@ export default function PastQuestionsPage() {
     setSecondsLeft(0);
     setStartedAt(null);
     setGrade(null);
+    setExplanationOverrides({});
+    setExplainingQuestionId(null);
     setError(null);
   };
   const chooseMode = (value: Mode) => {
@@ -296,6 +301,20 @@ export default function PastQuestionsPage() {
     }
   }
 
+  async function explainPastQuestion(questionId: string) {
+    if (!token || mode !== 'exam' || explainingQuestionId) return;
+    setExplainingQuestionId(questionId);
+    setError(null);
+    try {
+      const result = await fetchPastQuestionExplanation(questionId, token);
+      setExplanationOverrides(previous => ({ ...previous, [questionId]: result.explanation }));
+    } catch (err: any) {
+      setError(err?.message || 'Unable to generate this explanation');
+    } finally {
+      setExplainingQuestionId(null);
+    }
+  }
+
   async function submitCbt(automatic = false) {
     if (!token || !questions.length || submitting) return;
     if (!automatic && !window.confirm(`Submit this CBT? ${questions.length - answeredCount} question(s) are unanswered.`)) return;
@@ -388,7 +407,7 @@ export default function PastQuestionsPage() {
       <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-[#1b2045]"><h2 className="text-xl font-bold text-[#151A3A] dark:text-white">Answer review</h2><div className="mt-5 space-y-4">{questions.map((question, position) => {
         const row = resultMap.get(question.id);
         const correctAnswer = scalar(row?.correct_answer);
-        return <article key={question.id} className="rounded-xl border border-stone-200 p-4 dark:border-slate-700"><div className="flex gap-3">{row?.is_correct ? <CheckCircleIcon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600"/> : <XCircleIcon className="mt-0.5 h-5 w-5 shrink-0 text-red-600"/>}<div><p className="font-semibold">{position + 1}. {question.question_text}</p><p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Your answer: <b>{answers[question.id] || 'Not answered'}</b></p>{!row?.is_correct && <p className="mt-1 text-sm text-emerald-700">Correct answer: <b>{correctAnswer || '—'}</b></p>}{row?.explanation && <p className="mt-2 rounded-lg bg-brand-50 p-3 text-sm dark:bg-brand-950/30">{row.explanation}</p>}</div></div></article>;
+        return <article key={question.id} className="rounded-xl border border-stone-200 p-4 dark:border-slate-700"><div className="flex gap-3">{row?.is_correct ? <CheckCircleIcon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600"/> : <XCircleIcon className="mt-0.5 h-5 w-5 shrink-0 text-red-600"/>}<div><p className="font-semibold">{position + 1}. {question.question_text}</p><p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Your answer: <b>{answers[question.id] || 'Not answered'}</b></p>{!row?.is_correct && <p className="mt-1 text-sm text-emerald-700">Correct answer: <b>{correctAnswer || '—'}</b></p>}{(explanationOverrides[question.id] || row?.explanation) ? <div className="mt-2 rounded-lg bg-brand-50 p-3 text-sm dark:bg-brand-950/30"><b>Explanation:</b> {explanationOverrides[question.id] || row?.explanation}</div> : mode === 'exam' && <button type="button" onClick={() => void explainPastQuestion(question.id)} disabled={explainingQuestionId === question.id} className="mt-3 rounded-lg border border-brand-200 px-3 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:opacity-50">{explainingQuestionId === question.id ? 'Explaining…' : 'Explain this answer'}</button>}</div></div></article>;
       })}</div></section>
     </div>;
   }

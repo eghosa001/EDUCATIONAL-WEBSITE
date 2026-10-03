@@ -321,6 +321,78 @@ if(request.method==='GET'&&path==='/past-questions/insights'){
     })),
   }}},200,origin)
 }
+const explainPastQuestionMatch=path.match(/^\/past-questions\/([0-9a-f-]+)\/explain$/i);
+if(request.method==='POST'&&explainPastQuestionMatch){
+  const user=await requireUser();
+  const questionId=explainPastQuestionMatch[1];
+
+  const{data:attemptRows,error:attemptError}=await admin.from('past_question_attempts')
+    .select('id,answers')
+    .eq('user_id',user.id)
+    .contains('answers',[{questionId}])
+    .order('submitted_at',{ascending:false})
+    .limit(1);
+  if(attemptError)throw attemptError;
+  if(!(attemptRows||[]).length)return json({error:{message:'Submit this question in a graded CBT before requesting an explanation'}},403,origin);
+
+  const{data:question,error:questionError}=await admin.from('past_questions')
+    .select('id,board,year,subject_id,question_text,options,correct_answer,explanation,explanation_source,is_active,subject:subjects(name)')
+    .eq('id',questionId).eq('is_active',true).maybeSingle();
+  if(questionError||!question)return json({error:{message:'Question not found'}},404,origin);
+  const correct=scalarAnswer(question.correct_answer);
+  if(!correct)return json({error:{message:'This question does not have a verified answer key yet'}},409,origin);
+
+  const existing=String(question.explanation||'').trim();
+  if(existing)return json({data:{explanation:existing,source:String(question.explanation_source||'source'),cached:true}},200,origin);
+
+  const optionText=Array.isArray(question.options)
+    ?question.options.map((option:any,index:number)=>`${String.fromCharCode(65+index)}. ${String(option?.text??option?.value??option??'')}`).join('\n')
+    :question.options&&typeof question.options==='object'
+      ?Object.entries(question.options as Record<string,unknown>).map(([key,value]:[string,unknown])=>`${key}. ${String((value as any)?.text??(value as any)?.value??value??'')}`).join('\n')
+      :'';
+  const prompt=[
+    'Explain this verified examination question accurately for a Nigerian student.',
+    `Examination: ${String(question.board||'').toUpperCase()}${question.year?' '+question.year:''}.`,
+    `Subject: ${String((question as any).subject?.name||'General')}.`,
+    `Question: ${String(question.question_text||'').slice(0,6000)}`,
+    optionText?`Options:\n${optionText.slice(0,4000)}`:'',
+    `Verified correct answer: ${correct}.`,
+    'Explain why the verified answer is correct and, where useful, why the main distractors are wrong. Do not change the answer key or invent missing source facts. Keep the explanation clear and concise.'
+  ].filter(Boolean).join('\n\n');
+
+  const aiResponse=await fetch(`${supabaseUrl}/functions/v1/ai`,{
+    method:'POST',
+    headers:{
+      Authorization:authorization,
+      apikey:anonKey,
+      'Content-Type':'application/json',
+    },
+    body:JSON.stringify({
+      action:'explain',
+      question:prompt,
+      subjectId:question.subject_id||undefined,
+      level:'intermediate',
+    }),
+  });
+  const aiPayload=await aiResponse.json().catch(()=>null);
+  if(!aiResponse.ok||aiPayload?.error){
+    const message=String(aiPayload?.error||'AI explanation is temporarily unavailable');
+    return json({error:{message}},aiResponse.status>=400?aiResponse.status:503,origin);
+  }
+  const explanation=String(aiPayload?.explanation?.explanation||'').trim().slice(0,12000);
+  if(explanation.length<40)return json({error:{message:'AI explanation was incomplete. Please try again.'}},503,origin);
+
+  const{error:cacheError}=await admin.from('past_questions').update({
+    explanation,
+    explanation_source:'ai-grounded',
+    explanation_generated_at:new Date().toISOString(),
+    updated_at:new Date().toISOString(),
+  }).eq('id',questionId).eq('is_active',true);
+  if(cacheError)throw cacheError;
+
+  return json({data:{explanation,source:'ai-grounded',cached:false}},200,origin);
+}
+
 const questionCheck=path.match(/^\/(questions|past-questions)\/([0-9a-f-]+)\/check$/i);if(request.method==='POST'&&questionCheck){await requireUser();const payload=await request.json().catch(()=>({}));const submitted=scalarAnswer(payload?.answer);if(!submitted)return json({error:{message:'Answer is required'}},400,origin);const table=questionCheck[1]==='past-questions'?'past_questions':'questions';const columns=table==='past_questions'?'id,correct_answer,explanation,is_active':'id,correct_answer,explanation,explanation_image_url,is_active';const{data:row,error}=await admin.from(table).select(columns).eq('id',questionCheck[2]).eq('is_active',true).maybeSingle();if(error||!row)return json({error:{message:'Question not found'}},404,origin);const correctAnswer=scalarAnswer((row as any).correct_answer);if(!correctAnswer)return json({data:{result:{isCorrect:null,correctAnswer:null,explanation:(row as any).explanation||'This source question does not include a verified answer key yet. Your response is kept as practice and is not marked right or wrong.',explanationImageUrl:(row as any).explanation_image_url||null}}},200,origin);const isCorrect=submitted.toLowerCase()===correctAnswer.toLowerCase();return json({data:{result:{isCorrect,correctAnswer,explanation:(row as any).explanation||null,explanationImageUrl:(row as any).explanation_image_url||null}}},200,origin)}
 
 if(request.method==='GET'&&path==='/exams'){

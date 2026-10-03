@@ -59,3 +59,14 @@ export const fetchPastQuestionInsights = async (token: string, limit = 200): Pro
   const payload = await handleApiResponse<{ data: { insights: PastQuestionInsights } }>(response);
   return payload.data.insights;
 };
+
+
+export const fetchPastQuestionExplanation = async (questionId: string, token: string): Promise<{ explanation: string; source: string; cached: boolean }> => {
+  const response = await fetch(`${learnerApiConfig.baseUrl}/past-questions/${questionId}/explain`, {
+    method: 'POST',
+    headers: getLearnerApiHeaders(token),
+    credentials: learnerApiConfig.credentials,
+  });
+  const payload = await handleApiResponse<{ data: { explanation: string; source: string; cached: boolean } }>(response);
+  return payload.data;
+};
