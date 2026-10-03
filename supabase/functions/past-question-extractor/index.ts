@@ -93,6 +93,7 @@ const isLikelyQuestionFile = (file: any) => {
   const board = String(file.board || "").toLowerCase();
   const status = String(file.metadata?.status || "");
   if (!["waec", "jamb"].includes(board)) return false;
+  if (["reference_material", "reference_curriculum_file", "duplicate_source"].includes(status)) return false;
   if (/syllabus|selected[- _]?text|nerdc|scheme|2021[- _]?2025/.test(name)) return false;
   if (["needs_ocr_or_manual_parse", "needs_batch_processing", "needs_clean_reprocess", "ocr_failed"].includes(status)) return true;
   if (board === "jamb") return /past[- _]?questions?|questions?[- _]?and[- _]?answers?/.test(name);
@@ -144,7 +145,7 @@ Deno.serve(async (request) => {
       if (!/^[0-9a-f-]{36}$/i.test(fileId)) return json({ error: "Valid fileId required" }, 400);
       const questions = Array.isArray(body?.questions) ? body.questions.slice(0, 2000) : [];
       const { data: file, error: fileError } = await admin.from("past_question_files")
-        .select("id,board,subject,year,file_name,metadata").eq("id", fileId).maybeSingle();
+        .select("id,board,subject,year,file_name,is_processed,questions_extracted,metadata").eq("id", fileId).maybeSingle();
       if (fileError || !file) return json({ error: "Source file not found" }, 404);
       const fileStatus = String(file?.metadata?.status || "");
       const pipelineVersion = Number(body?.pipelineVersion || 0);
