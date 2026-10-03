@@ -48,6 +48,7 @@ export default function ExamAttemptPage() {
   const [answers, setAnswers] = useState<Answers>({});
   const [flagged, setFlagged] = useState<Set<string>>(new Set());
   const [secondsLeft, setSecondsLeft] = useState(0);
+  const [isTimed, setIsTimed] = useState(true);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [sectionTab, setSectionTab] = useState('all');
@@ -88,12 +89,14 @@ export default function ExamAttemptPage() {
       });
       const payload = await handleApiResponse<{
         data: {
-          attempt: { id: string };
-          exam: { durationMinutes: number; isTimed: boolean; totalQuestions: number };
+          attempt: { id: string; started_at: string };
+          exam: { durationMinutes: number; isTimed: boolean; totalQuestions: number; remainingSeconds: number };
           questions: Array<{
             id: string; questionId: string; questionText: string; questionType: string; options?: any[];
             marks: number; orderIndex: number; sectionName?: string; difficulty?: string;
           }>;
+          savedAnswers?: Array<{ questionId: string; studentAnswer: unknown }>;
+          resumed?: boolean;
         };
       }>(response);
       const mapped: AttemptQuestion[] = (payload.data.questions || []).map((q) => ({
@@ -108,15 +111,18 @@ export default function ExamAttemptPage() {
         difficulty: q.difficulty || undefined,
       }));
       if (!mapped.length) throw new Error('This CBT has no available questions.');
+      const timed = Boolean(payload.data.exam.isTimed);
       const duration = Number(payload.data.exam.durationMinutes || exam.duration_minutes || 60);
+      const restoredAnswers = Object.fromEntries((payload.data.savedAnswers || []).map((item) => [item.questionId, item.studentAnswer]));
       setAttemptId(payload.data.attempt.id);
       setQuestions(mapped);
       setQuestionCount(mapped.length);
-      setSecondsLeft(duration * 60);
+      setIsTimed(timed);
+      setSecondsLeft(timed ? Math.max(0, Number(payload.data.exam.remainingSeconds ?? duration * 60)) : 0);
       setCurrent(0);
-      setAnswers({});
+      setAnswers(restoredAnswers);
       setFlagged(new Set());
-      setStartedAt(Date.now());
+      setStartedAt(new Date(payload.data.attempt.started_at || Date.now()).getTime());
       setPhase('exam');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to start this exam');
@@ -126,10 +132,10 @@ export default function ExamAttemptPage() {
   };
 
   useEffect(() => {
-    if (phase !== 'exam' || secondsLeft <= 0) return;
+    if (phase !== 'exam' || !isTimed || secondsLeft <= 0) return;
     const timer = window.setInterval(() => setSecondsLeft((value) => Math.max(0, value - 1)), 1000);
     return () => window.clearInterval(timer);
-  }, [phase, secondsLeft]);
+  }, [phase, isTimed, secondsLeft]);
 
   const sections = useMemo(() => [...new Set(questions.map((q) => q.sectionName).filter(Boolean) as string[])], [questions]);
   const visible = useMemo(() => sectionTab === 'all' ? questions : questions.filter((q) => q.sectionName === sectionTab), [questions, sectionTab]);
@@ -137,6 +143,26 @@ export default function ExamAttemptPage() {
   const question = visible[current];
   const answered = questions.filter((item) => answers[item.questionId] !== undefined && answers[item.questionId] !== '').length;
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+
+  const persistAnswer = async (questionId: string, studentAnswer: unknown) => {
+    if (!token || !attemptId) return;
+    try {
+      const response = await fetch(`${learnerApiConfig.baseUrl}/exams/${examId}/attempts/${attemptId}/answer`, {
+        method: 'PATCH',
+        headers: getLearnerApiHeaders(token),
+        credentials: learnerApiConfig.credentials,
+        body: JSON.stringify({ questionId, studentAnswer }),
+      });
+      await handleApiResponse(response);
+    } catch (err) {
+      console.warn('Unable to autosave CBT answer:', err);
+    }
+  };
+
+  const chooseAnswer = (questionId: string, studentAnswer: unknown) => {
+    setAnswers((previous) => ({ ...previous, [questionId]: studentAnswer }));
+    void persistAnswer(questionId, studentAnswer);
+  };
 
   const submit = async (automatic = false) => {
     if (submitting || !startedAt || !exam || !attemptId || !token) return;
@@ -163,21 +189,7 @@ export default function ExamAttemptPage() {
           };
         };
       }>(response);
-      const result = payload.data.result;
-      window.localStorage.setItem(`exam_result_${examId}`, JSON.stringify({
-        examTitle: exam.title,
-        attemptId,
-        score: result.score,
-        totalMarks: result.totalMarks,
-        percentage: result.percentage,
-        isPassed: result.isPassed,
-        correctCount: result.correctCount,
-        incorrectCount: result.incorrectCount,
-        unansweredCount: result.unansweredCount,
-        showResults: result.showResults,
-        timeSpent: formatTime(elapsed),
-        answers: result.answers || [],
-      }));
+      await payload.data.result;
       router.push(`/dashboard/exams/${examId}/results`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit exam');
@@ -186,8 +198,8 @@ export default function ExamAttemptPage() {
   };
 
   useEffect(() => {
-    if (phase === 'exam' && secondsLeft === 0 && startedAt && !submitting) void submit(true);
-  }, [secondsLeft, phase, startedAt, submitting]);
+    if (phase === 'exam' && isTimed && secondsLeft === 0 && startedAt && !submitting) void submit(true);
+  }, [secondsLeft, phase, isTimed, startedAt, submitting]);
 
   if (loading) return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-9 w-9 animate-spin text-brand-600" /></div>;
   if (error && !exam) return <div className="mx-auto max-w-2xl py-16 text-center"><AlertCircle className="mx-auto h-12 w-12 text-red-500" /><h1 className="mt-4 text-xl font-bold">Unable to load CBT</h1><p className="mt-2 text-slate-500">{error}</p><Link href="/dashboard/exams" className="mt-6 inline-flex rounded-xl bg-[#151A3A] px-5 py-2.5 font-semibold text-white">Back to exams</Link></div>;
@@ -197,5 +209,5 @@ export default function ExamAttemptPage() {
 
   if (!question) return <div className="p-10 text-center">No question available.</div>;
   const selected = answers[question.questionId];
-  return <div className="min-h-[calc(100vh-6rem)] space-y-5">{error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}<div className="sticky top-0 z-10 flex items-center justify-between rounded-xl border border-stone-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-[#151A3A]/95"><span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{exam.title}{question.sectionName ? ` · ${question.sectionName}` : ''}</span><span className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 font-mono text-sm font-bold ${secondsLeft < 120 ? 'bg-red-100 text-red-700' : 'bg-brand-50 text-brand-800'}`}><Clock3 className="h-4 w-4" />{formatTime(secondsLeft)}</span></div>{sections.length > 1 && <div className="flex gap-2 overflow-x-auto rounded-xl border border-stone-200 bg-white p-2 dark:border-slate-700 dark:bg-[#1b2045]"><button onClick={() => { setSectionTab('all'); setCurrent(0); }} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${sectionTab === 'all' ? 'bg-[#151A3A] text-white' : 'text-slate-600'}`}>All sections</button>{sections.map((section) => <button key={section} onClick={() => { setSectionTab(section); setCurrent(0); }} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${sectionTab === section ? 'bg-[#151A3A] text-white' : 'text-slate-600'}`}>{section}</button>)}</div>}<div className="grid gap-5 lg:grid-cols-[220px_1fr]"><aside className="rounded-xl border border-stone-200 bg-white p-4 dark:border-slate-700 dark:bg-[#1b2045]"><div className="mb-3 text-xs text-slate-500">Answered {answered}/{questions.length}</div><div className="grid grid-cols-5 gap-2">{visible.map((item, index) => <button key={item.questionId} onClick={() => setCurrent(index)} className={`relative aspect-square rounded-lg text-xs font-semibold ${index === current ? 'bg-brand-50 text-brand-800 ring-2 ring-brand-600' : answers[item.questionId] !== undefined ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-100 text-slate-600'}`}>{index + 1}{flagged.has(item.questionId) && <Flag className="absolute right-0.5 top-0.5 h-2.5 w-2.5 text-amber-600" />}</button>)}</div></aside><main className="rounded-xl border border-stone-200 bg-white p-6 sm:p-8 dark:border-slate-700 dark:bg-[#1b2045]"><div className="flex items-center justify-between"><span className="text-sm font-semibold text-slate-500">Question {current + 1} of {visible.length}</span><button onClick={() => setFlagged((previous) => { const next = new Set(previous); next.has(question.questionId) ? next.delete(question.questionId) : next.add(question.questionId); return next; })} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${flagged.has(question.questionId) ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-slate-500'}`}><Flag className="mr-1 inline h-3.5 w-3.5" />{flagged.has(question.questionId) ? 'Flagged' : 'Flag'}</button></div><h2 className="mt-6 text-xl font-semibold leading-8 text-[#151A3A] dark:text-white">{question.questionText}</h2><div className="mt-6 space-y-3">{question.options.map((option, index) => { const value = optionValue(option, index); return <button key={String(value)} onClick={() => setAnswers((previous) => ({ ...previous, [question.questionId]: value }))} className={`w-full rounded-xl border p-4 text-left ${String(selected) === String(value) ? 'border-brand-600 bg-brand-50 text-brand-900 dark:bg-brand-950/30 dark:text-brand-200' : 'border-stone-200 hover:border-brand-300 dark:border-slate-700'}`}><span className="mr-3 font-bold">{String(value)}.</span>{optionText(option)}</button>; })}</div>{question.options.length === 0 && <textarea value={String(selected ?? '')} onChange={(event) => setAnswers((previous) => ({ ...previous, [question.questionId]: event.target.value }))} rows={6} className="mt-6 w-full rounded-xl border border-stone-300 p-4" placeholder="Type your answer…" />}<div className="mt-8 flex items-center justify-between gap-3"><button disabled={current === 0} onClick={() => setCurrent((value) => value - 1)} className="rounded-xl border px-4 py-2.5 disabled:opacity-40">Previous</button>{current === visible.length - 1 ? <button onClick={() => void submit(false)} disabled={submitting} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 font-semibold text-white disabled:opacity-50">{submitting ? 'Submitting…' : <><CheckCircle2 className="h-4 w-4" />Submit CBT</>}</button> : <button onClick={() => setCurrent((value) => value + 1)} className="rounded-xl bg-[#151A3A] px-5 py-2.5 font-semibold text-white">Next</button>}</div></main></div></div>;
+  return <div className="min-h-[calc(100vh-6rem)] space-y-5">{error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}<div className="sticky top-0 z-10 flex items-center justify-between rounded-xl border border-stone-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-[#151A3A]/95"><span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{exam.title}{question.sectionName ? ` · ${question.sectionName}` : ''}</span><span className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 font-mono text-sm font-bold ${isTimed && secondsLeft < 120 ? 'bg-red-100 text-red-700' : 'bg-brand-50 text-brand-800'}`}><Clock3 className="h-4 w-4" />{isTimed ? formatTime(secondsLeft) : 'Untimed'}</span></div>{sections.length > 1 && <div className="flex gap-2 overflow-x-auto rounded-xl border border-stone-200 bg-white p-2 dark:border-slate-700 dark:bg-[#1b2045]"><button onClick={() => { setSectionTab('all'); setCurrent(0); }} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${sectionTab === 'all' ? 'bg-[#151A3A] text-white' : 'text-slate-600'}`}>All sections</button>{sections.map((section) => <button key={section} onClick={() => { setSectionTab(section); setCurrent(0); }} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${sectionTab === section ? 'bg-[#151A3A] text-white' : 'text-slate-600'}`}>{section}</button>)}</div>}<div className="grid gap-5 lg:grid-cols-[220px_1fr]"><aside className="rounded-xl border border-stone-200 bg-white p-4 dark:border-slate-700 dark:bg-[#1b2045]"><div className="mb-3 text-xs text-slate-500">Answered {answered}/{questions.length}</div><div className="grid grid-cols-5 gap-2">{visible.map((item, index) => <button key={item.questionId} onClick={() => setCurrent(index)} className={`relative aspect-square rounded-lg text-xs font-semibold ${index === current ? 'bg-brand-50 text-brand-800 ring-2 ring-brand-600' : answers[item.questionId] !== undefined ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-100 text-slate-600'}`}>{index + 1}{flagged.has(item.questionId) && <Flag className="absolute right-0.5 top-0.5 h-2.5 w-2.5 text-amber-600" />}</button>)}</div></aside><main className="rounded-xl border border-stone-200 bg-white p-6 sm:p-8 dark:border-slate-700 dark:bg-[#1b2045]"><div className="flex items-center justify-between"><span className="text-sm font-semibold text-slate-500">Question {current + 1} of {visible.length}</span><button onClick={() => setFlagged((previous) => { const next = new Set(previous); next.has(question.questionId) ? next.delete(question.questionId) : next.add(question.questionId); return next; })} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${flagged.has(question.questionId) ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-slate-500'}`}><Flag className="mr-1 inline h-3.5 w-3.5" />{flagged.has(question.questionId) ? 'Flagged' : 'Flag'}</button></div><h2 className="mt-6 text-xl font-semibold leading-8 text-[#151A3A] dark:text-white">{question.questionText}</h2><div className="mt-6 space-y-3">{question.options.map((option, index) => { const value = optionValue(option, index); return <button key={String(value)} onClick={() => chooseAnswer(question.questionId, value)} className={`w-full rounded-xl border p-4 text-left ${String(selected) === String(value) ? 'border-brand-600 bg-brand-50 text-brand-900 dark:bg-brand-950/30 dark:text-brand-200' : 'border-stone-200 hover:border-brand-300 dark:border-slate-700'}`}><span className="mr-3 font-bold">{String(value)}.</span>{optionText(option)}</button>; })}</div>{question.options.length === 0 && <textarea value={String(selected ?? '')} onChange={(event) => setAnswers((previous) => ({ ...previous, [question.questionId]: event.target.value }))} onBlur={() => void persistAnswer(question.questionId, answers[question.questionId])} rows={6} className="mt-6 w-full rounded-xl border border-stone-300 p-4" placeholder="Type your answer…" />}<div className="mt-8 flex items-center justify-between gap-3"><button disabled={current === 0} onClick={() => setCurrent((value) => value - 1)} className="rounded-xl border px-4 py-2.5 disabled:opacity-40">Previous</button>{current === visible.length - 1 ? <button onClick={() => void submit(false)} disabled={submitting} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 font-semibold text-white disabled:opacity-50">{submitting ? 'Submitting…' : <><CheckCircle2 className="h-4 w-4" />Submit CBT</>}</button> : <button onClick={() => setCurrent((value) => value + 1)} className="rounded-xl bg-[#151A3A] px-5 py-2.5 font-semibold text-white">Next</button>}</div></main></div></div>;
 }
