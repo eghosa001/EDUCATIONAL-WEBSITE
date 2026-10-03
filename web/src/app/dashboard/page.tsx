@@ -65,18 +65,7 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [token, isAuthenticated, isLoading, router]);
 
-  if (isLoading || loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated || !token) return null;
+  if (isLoading || !isAuthenticated || !token) return null;
 
   const formatStudyTime = (seconds: number) => {
     const safeSeconds = Number.isFinite(seconds) && seconds >= 0 ? seconds : 0;
@@ -87,10 +76,10 @@ export default function DashboardPage() {
   };
 
   const stats = [
-    { label: 'Courses Enrolled', value: overview?.enrolledCourses ?? 0 },
-    { label: 'Lessons Completed', value: overview?.completedLessons ?? 0 },
-    { label: 'Exams Taken', value: overview?.examsTaken ?? 0 },
-    { label: 'Study Time', value: formatStudyTime(overview?.totalStudyTimeSeconds ?? 0) },
+    { label: 'Courses Enrolled', value: loading ? '—' : overview?.enrolledCourses ?? 0 },
+    { label: 'Lessons Completed', value: loading ? '—' : overview?.completedLessons ?? 0 },
+    { label: 'Exams Taken', value: loading ? '—' : overview?.examsTaken ?? 0 },
+    { label: 'Study Time', value: loading ? '—' : formatStudyTime(overview?.totalStudyTimeSeconds ?? 0) },
   ];
 
   return (
@@ -111,10 +100,11 @@ export default function DashboardPage() {
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="font-semibold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
             { label: 'Browse Courses', href: '/dashboard/courses', icon: '📚' },
-            { label: 'Take Quiz', href: '/dashboard/exams', icon: '📝' },
+            { label: 'School Exams', href: '/dashboard/exams', icon: '📝' },
+            { label: 'JAMB', href: '/dashboard/jamb', icon: '🎓' },
             { label: 'AI Tutor', href: '/dashboard/ai/tutor', icon: '🤖' },
             { label: 'Flashcards', href: '/dashboard/flashcards', icon: '🃏' },
           ].map((action) => (
@@ -131,7 +121,11 @@ export default function DashboardPage() {
           <h2 className="font-semibold text-gray-900">Continue Learning</h2>
           <Link href="/dashboard/courses" className="text-sm text-blue-600 hover:text-blue-700">View all</Link>
         </div>
-        {recentCourses.length === 0 ? (
+        {loading ? (
+          <div className="space-y-3 py-2">
+            {[0, 1, 2].map((item) => <div key={item} className="h-16 animate-pulse rounded-lg bg-gray-100" />)}
+          </div>
+        ) : recentCourses.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-gray-500 text-sm">No courses enrolled yet.</p>
             <Link href="/dashboard/courses" className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">Browse Courses</Link>
