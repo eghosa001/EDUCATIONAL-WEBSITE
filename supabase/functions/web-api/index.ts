@@ -14,7 +14,7 @@ const safeOrigin=(request:Request)=>{const value=request.headers.get('origin');i
 const asInt=(value:string|null,fallback:number,min=1,max=100)=>{const parsed=Number.parseInt(String(value??''),10);return Number.isFinite(parsed)?Math.min(max,Math.max(min,parsed)):fallback};
 const scalarAnswer=(value:unknown):string=>{if(value===null||value===undefined)return '';if(typeof value==='string'||typeof value==='number'||typeof value==='boolean')return String(value).trim();if(typeof value==='object'){const record=value as Record<string,unknown>;for(const key of ['id','label','answer','value','correct_answer','correctAnswer'])if(record[key]!==undefined&&record[key]!==null)return scalarAnswer(record[key])}return ''};
 const normalizeAnswer=(value:unknown)=>scalarAnswer(value).toLowerCase().replace(/\s+/g,' ').trim();
-const isVerifiedExamSource=(source:unknown)=>/^(WAEC|JAMB|NECO|NABTEB)\s+[0-9]{4}$/i.test(String(source||'').trim());
+const isVerifiedExamSource=(source:unknown)=>/^(?:(WAEC|JAMB|NECO|NABTEB)\s+[0-9]{4}|SOURCE_PAPER:(WAEC|JAMB|NECO|NABTEB))$/i.test(String(source||'').trim());
 const answersEqual=(correct:unknown,submitted:unknown,type:string)=>{
   if(type==='multiple_select'){
     const expected=(Array.isArray(correct)?correct:[correct]).map(normalizeAnswer).filter(Boolean).sort();
@@ -113,7 +113,7 @@ if(request.method==='GET'&&path==='/exams'){
     links=result.data||[];
   }
   const counts=new Map<string,number>();
-  for(const row of links){const q:any=row.question;if(!isVerifiedExamSource(q?.source))continue;counts.set(String(row.exam_id),(counts.get(String(row.exam_id))||0)+1);}
+  for(const row of links){const q:any=row.question;if(!q?.is_active||!isVerifiedExamSource(q?.source))continue;counts.set(String(row.exam_id),(counts.get(String(row.exam_id))||0)+1);}
   const exams=(examRows||[]).map((row:any)=>({...row,questionCount:counts.get(String(row.id))||0})).filter((row:any)=>row.questionCount>0);
   return json({data:{exams},pagination:{page,limit,total:count||0,totalPages:Math.ceil((count||0)/limit)}},200,origin);
 }
@@ -123,9 +123,11 @@ if(request.method==='GET'&&examMatch){
   const examId=examMatch[1];
   const{data:exam,error}=await admin.from('exams').select('id,title,description,exam_type,duration_minutes,total_marks,passing_marks,instructions,is_timed,shuffle_questions,show_results_immediately,allow_review,max_attempts,is_active,is_public,start_time,end_time').eq('id',examId).eq('is_active',true).eq('is_public',true).maybeSingle();
   if(error||!exam)return json({error:{message:'Exam not found'}},404,origin);
-  const{count,error:countError}=await admin.from('exam_questions').select('id',{count:'exact',head:true}).eq('exam_id',examId);
+  const{data:detailLinks,error:countError}=await admin.from('exam_questions').select('question:questions(source,is_active)').eq('exam_id',examId);
   if(countError)throw countError;
-  return json({data:{exam,stats:{questionCount:count||0,totalMarks:Number(exam.total_marks||0)}}},200,origin);
+  const questionCount=(detailLinks||[]).filter((row:any)=>row.question?.is_active&&isVerifiedExamSource(row.question?.source)).length;
+  if(!questionCount)return json({error:{message:'Exam not found'}},404,origin);
+  return json({data:{exam,stats:{questionCount,totalMarks:Number(exam.total_marks||0)}}},200,origin);
 }
 const startExamMatch=path.match(/^\/exams\/([0-9a-f-]+)\/attempts$/i);
 if(request.method==='POST'&&startExamMatch){
@@ -141,7 +143,7 @@ if(request.method==='POST'&&startExamMatch){
   if(attempts>=maxAttempts)return json({error:{message:'Maximum attempts reached for this exam'}},400,origin);
   const{data:links,error:linksError}=await admin.from('exam_questions').select('id,question_id,order_index,marks,section_name,question:questions(id,question_text,question_type,options,difficulty,is_active,source)').eq('exam_id',examId).order('order_index',{ascending:true});
   if(linksError)throw linksError;
-  const questions=(links||[]).filter((row:any)=>isVerifiedExamSource(row.question?.source)).map((row:any)=>({id:row.id,questionId:row.question_id,questionText:row.question?.question_text||'',questionType:row.question?.question_type||'mcq',options:row.question?.options||[],marks:Number(row.marks||1),orderIndex:Number(row.order_index||0),sectionName:row.section_name||undefined,difficulty:row.question?.difficulty||undefined}));
+  const questions=(links||[]).filter((row:any)=>row.question?.is_active&&isVerifiedExamSource(row.question?.source)).map((row:any)=>({id:row.id,questionId:row.question_id,questionText:row.question?.question_text||'',questionType:row.question?.question_type||'mcq',options:row.question?.options||[],marks:Number(row.marks||1),orderIndex:Number(row.order_index||0),sectionName:row.section_name||undefined,difficulty:row.question?.difficulty||undefined}));
   if(!questions.length)return json({error:{message:'This exam has no available questions'}},400,origin);
   if(exam.shuffle_questions)questions.sort(()=>Math.random()-0.5);
   const{data:attempt,error:attemptError}=await admin.from('exam_attempts').insert({exam_id:examId,student_id:user.id,attempt_number:attempts+1,status:'in_progress',started_at:new Date().toISOString()}).select('id,exam_id,student_id,attempt_number,status,started_at').single();
@@ -159,7 +161,7 @@ if(request.method==='POST'&&submitExamMatch){
   if(examError||!exam)return json({error:{message:'Exam not found'}},404,origin);
   const{data:links,error:linksError}=await admin.from('exam_questions').select('question_id,marks,question:questions(id,question_text,question_type,options,correct_answer,explanation,is_active,source)').eq('exam_id',examId);
   if(linksError)throw linksError;
-  const questionRows=(links||[]).filter((row:any)=>isVerifiedExamSource(row.question?.source));
+  const questionRows=(links||[]).filter((row:any)=>row.question?.is_active&&isVerifiedExamSource(row.question?.source));
   const byId=new Map(submittedAnswers.map((a:any)=>[String(a?.questionId||''),a]));
   let score=0,totalMarks=0,correctCount=0,incorrectCount=0;
   const answerRows:any[]=[]; const review:any[]=[];
