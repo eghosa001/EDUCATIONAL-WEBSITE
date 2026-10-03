@@ -620,6 +620,67 @@ export default function PastQuestionsPage() {
     </div>;
   }
 
+  if (phase === 'count' && isJambCbt) {
+    return <div className="mx-auto max-w-4xl space-y-6">
+      <button onClick={() => { setError(null); setPhase('setup'); }} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600"><ArrowLeft className="h-4 w-4"/>Back to subject selection</button>
+      <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-[#1b2045]">
+        <p className="text-xs font-bold uppercase tracking-wider text-brand-700">JAMB CBT configuration</p>
+        <h1 className="mt-2 text-3xl font-extrabold text-[#151A3A] dark:text-white">Set questions per subject</h1>
+        <p className="mt-2 text-sm text-slate-500">Choose a different number for each subject. The combined paper will be randomized and use only verified JAMB past questions.</p>
+
+        {selectedPreset && <div className="mt-5 rounded-xl bg-brand-50 p-4 text-sm dark:bg-brand-950/30">
+          <b className="text-[#151A3A] dark:text-white">{selectedPreset.courseName}</b>
+          <p className="mt-1 text-slate-600 dark:text-slate-300">{selectedPreset.notes}</p>
+        </div>}
+        {error && <div role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+
+        <div className="mt-6 space-y-3">
+          {selectedJambPlan.map(item => {
+            const shortage = item.available < item.count;
+            return <div key={item.subjectId} className={`grid gap-3 rounded-xl border p-4 sm:grid-cols-[1fr_auto] sm:items-center ${shortage ? 'border-amber-300 bg-amber-50/60 dark:bg-amber-950/10' : 'border-stone-200 dark:border-slate-700'}`}>
+              <div>
+                <p className="font-bold text-[#151A3A] dark:text-white">{item.name}</p>
+                <p className={`mt-1 text-xs font-semibold ${item.available >= 10 ? 'text-emerald-600' : 'text-amber-600'}`}>{item.available} verified JAMB questions currently available</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {[5,10,20,30].map(value => <button key={value} type="button" disabled={value > item.available} onClick={() => setJambSubjectCount(item.subjectId, value)} className={`rounded-lg border px-3 py-2 text-xs font-bold ${item.count === value ? 'border-[#151A3A] bg-[#151A3A] text-white' : 'border-stone-200 bg-white text-slate-600'} disabled:cursor-not-allowed disabled:opacity-30`}>{value}</button>)}
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">Custom
+                  <input type="number" min={1} max={Math.max(1,item.available)} value={item.count || ''} disabled={item.available < 1} onChange={event => setJambSubjectCount(item.subjectId, Number(event.target.value))} className="w-20 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm font-bold text-[#151A3A] dark:border-slate-700 dark:bg-[#151A3A] dark:text-white"/>
+                </label>
+              </div>
+            </div>;
+          })}
+        </div>
+
+        <div className="mt-7 grid gap-5 md:grid-cols-2">
+          <div className="rounded-xl border border-stone-200 p-4 dark:border-slate-700">
+            <p className="text-sm font-bold text-[#151A3A] dark:text-white">Total exam time</p>
+            <p className="mt-1 text-xs text-slate-500">One countdown applies to the full combined paper.</p>
+            <div className="mt-3 flex flex-wrap gap-2">{[30,40,60,90,120].map(minutes => <button key={minutes} type="button" onClick={() => setJambDurationMinutes(minutes)} className={`rounded-lg border px-3 py-2 text-xs font-bold ${jambDurationMinutes === minutes ? 'border-[#151A3A] bg-[#151A3A] text-white' : 'border-stone-200 bg-stone-50 text-slate-600'}`}>{minutes} min</button>)}</div>
+            <label className="mt-3 flex items-center gap-2 text-xs font-semibold text-slate-500">Custom minutes
+              <input type="number" min={5} max={240} value={jambDurationMinutes} onChange={event => setJambDurationMinutes(Math.max(5, Math.min(240, Number(event.target.value) || 5)))} className="w-24 rounded-lg border border-stone-200 px-3 py-2 text-sm font-bold text-[#151A3A] dark:border-slate-700 dark:bg-[#151A3A] dark:text-white"/>
+            </label>
+          </div>
+          <div className="rounded-xl bg-[#151A3A] p-5 text-white">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-300">Combined paper</p>
+            <p className="mt-2 text-4xl font-extrabold">{jambQuestionTotal}</p>
+            <p className="text-sm text-slate-300">questions across 4 subjects</p>
+            <p className="mt-4 text-lg font-bold">{jambDurationMinutes} minutes total</p>
+          </div>
+        </div>
+
+        {!jambPlanValid && <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          One or more subjects does not yet have enough verified JAMB questions for the count selected. Reduce that subject count or use a combination with sufficient verified questions while the source bank is being expanded.
+        </div>}
+        <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+          <b>Strict JAMB mode:</b> this scored CBT uses only active JAMB past-question records with verified answer keys. Lesson-generated or generic practice questions are excluded.
+        </div>
+
+        <button onClick={() => void startCbt()} disabled={loading || !jambPlanValid} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#151A3A] py-3.5 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">{loading ? <><ClockIcon className="h-4 w-4 animate-spin"/>Building randomized JAMB paper…</> : <><PlayIcon className="h-4 w-4"/>Start {jambQuestionTotal}-question JAMB CBT</>}</button>
+      </section>
+    </div>;
+  }
+
   if (phase === 'count') {
     return <div className="mx-auto max-w-3xl space-y-6">
       <button onClick={() => { setError(null); setPhase('setup'); }} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600"><ArrowLeft className="h-4 w-4"/>Back to selection</button>
@@ -640,6 +701,7 @@ export default function PastQuestionsPage() {
       <section className="rounded-2xl bg-gradient-to-br from-[#151A3A] to-[#30406f] p-7 text-white shadow-sm">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center"><div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-white/15 text-3xl font-extrabold">{Number(grade.percentage || 0)}%</div><div><TrophyIcon className="h-8 w-8 text-amber-300"/><h1 className="mt-2 text-2xl font-extrabold">CBT Results</h1><p className="mt-1 text-slate-200">{selectedNames.join(' • ')}</p><div className="mt-4 flex flex-wrap gap-5 text-sm"><span><b className="text-xl">{grade.correct}</b> correct</span><span><b className="text-xl">{grade.incorrect}</b> wrong</span><span><b className="text-xl">{grade.unanswered}</b> skipped</span></div></div></div>
       </section>
+      {isJambCbt && grade.subjectBreakdown?.length ? <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{grade.subjectBreakdown.map(subject => <div key={subject.subjectId} className="rounded-xl border border-stone-200 bg-white p-4 dark:border-slate-700 dark:bg-[#1b2045]"><p className="text-xs font-bold uppercase tracking-wide text-slate-400">{subject.subjectName}</p><p className="mt-2 text-2xl font-extrabold text-[#151A3A] dark:text-white">{subject.percentage}%</p><p className="mt-1 text-xs text-slate-500">{subject.correct}/{subject.total} correct · {subject.answered} answered</p></div>)}</section> : null}
       <div className="flex flex-wrap gap-3"><button onClick={() => { resetSession(); setPhase('count'); }} className="rounded-xl bg-[#151A3A] px-5 py-3 font-semibold text-white">Try another set</button><button onClick={() => { resetSession(); setPhase('setup'); }} className="rounded-xl border border-stone-300 px-5 py-3 font-semibold">Change selection</button>{mode === 'exam' && <Link href="/dashboard/past-questions/analytics" className="inline-flex items-center gap-2 rounded-xl border border-brand-200 px-5 py-3 font-semibold text-brand-700"><BarChart3 className="h-4 w-4"/>View performance</Link>}</div>
       <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-[#1b2045]"><h2 className="text-xl font-bold text-[#151A3A] dark:text-white">Answer review</h2><div className="mt-5 space-y-4">{questions.map((question, position) => {
         const row = resultMap.get(question.id);
@@ -658,7 +720,7 @@ export default function PastQuestionsPage() {
       <aside className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-[#1b2045]"><p className="font-semibold">Questions</p><div className="mt-3 grid grid-cols-5 gap-2">{questions.map((question, position) => <button key={question.id} onClick={() => setIndex(position)} className={`rounded-lg border p-2 text-xs font-semibold ${position === index ? 'border-[#151A3A] bg-[#151A3A] text-white' : answers[question.id] ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-stone-200 bg-white dark:border-slate-700 dark:bg-[#151A3A]'}`}>{position + 1}{flagged.has(question.id) ? '⚑' : ''}</button>)}</div></aside>
       <main className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-[#1b2045]">
         <div className="flex items-center justify-between gap-3"><span className="text-sm text-slate-500">Question {index + 1} of {questions.length}</span><button onClick={() => setFlagged(previous => { const next = new Set(previous); next.has(current.id) ? next.delete(current.id) : next.add(current.id); return next; })} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-xs font-semibold"><FlagIcon className="h-3.5 w-3.5"/>{flagged.has(current.id) ? 'Flagged' : 'Flag'}</button></div>
-        <div className="mt-5 rounded-xl bg-stone-50 p-5 dark:bg-[#151A3A]"><div className="mb-2 flex gap-2">{current.year && <span className="rounded-full bg-brand-100 px-2 py-1 text-xs">{current.year}</span>}{current.difficulty && <span className="rounded-full bg-stone-200 px-2 py-1 text-xs dark:bg-slate-700">{current.difficulty}</span>}</div><p className="font-semibold leading-7 text-slate-900 dark:text-white">{current.question_text}</p>{current.question_image_url && <img src={current.question_image_url} alt="Question illustration" className="mt-4 max-h-72 rounded-lg object-contain"/>}</div>
+        <div className="mt-5 rounded-xl bg-stone-50 p-5 dark:bg-[#151A3A]"><div className="mb-2 flex flex-wrap gap-2">{current.subject_name && <span className="rounded-full bg-[#151A3A] px-2 py-1 text-xs font-bold text-white">{current.subject_name}</span>}{current.year && <span className="rounded-full bg-brand-100 px-2 py-1 text-xs">{current.year}</span>}{current.difficulty && <span className="rounded-full bg-stone-200 px-2 py-1 text-xs dark:bg-slate-700">{current.difficulty}</span>}</div><p className="font-semibold leading-7 text-slate-900 dark:text-white">{current.question_text}</p>{current.question_image_url && <img src={current.question_image_url} alt="Question illustration" className="mt-4 max-h-72 rounded-lg object-contain"/>}</div>
         <div className="mt-4 space-y-2">{currentOptions.map(option => <button key={option.id} onClick={() => setAnswers(previous => ({ ...previous, [current.id]: option.id }))} className={`w-full rounded-xl border px-4 py-3 text-left transition ${answers[current.id] === option.id ? 'border-brand-500 bg-brand-50 text-brand-900 dark:bg-brand-950/30 dark:text-brand-100' : 'border-stone-200 bg-white text-slate-700 hover:border-brand-300 dark:border-slate-700 dark:bg-[#151A3A] dark:text-slate-200'}`}><span className="mr-2 font-bold">{option.id}.</span>{option.text}</button>)}</div>
         <div className="mt-6 flex flex-wrap justify-between gap-3 border-t border-stone-200 pt-4 dark:border-slate-700"><button onClick={() => setIndex(value => Math.max(0, value - 1))} disabled={index === 0} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-40">Previous</button><div className="flex gap-2"><button onClick={() => setIndex(value => Math.min(questions.length - 1, value + 1))} disabled={index === questions.length - 1} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-40">Next</button><button onClick={() => void submitCbt(false)} disabled={submitting} className="rounded-lg bg-[#151A3A] px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">{submitting ? 'Submitting…' : 'Submit CBT'}</button></div></div>
       </main>
