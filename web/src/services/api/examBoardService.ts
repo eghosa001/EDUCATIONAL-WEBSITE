@@ -4,11 +4,12 @@ export interface ExamBoardAvailability {
   subjectIds: string[];
   years: number[];
   questionCount: number;
+  subjectCounts: Record<string, number>;
 }
 
 export type ExamBoardAvailabilityMap = Record<string, ExamBoardAvailability>;
 
-const CACHE_KEY = 'the-guide:exam-board-availability:v1';
+const CACHE_KEY = 'the-guide:exam-board-availability:v2';
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let inFlight: Promise<ExamBoardAvailabilityMap> | null = null;
 
