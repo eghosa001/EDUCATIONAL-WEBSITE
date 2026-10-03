@@ -256,6 +256,96 @@ Deno.serve(async (request) => {
       return json({ success: true, recovered, answered: answeredCount || 0, matchedCandidates: updates.length });
     }
 
+    if (action === "repair_mcq_options") {
+      const fileId = String(body?.fileId || "");
+      const method = String(body?.method || "");
+      const consensusPasses = Number(body?.consensusPasses || 0);
+      if (!/^[0-9a-f-]{36}$/i.test(fileId)) return json({ error: "Valid fileId required" }, 400);
+      if (method !== "pdf-options-ocr-consensus" || consensusPasses < 2) {
+        return json({ error: "MCQ option repair requires at least two agreeing source-extraction passes" }, 400);
+      }
+      const supplied = Array.isArray(body?.questions) ? body.questions.slice(0, 1000) : [];
+      const { data: file, error: fileError } = await admin.from("past_question_files")
+        .select("id,board,file_name,metadata").eq("id", fileId).maybeSingle();
+      if (fileError || !file || String(file.board || "").toLowerCase() !== "jamb") return json({ error: "JAMB source file not found" }, 404);
+      const fileName = String(file.file_name || "");
+      if (!/jamb.*past.*questions|past.*questions.*jamb/i.test(fileName)) {
+        return json({ error: "Option repair is restricted to explicit JAMB past-question files" }, 400);
+      }
+
+      const source = `storage:${fileId}`;
+      const { data: existing, error: existingError } = await admin.from("past_questions")
+        .select("id,question_text,options,correct_answer,question_type,is_active,tags")
+        .eq("source", source);
+      if (existingError) throw existingError;
+
+      const byQuestion = new Map<string, any[]>();
+      for (const row of existing || []) {
+        const key = normQuestion(row.question_text);
+        if (key.length < 18) continue;
+        const rows = byQuestion.get(key) || [];
+        rows.push(row);
+        byQuestion.set(key, rows);
+      }
+
+      const repairs: Array<{ id: string; options: Array<{ id: string; text: string }>; tags: string[] }> = [];
+      const seenIds = new Set<string>();
+      for (const incoming of supplied) {
+        const key = normQuestion(incoming?.questionText || incoming?.question_text);
+        if (key.length < 18) continue;
+        const matches = byQuestion.get(key) || [];
+        if (matches.length !== 1) continue;
+        const row = matches[0];
+        if (!row.is_active || row.question_type !== "essay" || row.correct_answer || seenIds.has(String(row.id))) continue;
+
+        const rawOptions = Array.isArray(incoming?.options) ? incoming.options : [];
+        const cleaned: Array<{ id: string; text: string }> = [];
+        const ids = new Set<string>();
+        for (let index = 0; index < rawOptions.length && cleaned.length < 5; index++) {
+          const option = rawOptions[index] || {};
+          const id = String(option?.id || String.fromCharCode(65 + index)).trim().toUpperCase().replace(/[^A-E]/g, "").slice(0, 1);
+          const text = cleanOptionText(option?.text ?? option?.value ?? "");
+          if (!id || ids.has(id) || !text || text.length > 180) continue;
+          if (/(?:https?:\/\/|www\.|\b(?:ysc|gis)\b|question\s+\d+)/i.test(text)) continue;
+          ids.add(id);
+          cleaned.push({ id, text });
+        }
+        if (cleaned.length < 4 || cleaned.slice(0, 4).map(option => option.id).join("") !== "ABCD") continue;
+        const tags = Array.isArray(row.tags) ? row.tags.map((tag: unknown) => String(tag)) : [];
+        if (!tags.includes("options-recovered-consensus")) tags.push("options-recovered-consensus");
+        seenIds.add(String(row.id));
+        repairs.push({ id: String(row.id), options: cleaned, tags });
+      }
+
+      let repaired = 0;
+      for (let offset = 0; offset < repairs.length; offset += 40) {
+        const chunk = repairs.slice(offset, offset + 40);
+        const results = await Promise.all(chunk.map(item =>
+          admin.from("past_questions").update({
+            options: item.options,
+            question_type: "mcq",
+            tags: item.tags,
+            updated_at: new Date().toISOString(),
+          }).eq("id", item.id).eq("question_type", "essay").eq("is_active", true).is("correct_answer", null)
+        ));
+        for (const result of results) {
+          if (result.error) throw result.error;
+          repaired += 1;
+        }
+      }
+
+      const repairedAt = new Date().toISOString();
+      const nextMetadata = {
+        ...(file.metadata || {}),
+        mcq_option_repair_method: method,
+        mcq_option_repair_at: repairedAt,
+        mcq_option_repair_count: repaired,
+        mcq_option_repair_consensus_passes: consensusPasses,
+      };
+      await admin.from("past_question_files").update({ metadata: nextMetadata, updated_at: repairedAt }).eq("id", fileId);
+      return json({ success: true, repaired, matchedCandidates: repairs.length });
+    }
+
     if (action === "manifest") {
       const { data, error } = await admin.from("past_question_files")
         .select("id,bucket_id,file_path,board,subject,year,file_name,is_processed,questions_extracted,metadata")
