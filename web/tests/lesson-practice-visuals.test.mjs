@@ -16,6 +16,8 @@ test('lesson practice uses the dedicated secure edge function', () => {
 
 test('lesson visuals are real lesson resources', () => {
   assert.match(lessonPage, /LessonResourceVisuals/);
+  assert.match(lessonPage, /LessonQuickReference/);
+  assert.match(lessonPage, /Lesson summary table/);
   assert.match(lessonPage, /visual-summary/);
   assert.match(visualRoute, /image\/svg\+xml/);
   assert.match(visualRoute, /learning_objectives,key_points/);
