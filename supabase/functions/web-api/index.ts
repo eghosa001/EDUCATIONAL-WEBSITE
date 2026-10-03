@@ -310,6 +310,7 @@ if(request.method==='GET'&&path==='/jamb/course-presets'){
     });
     grouped.set(key,list);
   }
+  const subjectAvailability=Object.fromEntries([...availability.entries()]);
   const presets=(presetRows||[]).map((row:any)=>{
     const subjects=(grouped.get(String(row.id))||[]).sort((a,b)=>a.orderIndex-b.orderIndex);
     const maxBalancedCount=subjects.length?Math.min(...subjects.map(item=>item.availableQuestions)):0;
@@ -324,7 +325,7 @@ if(request.method==='GET'&&path==='/jamb/course-presets'){
       readyForTenEach:subjects.length===4&&maxBalancedCount>=10,
     };
   });
-  return json({data:{presets}},200,origin);
+  return json({data:{presets,subjectAvailability}},200,origin);
 }
 
 if(request.method==='POST'&&path==='/jamb-cbt/session'){
@@ -389,7 +390,6 @@ if(request.method==='POST'&&path==='/jamb-cbt/session'){
         .eq('subject_id',item.subjectId)
         .eq('question_type','mcq')
         .not('correct_answer','is',null)
-        .like('source','storage:%')
         .range(offset,Math.min(available-1,offset+windowSize-1));
       if(error)throw error;
       for(const row of data||[]){
