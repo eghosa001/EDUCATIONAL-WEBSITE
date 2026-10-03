@@ -105,7 +105,7 @@ def clean_option_text(value):
 def answer_key(raw):
     key = {}
     markers = list(re.finditer(
-        r"(?im)^\s*(?:answer\s*keys?|answers?(?:\s+to\s+(?:the\s+)?questions?)?)\s*[:\-]?\s*$",
+        r"(?im)^\s*(?:answer\s*keys?|answers?(?:\s+to\s+(?:the\s+)?questions?)?)\s*[:\-]?\s*(?=(?:\d{1,3}\s*[\.\):=\-]?\s*[A-E]\b)|$)",
         raw,
     ))
     if not markers:
