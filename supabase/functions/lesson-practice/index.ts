@@ -309,6 +309,7 @@ Deno.serve(async request => {
     const lessonId = clean(body.lessonId, 64);
     const action = clean(body.action || 'generate', 20).toLowerCase();
     const count = Number(body.count ?? 5);
+    const allowAi = body.allowAi !== false;
     if (!isUuid(lessonId)) return json({ error: 'A valid lessonId is required' }, 400);
     if (!['generate', 'check'].includes(action)) return json({ error: 'Unsupported practice action' }, 400);
     if (!Number.isInteger(count) || count < 3 || count > 10) return json({ error: 'count must be an integer from 3 to 10' }, 400);
@@ -390,7 +391,7 @@ Deno.serve(async request => {
       }
     }
 
-    if (bynaraKey) {
+    if (bynaraKey && allowAi) {
       const { data: consumed, error: consumeError } = await admin.rpc('consume_ai_request', { p_user_id: user.id, p_daily_limit: 100 });
       if (!consumeError && consumed === true) {
         reserved = true;
