@@ -185,10 +185,25 @@ export const resetPassword = async (data: { token?: string; password: string }):
 };
 
 export const changePassword = async (data: { currentPassword: string; newPassword: string }, _token?: string) => {
-  const { data: sessionData } = await getSupabase().auth.getSession();
-  if (!sessionData.session) throw new Error('You must be signed in to change your password');
-  const { error } = await getSupabase().auth.updateUser({ password: data.newPassword });
-  if (error) throw new Error(error.message);
+  const supabase = getSupabase();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user?.email) throw new Error('You must be signed in to change your password');
+  if (!data.currentPassword) throw new Error('Current password is required');
+  if (data.newPassword.length < 8) throw new Error('New password must be at least 8 characters');
+  if (data.currentPassword === data.newPassword) throw new Error('New password must be different from your current password');
+
+  const payload = {
+    email: userData.user.email,
+    current_password: data.currentPassword,
+    password: data.newPassword,
+  };
+  const { error } = await supabase.auth.updateUser(payload as any);
+  if (error) {
+    const message = /password|credential|current/i.test(error.message)
+      ? 'Current password is incorrect or the new password was rejected'
+      : error.message;
+    throw new Error(message);
+  }
   return { success: true, message: 'Password updated successfully' };
 };
 
