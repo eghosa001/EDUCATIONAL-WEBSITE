@@ -22,6 +22,7 @@ import { fetchExamBoardAvailability } from '@/services/api/examBoardService';
 import {
   fetchJambCoursePresets,
   gradeJambCbtSession,
+  saveJambCbtAnswer,
   startJambCbtSession,
   type JambCoursePreset,
 } from '@/services/api/jambService';
@@ -485,6 +486,15 @@ export default function PastQuestionsPage() {
     }
   }
 
+  const chooseAnswer = (questionId: string, answer: string) => {
+    setAnswers(previous => ({ ...previous, [questionId]: answer }));
+    if (isJambCbt && token && jambSessionId) {
+      void saveJambCbtAnswer(token, jambSessionId, questionId, answer).catch((err: any) => {
+        setError(err?.message || 'Unable to save this JAMB answer');
+      });
+    }
+  };
+
   async function explainPastQuestion(questionId: string) {
     if (!token || mode !== 'exam' || explainingQuestionId) return;
     setExplainingQuestionId(questionId);
@@ -721,7 +731,7 @@ export default function PastQuestionsPage() {
       <main className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-[#1b2045]">
         <div className="flex items-center justify-between gap-3"><span className="text-sm text-slate-500">Question {index + 1} of {questions.length}</span><button onClick={() => setFlagged(previous => { const next = new Set(previous); next.has(current.id) ? next.delete(current.id) : next.add(current.id); return next; })} className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-xs font-semibold"><FlagIcon className="h-3.5 w-3.5"/>{flagged.has(current.id) ? 'Flagged' : 'Flag'}</button></div>
         <div className="mt-5 rounded-xl bg-stone-50 p-5 dark:bg-[#151A3A]"><div className="mb-2 flex flex-wrap gap-2">{current.subject_name && <span className="rounded-full bg-[#151A3A] px-2 py-1 text-xs font-bold text-white">{current.subject_name}</span>}{current.year && <span className="rounded-full bg-brand-100 px-2 py-1 text-xs">{current.year}</span>}{current.difficulty && <span className="rounded-full bg-stone-200 px-2 py-1 text-xs dark:bg-slate-700">{current.difficulty}</span>}</div><p className="font-semibold leading-7 text-slate-900 dark:text-white">{current.question_text}</p>{current.question_image_url && <img src={current.question_image_url} alt="Question illustration" className="mt-4 max-h-72 rounded-lg object-contain"/>}</div>
-        <div className="mt-4 space-y-2">{currentOptions.map(option => <button key={option.id} onClick={() => setAnswers(previous => ({ ...previous, [current.id]: option.id }))} className={`w-full rounded-xl border px-4 py-3 text-left transition ${answers[current.id] === option.id ? 'border-brand-500 bg-brand-50 text-brand-900 dark:bg-brand-950/30 dark:text-brand-100' : 'border-stone-200 bg-white text-slate-700 hover:border-brand-300 dark:border-slate-700 dark:bg-[#151A3A] dark:text-slate-200'}`}><span className="mr-2 font-bold">{option.id}.</span>{option.text}</button>)}</div>
+        <div className="mt-4 space-y-2">{currentOptions.map(option => <button key={option.id} onClick={() => chooseAnswer(current.id, option.id)} className={`w-full rounded-xl border px-4 py-3 text-left transition ${answers[current.id] === option.id ? 'border-brand-500 bg-brand-50 text-brand-900 dark:bg-brand-950/30 dark:text-brand-100' : 'border-stone-200 bg-white text-slate-700 hover:border-brand-300 dark:border-slate-700 dark:bg-[#151A3A] dark:text-slate-200'}`}><span className="mr-2 font-bold">{option.id}.</span>{option.text}</button>)}</div>
         <div className="mt-6 flex flex-wrap justify-between gap-3 border-t border-stone-200 pt-4 dark:border-slate-700"><button onClick={() => setIndex(value => Math.max(0, value - 1))} disabled={index === 0} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-40">Previous</button><div className="flex gap-2"><button onClick={() => setIndex(value => Math.min(questions.length - 1, value + 1))} disabled={index === questions.length - 1} className="rounded-lg border px-4 py-2 text-sm disabled:opacity-40">Next</button><button onClick={() => void submitCbt(false)} disabled={submitting} className="rounded-lg bg-[#151A3A] px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">{submitting ? 'Submitting…' : 'Submit CBT'}</button></div></div>
       </main>
     </div>
