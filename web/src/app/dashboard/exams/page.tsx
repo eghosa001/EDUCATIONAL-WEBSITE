@@ -70,25 +70,34 @@ export default function ExamsPage() {
         return <article key={board.code} className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-[#1b2045]">
           <div className="flex items-start justify-between gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#151A3A] text-white"><School className="h-6 w-6" /></div>
-            {loading ? <Loader2 className="h-5 w-5 animate-spin text-brand-600" /> : <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${ready ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{ready ? 'Available' : 'Limited bank'}</span>}
+            {loading ? <Loader2 className="h-5 w-5 animate-spin text-brand-600" /> : <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${ready ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{ready ? 'Verified bank' : 'Source bank pending'}</span>}
           </div>
           <h2 className="mt-5 text-2xl font-extrabold text-[#151A3A] dark:text-white">{board.title}</h2>
           <p className="mt-1 text-xs font-semibold text-slate-400">{board.subtitle}</p>
-          <p className="mt-3 min-h-[66px] text-sm leading-6 text-slate-600 dark:text-slate-300">{board.description}</p>
+          <p className="mt-3 min-h-[66px] text-sm leading-6 text-slate-600 dark:text-slate-300">{ready ? board.description : `No verified source-backed ${board.title} past paper has been imported yet. This board stays visible, but practice is disabled until genuine archive material is available.`}</p>
 
           <div className="mt-5 grid grid-cols-3 gap-2 rounded-xl bg-stone-50 p-3 text-center dark:bg-[#151A3A]">
-            <div><b className="block text-lg text-[#151A3A] dark:text-white">{data?.questionCount ?? '—'}</b><span className="text-[11px] text-slate-500">graded MCQs</span></div>
-            <div><b className="block text-lg text-[#151A3A] dark:text-white">{data?.subjectIds?.length ?? '—'}</b><span className="text-[11px] text-slate-500">subjects</span></div>
-            <div><b className="block text-lg text-[#151A3A] dark:text-white">{data?.years?.length ?? '—'}</b><span className="text-[11px] text-slate-500">years</span></div>
+            <div><b className="block text-lg text-[#151A3A] dark:text-white">{loading ? '—' : data?.questionCount ?? 0}</b><span className="text-[11px] text-slate-500">verified MCQs</span></div>
+            <div><b className="block text-lg text-[#151A3A] dark:text-white">{loading ? '—' : data?.subjectIds?.length ?? 0}</b><span className="text-[11px] text-slate-500">subjects</span></div>
+            <div><b className="block text-lg text-[#151A3A] dark:text-white">{loading ? '—' : data?.years?.length ?? 0}</b><span className="text-[11px] text-slate-500">years</span></div>
           </div>
 
           <div className="mt-5 grid gap-2">
-            <Link href={`/dashboard/past-questions?board=${board.code}&experience=school-past`} className="inline-flex items-center justify-center gap-2 rounded-xl border border-stone-200 px-4 py-3 text-sm font-bold text-[#151A3A] hover:border-brand-300 hover:bg-brand-50 dark:border-slate-700 dark:text-white">
-              <BookOpenCheck className="h-4 w-4" /> Past Questions
-            </Link>
-            <Link href={`/dashboard/past-questions?board=${board.code}&experience=school-cbt`} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#151A3A] px-4 py-3 text-sm font-bold text-white hover:bg-[#202852]">
-              <Clock3 className="h-4 w-4" /> Timed CBT
-            </Link>
+            {ready ? <>
+              <Link href={`/dashboard/past-questions?board=${board.code}&experience=school-past`} className="inline-flex items-center justify-center gap-2 rounded-xl border border-stone-200 px-4 py-3 text-sm font-bold text-[#151A3A] hover:border-brand-300 hover:bg-brand-50 dark:border-slate-700 dark:text-white">
+                <BookOpenCheck className="h-4 w-4" /> Past Questions
+              </Link>
+              <Link href={`/dashboard/past-questions?board=${board.code}&experience=school-cbt`} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#151A3A] px-4 py-3 text-sm font-bold text-white hover:bg-[#202852]">
+                <Clock3 className="h-4 w-4" /> Timed CBT
+              </Link>
+            </> : <>
+              <span aria-disabled="true" className="inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-bold text-slate-400 dark:border-slate-700 dark:bg-slate-800/40">
+                <BookOpenCheck className="h-4 w-4" /> Past Questions unavailable
+              </span>
+              <span aria-disabled="true" className="inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-slate-300 px-4 py-3 text-sm font-bold text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+                <Clock3 className="h-4 w-4" /> Timed CBT unavailable
+              </span>
+            </>}
           </div>
         </article>;
       })}
