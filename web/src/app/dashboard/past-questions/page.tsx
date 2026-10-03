@@ -519,7 +519,7 @@ export default function PastQuestionsPage() {
   const pageDescription = experience === 'jamb-past'
     ? 'Choose one JAMB subject and revise verified past questions without a countdown timer.'
     : experience === 'jamb-cbt'
-      ? 'Choose exactly four JAMB subjects for a timed CBT simulation.'
+      ? 'Choose four subjects, set a separate question count for each and one total timer. Scored questions come only from verified JAMB past-question records.'
       : experience === 'school-past'
         ? `Study verified ${examConfig.label} past questions one subject at a time.`
         : experience === 'school-cbt'
