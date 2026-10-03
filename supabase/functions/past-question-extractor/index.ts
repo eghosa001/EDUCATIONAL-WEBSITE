@@ -121,6 +121,30 @@ Deno.serve(async (request) => {
     const body = await request.json().catch(() => ({}));
     const action = String(body?.action || "");
 
+    if (action === "answer_key_scan_manifest") {
+      const requestedIds = Array.isArray(body?.fileIds)
+        ? body.fileIds.map((value: unknown) => String(value || "")).filter((value: string) => /^[0-9a-f-]{36}$/i.test(value)).slice(0, 20)
+        : [];
+      if (!requestedIds.length) return json({ error: "At least one valid fileId is required" }, 400);
+      const { data, error } = await admin.from("past_question_files")
+        .select("id,bucket_id,file_path,board,subject,year,file_name,metadata")
+        .in("id", requestedIds)
+        .eq("board", "jamb");
+      if (error) throw error;
+      const files = [];
+      for (const file of data || []) {
+        const status = String((file.metadata as any)?.status || "");
+        const name = String(file.file_name || "");
+        if (["reference_material","reference_curriculum_file","duplicate_source"].includes(status)) continue;
+        if (!/jamb.*past.*questions|past.*questions.*jamb/i.test(name)) continue;
+        const { data: signed, error: signedError } = await admin.storage.from(file.bucket_id).createSignedUrl(file.file_path, 1200);
+        if (signedError || !signed?.signedUrl) continue;
+        const { bucket_id, file_path, ...safe } = file as any;
+        files.push({ ...safe, public_url: signed.signedUrl });
+      }
+      return json({ files, count: files.length });
+    }
+
     if (action === "answer_recovery_manifest") {
       const requestedIds = Array.isArray(body?.fileIds)
         ? body.fileIds.map((value: unknown) => String(value || "")).filter((value: string) => /^[0-9a-f-]{36}$/i.test(value)).slice(0, 20)
@@ -147,13 +171,24 @@ Deno.serve(async (request) => {
       const fileId = String(body?.fileId || "");
       const method = String(body?.method || "");
       if (!/^[0-9a-f-]{36}$/i.test(fileId)) return json({ error: "Valid fileId required" }, 400);
-      if (method !== "pdf-text-answer-key") return json({ error: "Only embedded PDF answer-key recovery is trusted" }, 400);
+      const embeddedMethod = method === "pdf-text-answer-key";
+      const consensusMethod = method === "pdf-answer-key-ocr-consensus";
+      if (!embeddedMethod && !consensusMethod) return json({ error: "Unsupported answer recovery method" }, 400);
+      const consensusPasses = Number(body?.consensusPasses || 0);
+      const keyEntries = Number(body?.keyEntries || 0);
+      if (consensusMethod && (consensusPasses < 2 || keyEntries < 5)) {
+        return json({ error: "OCR answer recovery requires at least two agreeing passes and five keyed answers" }, 400);
+      }
       const supplied = Array.isArray(body?.questions) ? body.questions.slice(0, 2500) : [];
       const { data: file, error: fileError } = await admin.from("past_question_files")
         .select("id,board,file_name,metadata").eq("id", fileId).maybeSingle();
       if (fileError || !file || String(file.board || "").toLowerCase() !== "jamb") return json({ error: "JAMB source file not found" }, 404);
-      if (!/questions?.{0,12}(?:and|&).{0,12}answers?|answers?.{0,12}(?:and|&).{0,12}questions?/i.test(String(file.file_name || ""))) {
+      const fileName = String(file.file_name || "");
+      if (embeddedMethod && !/questions?.{0,12}(?:and|&).{0,12}answers?|answers?.{0,12}(?:and|&).{0,12}questions?/i.test(fileName)) {
         return json({ error: "Source file is not explicitly identified as questions-and-answers material" }, 400);
+      }
+      if (consensusMethod && !/jamb.*past.*questions|past.*questions.*jamb/i.test(fileName)) {
+        return json({ error: "OCR consensus recovery is restricted to explicit JAMB past-question files" }, 400);
       }
 
       const source = `storage:${fileId}`;
@@ -194,7 +229,7 @@ Deno.serve(async (request) => {
         const results = await Promise.all(chunk.map(item =>
           admin.from("past_questions").update({
             correct_answer: item.answer,
-            answer_source: "source-pdf-answer-key",
+            answer_source: embeddedMethod ? "source-pdf-answer-key" : "source-pdf-answer-key-ocr-consensus",
             answer_verified_at: verifiedAt,
           }).eq("id", item.id).is("correct_answer", null)
         ));
@@ -213,6 +248,8 @@ Deno.serve(async (request) => {
         answer_recovery_method: method,
         answer_recovery_at: verifiedAt,
         answer_recovered: recovered,
+        answer_recovery_consensus_passes: consensusMethod ? consensusPasses : undefined,
+        answer_recovery_key_entries: consensusMethod ? keyEntries : undefined,
         answered_questions: answeredCount || 0,
       };
       await admin.from("past_question_files").update({ metadata: nextMetadata, updated_at: verifiedAt }).eq("id", fileId);
