@@ -200,16 +200,34 @@ function groundedFallback(
 }
 
 async function fingerprintLesson(lesson: Record<string, unknown>) {
-  const source = JSON.stringify({
-    title: lesson.title || '',
-    written_content: lesson.written_content || '',
-    learning_objectives: lesson.learning_objectives || [],
-    key_points: lesson.key_points || [],
-    teaching_version: lesson.teaching_version || 0,
-  });
+  const source = [
+    clean(lesson.title, 2000),
+    clean(lesson.written_content, 100000),
+    String(Number(lesson.teaching_version || 0)),
+  ].join('\n---\n');
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(source));
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
+
+const optionId = (index: number) => String.fromCharCode(65 + index);
+const publicQuestions = (questions: PracticeQuestion[]) => questions.map((question, index) => ({
+  id: 'lesson-practice-' + (index + 1),
+  questionText: question.questionText,
+  questionType: question.questionType,
+  options: question.options.map((text, optionIndex) => ({ id: optionId(optionIndex), text })),
+  difficulty: question.difficulty,
+  index,
+}));
+const quizResponse = (lessonId: string, questions: PracticeQuestion[], cached: boolean, generationMethod: string) => json({
+  quiz: {
+    id: crypto.randomUUID(),
+    lessonId,
+    questions: publicQuestions(questions),
+    createdAt: new Date().toISOString(),
+  },
+  cached,
+  generationMethod,
+});
 
 Deno.serve(async request => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -239,8 +257,10 @@ Deno.serve(async request => {
 
     const body = await request.json().catch(() => ({}));
     const lessonId = clean(body.lessonId, 64);
+    const action = clean(body.action || 'generate', 20).toLowerCase();
     const count = Number(body.count ?? 5);
     if (!isUuid(lessonId)) return json({ error: 'A valid lessonId is required' }, 400);
+    if (!['generate', 'check'].includes(action)) return json({ error: 'Unsupported practice action' }, 400);
     if (!Number.isInteger(count) || count < 3 || count > 10) return json({ error: 'count must be an integer from 3 to 10' }, 400);
 
     const { data: lesson, error: lessonError } = await admin.from('lessons')
@@ -269,25 +289,45 @@ Deno.serve(async request => {
 
     const fingerprint = await fingerprintLesson(lesson as Record<string, unknown>);
     const { data: cached } = await admin.from('lesson_practice_sets')
-      .select('content_fingerprint,questions,generation_method')
+      .select('content_fingerprint,questions,generation_method,source_version')
       .eq('lesson_id', lessonId)
       .maybeSingle();
 
     let cachedFallback: PracticeQuestion[] | null = null;
+    let cachedQuestions: PracticeQuestion[] | null = null;
     if (cached?.content_fingerprint === fingerprint) {
       try {
-        const cachedQuestions = validateQuestions(cached.questions, count);
-        if (cached.generation_method === 'ai') {
-          return json({
-            quiz: { id: crypto.randomUUID(), lessonId, questions: cachedQuestions, createdAt: new Date().toISOString() },
-            cached: true,
-            generationMethod: 'ai',
-          });
-        }
-        cachedFallback = cachedQuestions;
+        cachedQuestions = validateQuestions(cached.questions, count);
       } catch {
-        cachedFallback = null;
+        cachedQuestions = null;
       }
+    }
+
+    if (action === 'check') {
+      if (!cachedQuestions) return json({ error: 'Practice set changed. Reload the practice tab.' }, 409);
+      const questionIndex = Number(body.questionIndex);
+      const answerId = clean(body.answerId, 4).toUpperCase();
+      if (!Number.isInteger(questionIndex) || questionIndex < 0 || questionIndex >= cachedQuestions.length) {
+        return json({ error: 'Invalid practice question' }, 400);
+      }
+      const question = cachedQuestions[questionIndex];
+      const selectedIndex = answerId.length === 1 ? answerId.charCodeAt(0) - 65 : -1;
+      if (selectedIndex < 0 || selectedIndex >= question.options.length) return json({ error: 'Invalid answer choice' }, 400);
+      const correctIndex = question.options.findIndex(option => option === question.correctAnswer);
+      return json({
+        result: {
+          isCorrect: selectedIndex === correctIndex,
+          correctAnswer: optionId(correctIndex),
+          explanation: question.explanation,
+        },
+      });
+    }
+
+    if (cachedQuestions) {
+      if (cached.generation_method === 'ai' || Number(cached.source_version || 0) >= 2) {
+        return quizResponse(lessonId, cachedQuestions, true, String(cached.generation_method || 'grounded-fallback'));
+      }
+      cachedFallback = cachedQuestions;
     }
 
     if (bynaraKey) {
@@ -332,7 +372,7 @@ Deno.serve(async request => {
             content_fingerprint: fingerprint,
             questions,
             generation_method: 'ai',
-            source_version: 1,
+            source_version: 2,
             updated_at: new Date().toISOString(),
           }, { onConflict: 'lesson_id' });
 
@@ -344,11 +384,7 @@ Deno.serve(async request => {
           }).eq('user_id', user.id).eq('date', today);
 
           reserved = false;
-          return json({
-            quiz: { id: crypto.randomUUID(), lessonId, questions, createdAt: new Date().toISOString() },
-            cached: false,
-            generationMethod: 'ai',
-          });
+          return quizResponse(lessonId, questions, false, 'ai');
         } catch (error) {
           console.error('AI lesson practice unavailable; using grounded fallback', error instanceof Error ? error.message : String(error));
           if (reserved) {
@@ -361,28 +397,32 @@ Deno.serve(async request => {
       }
     }
 
-    const fallback = cachedFallback || groundedFallback(
-      lesson as Record<string, unknown>,
-      (siblingLessons || []) as Array<Record<string, unknown>>,
-      count,
-    );
+    let fallback: PracticeQuestion[];
+    let usedSeedCache = false;
+    try {
+      fallback = groundedFallback(
+        lesson as Record<string, unknown>,
+        (siblingLessons || []) as Array<Record<string, unknown>>,
+        count,
+      );
+    } catch (fallbackError) {
+      if (!cachedFallback) throw fallbackError;
+      fallback = cachedFallback;
+      usedSeedCache = true;
+    }
 
-    if (!cachedFallback) {
+    if (!usedSeedCache) {
       await admin.from('lesson_practice_sets').upsert({
         lesson_id: lessonId,
         content_fingerprint: fingerprint,
         questions: fallback,
         generation_method: 'grounded-fallback',
-        source_version: 1,
+        source_version: 2,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'lesson_id' });
     }
 
-    return json({
-      quiz: { id: crypto.randomUUID(), lessonId, questions: fallback, createdAt: new Date().toISOString() },
-      cached: Boolean(cachedFallback),
-      generationMethod: 'grounded-fallback',
-    });
+    return quizResponse(lessonId, fallback, usedSeedCache, 'grounded-fallback');
   } catch (error) {
     if (reserved && userId && admin) {
       try { await admin.rpc('release_ai_request', { p_user_id: userId }); } catch {}

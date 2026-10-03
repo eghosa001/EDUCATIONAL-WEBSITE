@@ -20,6 +20,8 @@ type Question = {
   marks?: number | null;
   question_image_url?: string | null;
   generated?: boolean;
+  serverPractice?: boolean;
+  practiceIndex?: number;
   correct_answer?: any;
   explanation?: string | null;
 };
@@ -111,6 +113,24 @@ function LessonVisualMap({ title, objectives, keyPoints }: { title: string; obje
           <div className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm leading-6 text-slate-700 shadow-sm dark:border-slate-700 dark:bg-[#202650] dark:text-slate-200">{node}</div>
         </li>)}
       </ol>
+    </div>
+  </section>;
+}
+
+function LessonResourceVisuals({ resources }: { resources: any[] }) {
+  const visuals = resources.filter((resource) =>
+    resource?.resource_type === 'visual-summary' || String(resource?.mime_type || '').startsWith('image/')
+  );
+  if (!visuals.length) return null;
+  return <section className="mt-10">
+    <div className="mb-4 flex items-end justify-between gap-4">
+      <div><p className="text-xs font-extrabold uppercase tracking-[0.16em] text-slate-400">Visual learning aid</p><h2 className="mt-1 text-xl font-extrabold text-[#151A3A] dark:text-white">See the lesson at a glance</h2></div>
+    </div>
+    <div className="grid gap-4">
+      {visuals.map((resource) => <figure key={resource.id} className="overflow-hidden rounded-2xl border border-stone-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-[#151A3A]">
+        <img src={resource.file_url} alt={resource.title || 'Lesson visual summary'} loading="lazy" className="mx-auto w-full rounded-xl object-contain" />
+        <figcaption className="px-2 pb-1 pt-3 text-sm text-slate-500">{resource.description || resource.title}</figcaption>
+      </figure>)}
     </div>
   </section>;
 }
@@ -211,7 +231,7 @@ export default function LessonPage() {
         optionalTasks.push((async () => {
           const { data: rData, error: rError } = await s
             .from('lesson_resources')
-            .select('id,lesson_id,title,description,resource_type,file_url')
+            .select('id,lesson_id,title,description,resource_type,file_url,mime_type,is_downloadable')
             .eq('lesson_id', found.id)
             .order('created_at', { ascending: true });
           if (!rError && !cancelled) setResources(rData || []);
@@ -258,18 +278,33 @@ export default function LessonPage() {
     setPracticeLoading(true);
     setError('');
     try {
-      const response = await sendAiTutorMessage({
-        message: `Create 5 Nigerian curriculum-aligned multiple-choice practice questions for this lesson. Lesson: ${lesson.title}. Course: ${course?.title || ''}. Notes: ${lesson.written_content || ''}. Return ONLY valid JSON array. Each item must have question_text, options as an object with A,B,C,D, correct_answer as A/B/C/D, and explanation. Make every question answerable from the lesson and avoid invented facts.`,
-        context: { lessonId: lesson.id, courseId: lesson.course_id, mode: 'practice-generation' },
-      }, token);
-      const raw = response.message?.content || '';
-      const match = raw.match(/\[[\s\S]*\]/);
-      if (!match) throw new Error('AI did not return a valid practice set');
-      const parsed = JSON.parse(match[0]);
-      setQuestions(parsed.map((x: any, i: number) => ({ ...x, id: `generated-${i}`, generated: true })));
-      setQi(0); setSelected(null); setChecked(null); setScore(0); setAttempted(0); setActiveTab('practice');
+      const s = getSupabase();
+      const { data, error: practiceError } = await s.functions.invoke('lesson-practice', {
+        body: { action: 'generate', lessonId: lesson.id, count: 5 },
+      });
+      if (practiceError) throw practiceError;
+      const rows = Array.isArray(data?.quiz?.questions) ? data.quiz.questions : [];
+      if (!rows.length) throw new Error('No lesson practice questions were returned');
+      setQuestions(rows.map((row: any, index: number) => ({
+        id: String(row.id || `lesson-practice-${index + 1}`),
+        question_text: String(row.questionText || ''),
+        options: row.options || [],
+        difficulty: row.difficulty || 'medium',
+        generated: true,
+        serverPractice: true,
+        practiceIndex: Number.isInteger(row.index) ? row.index : index,
+      })));
+      setQi(0);
+      setSelected(null);
+      setChecked(null);
+      setScore(0);
+      setAttempted(0);
+      setActiveTab('practice');
+      setPracticeNotice(data?.generationMethod === 'ai'
+        ? 'Practice is generated from this exact lesson.'
+        : 'Practice is grounded in this lesson and will be upgraded automatically when the AI generator is available.');
     } catch (e: any) {
-      setError(e?.message || 'Unable to generate practice');
+      setError(e?.message || 'Unable to load lesson practice');
     } finally {
       setPracticeLoading(false);
     }
@@ -284,10 +319,22 @@ export default function LessonPage() {
     setChecking(true);
     setError('');
     try {
-      if (currentQ.generated) {
-        const ok = id === answerOf(currentQ.correct_answer);
-        setChecked({ isCorrect: ok, correctAnswer: currentQ.correct_answer, explanation: currentQ.explanation || null });
-        setScore(x => x + (ok ? 1 : 0));
+      if (currentQ.serverPractice) {
+        const s = getSupabase();
+        const { data, error: practiceError } = await s.functions.invoke('lesson-practice', {
+          body: {
+            action: 'check',
+            lessonId: lesson.id,
+            count: questions.length || 5,
+            questionIndex: currentQ.practiceIndex ?? qi,
+            answerId: id,
+          },
+        });
+        if (practiceError) throw practiceError;
+        const result = data?.result;
+        if (!result || typeof result.isCorrect !== 'boolean') throw new Error('Unable to grade this practice answer');
+        setChecked(result);
+        setScore(x => x + (result.isCorrect ? 1 : 0));
         setAttempted(x => x + 1);
         return;
       }
@@ -343,12 +390,18 @@ export default function LessonPage() {
     <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1b2045]">
       <nav className="flex overflow-x-auto border-b border-stone-200 dark:border-slate-700">{(['learn', 'practice', 'video', 'resources'] as Tab[]).map(tab => <button key={tab} onClick={() => { setActiveTab(tab); if (tab === 'practice' && !questions.length && token && !practiceLoading) void generatePractice(); }} className={`min-w-[120px] flex-1 px-4 py-3 text-sm font-bold ${activeTab === tab ? 'border-b-2 border-[#151A3A] text-[#151A3A] dark:text-white' : 'text-slate-500'}`}>{tab === 'learn' ? 'Learn & Teach' : tab === 'practice' ? `Practice${questions.length ? ` (${questions.length})` : ''}` : tab === 'video' ? 'Video' : 'Resources'}</button>)}</nav>
 
-      {activeTab === 'learn' && <div className="grid gap-8 p-6 lg:grid-cols-[1fr_300px] sm:p-8"><main><section><h2 className="text-2xl font-extrabold text-[#151A3A] dark:text-white">What you will learn</h2><ul className="mt-4 space-y-3">{(lesson.learning_objectives?.length ? lesson.learning_objectives : [`Understand ${lesson.title}`, `Apply the ideas in ${lesson.title}`, 'Check your understanding']).map((x: any, i: number) => <li key={i} className="flex gap-3 text-slate-600 dark:text-slate-300"><CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-emerald-600" />{x}</li>)}</ul></section><section className="mt-10"><h2 className="text-2xl font-extrabold text-[#151A3A] dark:text-white">Lesson</h2><div className="mt-5"><LessonContent content={notes} /></div></section><LessonVisualMap title={lesson.title} objectives={lesson.learning_objectives} keyPoints={lesson.key_points} />{!!lesson.key_points?.length && <section className="mt-10 rounded-2xl bg-stone-50 p-6 dark:bg-[#151A3A]"><h2 className="text-xl font-extrabold text-[#151A3A] dark:text-white">Key points</h2><ul className="mt-4 space-y-2 text-slate-700 dark:text-slate-200">{lesson.key_points.map((x: any, i: number) => <li key={i} className="flex gap-2"><span>•</span>{x}</li>)}</ul></section>}</main><aside className="h-fit rounded-2xl border border-stone-200 bg-stone-50 p-5 dark:border-slate-700 dark:bg-[#151A3A]"><div className="flex items-center gap-2 font-extrabold text-[#151A3A] dark:text-white"><Sparkles className="h-5 w-5" />THE GUIDE Teacher</div>{teaching ? <div className="mt-4 flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Preparing an explanation…</div> : <div className="mt-4 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">{teacherText || 'Read the lesson, then use Practice to check your understanding.'}</div>}<button onClick={() => setActiveTab('practice')} className="mt-5 w-full rounded-xl bg-[#151A3A] px-4 py-2.5 text-sm font-bold text-white">Go to practice</button></aside></div>}
+      {activeTab === 'learn' && <div className="grid gap-8 p-6 lg:grid-cols-[1fr_300px] sm:p-8"><main><section><h2 className="text-2xl font-extrabold text-[#151A3A] dark:text-white">What you will learn</h2><ul className="mt-4 space-y-3">{(lesson.learning_objectives?.length ? lesson.learning_objectives : [`Understand ${lesson.title}`, `Apply the ideas in ${lesson.title}`, 'Check your understanding']).map((x: any, i: number) => <li key={i} className="flex gap-3 text-slate-600 dark:text-slate-300"><CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-emerald-600" />{x}</li>)}</ul></section><section className="mt-10"><h2 className="text-2xl font-extrabold text-[#151A3A] dark:text-white">Lesson</h2><div className="mt-5"><LessonContent content={notes} /></div></section><LessonVisualMap title={lesson.title} objectives={lesson.learning_objectives} keyPoints={lesson.key_points} /><LessonResourceVisuals resources={resources} />{!!lesson.key_points?.length && <section className="mt-10 rounded-2xl bg-stone-50 p-6 dark:bg-[#151A3A]"><h2 className="text-xl font-extrabold text-[#151A3A] dark:text-white">Key points</h2><ul className="mt-4 space-y-2 text-slate-700 dark:text-slate-200">{lesson.key_points.map((x: any, i: number) => <li key={i} className="flex gap-2"><span>•</span>{x}</li>)}</ul></section>}</main><aside className="h-fit rounded-2xl border border-stone-200 bg-stone-50 p-5 dark:border-slate-700 dark:bg-[#151A3A]"><div className="flex items-center gap-2 font-extrabold text-[#151A3A] dark:text-white"><Sparkles className="h-5 w-5" />THE GUIDE Teacher</div>{teaching ? <div className="mt-4 flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Preparing an explanation…</div> : <div className="mt-4 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">{teacherText || 'Read the lesson, then use Practice to check your understanding.'}</div>}<button onClick={() => setActiveTab('practice')} className="mt-5 w-full rounded-xl bg-[#151A3A] px-4 py-2.5 text-sm font-bold text-white">Go to practice</button></aside></div>}
 
       {activeTab === 'practice' && <div className="p-6 sm:p-8">{!questions.length ? <div className="mx-auto max-w-xl rounded-2xl border border-dashed border-stone-300 p-10 text-center dark:border-slate-700"><h2 className="text-xl font-extrabold text-[#151A3A] dark:text-white">Practice this lesson</h2><p className="mt-2 text-sm leading-6 text-slate-500">A lesson-grounded practice set is prepared from this lesson when you open Practice. If the AI provider is unavailable, the site falls back to questions built directly from the lesson material.</p><button onClick={generatePractice} disabled={!token || practiceLoading} className="mt-5 rounded-xl bg-[#151A3A] px-5 py-3 text-sm font-bold text-white disabled:opacity-50">{practiceLoading ? 'Generating practice…' : 'Generate practice set'}</button></div> : <div className="mx-auto max-w-3xl"><div className="mb-4 flex items-center justify-between text-sm text-slate-500"><span>Question {qi + 1} of {questions.length}</span><span className="font-semibold">Score {score}/{attempted}</span></div><div className="rounded-2xl bg-stone-50 p-5 dark:bg-[#151A3A]"><p className="font-semibold leading-7 text-slate-900 dark:text-white">{currentQ?.question_text}</p>{currentQ?.question_image_url && <img src={currentQ.question_image_url} alt="Question" className="mt-4 max-h-72 rounded-xl object-contain" />}</div><div className="mt-4 space-y-2">{opts.map(o => <button key={o.id} disabled={!!selected || checking} onClick={() => void selectAnswer(o.id)} className={`w-full rounded-xl border px-4 py-3 text-left ${selected ? (o.id === correct ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : o.id === selected ? 'border-red-300 bg-red-50 text-red-800' : 'border-stone-200 bg-stone-50 text-slate-500') : 'border-stone-200 bg-white hover:border-brand-300 dark:border-slate-700 dark:bg-[#151A3A]'}`}><b className="mr-2">{o.id}.</b>{o.text}</button>)}</div>{checked?.explanation && <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm dark:border-brand-900 dark:bg-brand-950/30"><b>Explanation</b><p className="mt-1">{checked.explanation}</p></div>}<div className="mt-5 flex justify-between"><button onClick={() => { setQi(x => Math.max(x - 1, 0)); setSelected(null); setChecked(null); }} disabled={qi === 0} className="rounded-xl border px-4 py-2 disabled:opacity-40">Previous</button><button onClick={() => { setQi(x => Math.min(x + 1, questions.length - 1)); setSelected(null); setChecked(null); }} disabled={qi === questions.length - 1} className="rounded-xl bg-[#151A3A] px-4 py-2 font-semibold text-white disabled:opacity-40">Next</button></div></div>}</div>}
 
       {activeTab === 'video' && <div className="p-6 sm:p-8">{lesson.video_url ? <video ref={videoRef} controls src={lesson.video_url} className="aspect-video w-full rounded-2xl bg-black" /> : <div className="rounded-2xl border border-dashed p-10 text-center text-slate-500">No video is available for this lesson.</div>}</div>}
-      {activeTab === 'resources' && <div className="p-6 sm:p-8">{resources.length ? <div className="space-y-3">{resources.map((r: any) => <a key={r.id} href={r.file_url} target="_blank" rel="noreferrer" className="flex items-center justify-between rounded-xl border border-stone-200 p-4 hover:border-brand-300 dark:border-slate-700"><span><b className="block">{r.title}</b><span className="text-sm text-slate-500">{r.description || r.resource_type}</span></span><Download className="h-5 w-5" /></a>)}</div> : <div className="rounded-2xl border border-dashed p-10 text-center text-slate-500">No downloadable resources are attached to this lesson.</div>}</div>}
+      {activeTab === 'resources' && <div className="p-6 sm:p-8">{resources.length ? <div className="grid gap-4">{resources.map((r: any) => {
+        const isImage = r.resource_type === 'visual-summary' || String(r.mime_type || '').startsWith('image/');
+        return <article key={r.id} className="overflow-hidden rounded-2xl border border-stone-200 bg-white dark:border-slate-700 dark:bg-[#151A3A]">
+          {isImage && <img src={r.file_url} alt={r.title || 'Lesson visual'} loading="lazy" className="w-full border-b border-stone-200 object-contain dark:border-slate-700" />}
+          <div className="flex items-center justify-between gap-4 p-4"><span><b className="block">{r.title}</b><span className="text-sm text-slate-500">{r.description || r.resource_type}</span></span><a href={r.file_url} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"><Download className="h-4 w-4" />Open</a></div>
+        </article>;
+      })}</div> : <div className="rounded-2xl border border-dashed p-10 text-center text-slate-500">No lesson resources are attached yet.</div>}</div>}
     </div>
 
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><button onClick={() => goTo(previous)} disabled={!previous} className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 font-semibold disabled:opacity-40"><ChevronLeft className="h-4 w-4" />Previous lesson</button><button onClick={() => void markComplete()} disabled={completed || completing || !token} className={`rounded-xl px-5 py-3 font-semibold text-white ${completed ? 'bg-emerald-600' : 'bg-[#151A3A]'} disabled:opacity-60`}>{completed ? 'Completed' : completing ? 'Saving…' : 'Mark complete'}</button><button onClick={() => goTo(next)} disabled={!next} className="inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-3 font-semibold disabled:opacity-40">Next lesson<ChevronRight className="h-4 w-4" /></button></div>
