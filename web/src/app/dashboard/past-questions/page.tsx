@@ -261,10 +261,14 @@ export default function PastQuestionsPage() {
   const selectedNames = selectedSubjects.map(id => subjects.find(subject => subject.id === id)?.name).filter(Boolean) as string[];
   const isJambCbt = experience === 'jamb-cbt' || (experience === 'legacy' && mode === 'exam' && selectedExam === 'jamb');
   const singleSubjectExternal = experience === 'jamb-past' || experience === 'school-past' || experience === 'school-cbt';
+  const jambHasEnglish = selectedSubjects.some(id => {
+    const name = subjects.find(subject => subject.id === id)?.name || jambPresets.flatMap(preset => preset.subjects).find(subject => subject.id === id)?.name || '';
+    return /^(english language|use of english)$/i.test(name.trim());
+  });
   const selectionValid = mode === 'class'
     ? Boolean(selectedClass && selectedSubjects.length === 1)
     : isJambCbt
-      ? selectedSubjects.length === 4
+      ? selectedSubjects.length === 4 && jambHasEnglish
       : singleSubjectExternal
         ? selectedSubjects.length === 1
         : selectedSubjects.length > 0;
@@ -581,17 +585,36 @@ export default function PastQuestionsPage() {
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">{EXAMS.map(item => <button key={item.code} onClick={() => { setSelectedExam(item.code); setSelectedSubjects([]); setSelectedYear(''); }} className={`rounded-xl border p-3 text-sm font-bold ${selectedExam === item.code ? 'border-[#151A3A] bg-[#151A3A] text-white' : 'border-stone-200 bg-stone-50 dark:border-slate-700 dark:bg-[#151A3A] dark:text-slate-200'}`}>{item.label}</button>)}</div></>}
         </>}
         {(mode === 'exam' || selectedClass) && <div className="mt-6">
-          <div className="mb-2 flex items-center justify-between"><p className="text-sm font-semibold">2. {mode === 'exam' ? (isJambCbt ? 'Select exactly 4 subjects' : singleSubjectExternal ? 'Select one subject' : `Select subjects (up to ${examConfig.max})`) : 'Select subject'}</p><span className="text-xs font-bold text-slate-500">{selectedSubjects.length} selected</span></div>
+          {isJambCbt && <div className="mb-6 rounded-2xl border border-brand-100 bg-brand-50/70 p-4 dark:border-brand-900 dark:bg-brand-950/20">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end">
+              <label className="flex-1 text-sm font-semibold text-[#151A3A] dark:text-white">
+                Choose course (optional)
+                <select value={selectedCoursePresetId} onChange={event => applyCoursePreset(event.target.value)} disabled={jambPresetLoading} className="mt-2 w-full rounded-xl border border-stone-200 bg-white p-3 text-sm font-medium text-slate-700 dark:border-slate-700 dark:bg-[#151A3A] dark:text-white">
+                  <option value="">I will choose my 4 subjects manually</option>
+                  {jambPresets.map(preset => <option key={preset.id} value={preset.id}>{preset.courseName}{preset.readyForTenEach ? '' : ' · bank still expanding'}</option>)}
+                </select>
+              </label>
+              {jambPresetLoading && <span className="inline-flex items-center gap-2 pb-3 text-xs font-semibold text-slate-500"><ClockIcon className="h-4 w-4 animate-spin"/>Loading presets…</span>}
+            </div>
+            {selectedPreset && <div className="mt-4">
+              <p className="text-sm font-bold text-[#151A3A] dark:text-white">{selectedPreset.courseName} subject combination</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">{selectedPreset.subjects.map(subject => <div key={subject.id} className="rounded-lg bg-white px-3 py-2 text-sm dark:bg-[#151A3A]"><span className="font-semibold">{subject.name}</span><span className={`ml-2 text-xs ${subject.availableQuestions >= 10 ? 'text-emerald-600' : 'text-amber-600'}`}>{subject.availableQuestions} verified questions</span></div>)}</div>
+              <p className="mt-3 text-xs leading-5 text-slate-600 dark:text-slate-300">{selectedPreset.notes}</p>
+              <a href={selectedPreset.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-xs font-bold text-brand-700 underline">Verify your institution/course on JAMB IBASS</a>
+            </div>}
+          </div>}
+          <div className="mb-2 flex items-center justify-between"><p className="text-sm font-semibold">2. {mode === 'exam' ? (isJambCbt ? 'Select exactly 4 subjects (English required)' : singleSubjectExternal ? 'Select one subject' : `Select subjects (up to ${examConfig.max})`) : 'Select subject'}</p><span className="text-xs font-bold text-slate-500">{selectedSubjects.length} selected</span></div>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{visibleSubjects.map(subject => {
             const selected = selectedSubjects.includes(subject.id);
             const subjectLimit = isJambCbt ? 4 : singleSubjectExternal ? 1 : examConfig.max;
-            const disabled = mode === 'exam' && !selected && selectedSubjects.length >= subjectLimit;
-            return <button key={subject.id} disabled={disabled} onClick={() => toggleSubject(subject.id)} className={`rounded-xl border p-3 text-left text-sm font-semibold transition ${selected ? 'border-[#151A3A] bg-[#151A3A] text-white' : 'border-stone-200 bg-stone-50 text-slate-700 hover:border-[#151A3A]/40 dark:border-slate-700 dark:bg-[#151A3A] dark:text-slate-200'} disabled:cursor-not-allowed disabled:opacity-40`}><span className="mr-2">{selected ? '✓' : '○'}</span>{subject.name}</button>;
+            const jambAvailable = Number(jambSubjectAvailability[subject.id] || 0);
+            const disabled = (mode === 'exam' && !selected && selectedSubjects.length >= subjectLimit) || (isJambCbt && jambAvailable < 1);
+            return <button key={subject.id} disabled={disabled} onClick={() => toggleSubject(subject.id)} className={`rounded-xl border p-3 text-left text-sm font-semibold transition ${selected ? 'border-[#151A3A] bg-[#151A3A] text-white' : 'border-stone-200 bg-stone-50 text-slate-700 hover:border-[#151A3A]/40 dark:border-slate-700 dark:bg-[#151A3A] dark:text-slate-200'} disabled:cursor-not-allowed disabled:opacity-40`}><span className="mr-2">{selected ? '✓' : '○'}</span>{subject.name}{isJambCbt && <span className={`ml-2 block text-[11px] font-medium ${selected ? 'text-white/70' : jambAvailable >= 10 ? 'text-emerald-600' : 'text-amber-600'}`}>{jambAvailable} verified JAMB questions</span>}</button>;
           })}</div>
-          {isJambCbt && <p className="mt-3 text-xs font-semibold text-amber-700 dark:text-amber-300">JAMB / UTME CBT requires exactly 4 subjects.</p>}
+          {isJambCbt && <p className="mt-3 text-xs font-semibold text-amber-700 dark:text-amber-300">JAMB / UTME CBT requires exactly 4 subjects including Use of English. Question limits shown above come only from verified JAMB past questions.</p>}
           {mode === 'exam' && selectedSubjects.length > 0 && availableYears.length > 0 && <label className="mt-5 block text-sm font-medium">3. Year (optional)<select value={selectedYear} onChange={event => setSelectedYear(event.target.value)} className="ml-2 rounded-lg border border-stone-200 bg-stone-50 p-2 text-sm dark:border-slate-700 dark:bg-[#151A3A] dark:text-white"><option value="">All available years</option>{availableYears.map(year => <option key={year} value={year}>{year}</option>)}</select></label>}
         </div>}
-        <button onClick={continueToCount} disabled={!selectionValid} className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#151A3A] px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">Continue to question count <PlayIcon className="h-4 w-4"/></button>
+        <button onClick={continueToCount} disabled={!selectionValid} className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#151A3A] px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">{isJambCbt ? 'Configure questions & time' : 'Continue to question count'} <PlayIcon className="h-4 w-4"/></button>
       </section>
       <p className="text-xs text-slate-500">Questions are served from the structured Supabase question bank; source PDFs are never exposed to learners.</p>
     </div>;
