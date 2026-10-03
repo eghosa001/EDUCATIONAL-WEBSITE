@@ -73,26 +73,170 @@ if(request.method==='POST'&&path==='/past-questions/session'){
   return json({data:{questions:selected,requestedCount:requested,returnedCount:selected.length,availableCount:total}},200,origin)
 }
 if(request.method==='POST'&&path==='/past-questions/grade'){
-  await requireUser();
+  const user=await requireUser();
   const body=await request.json().catch(()=>null);
   const answers=Array.isArray(body?.answers)?body.answers.slice(0,100):[];
   if(!answers.length)return json({error:{message:'Answers are required'}},400,origin);
   const ids=[...new Set(answers.map((item:any)=>String(item?.questionId||'')).filter((id:string)=>/^[0-9a-f-]{36}$/i.test(id)))];
   if(!ids.length)return json({error:{message:'Valid question IDs are required'}},400,origin);
-  const{data,error}=await admin.from('past_questions').select('id,question_text,correct_answer,explanation,is_active').in('id',ids).eq('is_active',true);
+  const{data,error}=await admin.from('past_questions')
+    .select('id,board,year,subject_id,topic_id,question_text,correct_answer,explanation,is_active')
+    .in('id',ids).eq('is_active',true);
   if(error)throw error;
-  const byId=new Map((data||[]).map((row:any)=>[String(row.id),row]));
+  const rows=data||[];
+  const byId=new Map(rows.map((row:any)=>[String(row.id),row]));
   let correct=0,incorrect=0,unanswered=0;
+  const analyticsAnswers:any[]=[];
   const results=answers.map((item:any)=>{
     const id=String(item?.questionId||''),row:any=byId.get(id),submitted=scalarAnswer(item?.answer);
     const expected=row?scalarAnswer(row.correct_answer):null;
-    if(!row||!submitted){unanswered++;return{question_id:id,is_correct:false,correct_answer:expected,explanation:row?.explanation||null}}
+    const answered=Boolean(row&&submitted);
+    if(!row||!submitted){
+      unanswered++;
+      if(row)analyticsAnswers.push({
+        questionId:id,
+        subjectId:row.subject_id||null,
+        topicId:row.topic_id||null,
+        answered:false,
+        isCorrect:false,
+      });
+      return{question_id:id,is_correct:false,correct_answer:expected,explanation:row?.explanation||null};
+    }
     const ok=Boolean(expected&&submitted.toLowerCase()===expected.toLowerCase());
     if(ok)correct++;else incorrect++;
-    return{question_id:id,is_correct:ok,correct_answer:expected,explanation:row.explanation||null}
+    analyticsAnswers.push({
+      questionId:id,
+      subjectId:row.subject_id||null,
+      topicId:row.topic_id||null,
+      answered,
+      isCorrect:ok,
+    });
+    return{question_id:id,is_correct:ok,correct_answer:expected,explanation:row.explanation||null};
   });
-  const total=answers.length,percentage=total?Math.round(correct/total*10000)/100:0;
-  return json({data:{result:{total,correct,incorrect,unanswered,percentage,results}}},200,origin)
+  const total=answers.length,answered=Math.max(0,total-unanswered),percentage=total?Math.round(correct/total*10000)/100:0;
+  const requestedBoard=String(body?.board||'').toLowerCase();
+  const inferredBoard=String(rows[0]?.board||'').toLowerCase();
+  const board=['jamb','waec','neco','nabteb'].includes(requestedBoard)?requestedBoard:(inferredBoard||'unknown');
+  const requestedYear=Number(body?.year||0);
+  const year=Number.isInteger(requestedYear)&&requestedYear>=1900&&requestedYear<=2200?requestedYear:null;
+  const timeSpentSeconds=Math.max(0,Math.min(86400,Number(body?.timeSpentSeconds||0)||0));
+  const{data:attempt,error:attemptError}=await admin.from('past_question_attempts').insert({
+    user_id:user.id,
+    board,
+    year,
+    question_count:total,
+    answered_count:answered,
+    correct_count:correct,
+    incorrect_count:incorrect,
+    unanswered_count:unanswered,
+    percentage,
+    time_spent_seconds:timeSpentSeconds,
+    answers:analyticsAnswers,
+    submitted_at:new Date().toISOString(),
+  }).select('id,submitted_at').single();
+  if(attemptError)throw attemptError;
+  return json({data:{result:{total,answered,correct,incorrect,unanswered,percentage,attemptId:attempt.id,results}}},200,origin)
+}
+
+if(request.method==='GET'&&path==='/past-questions/insights'){
+  const user=await requireUser();
+  const limit=asInt(url.searchParams.get('limit'),200,1,500);
+  const{data:attemptRows,error:attemptError}=await admin.from('past_question_attempts')
+    .select('id,board,year,question_count,answered_count,correct_count,incorrect_count,unanswered_count,percentage,time_spent_seconds,answers,submitted_at')
+    .eq('user_id',user.id).order('submitted_at',{ascending:false}).limit(limit);
+  if(attemptError)throw attemptError;
+  const attempts=attemptRows||[];
+  const subjectStats=new Map<string,{subjectId:string;attempts:number;correct:number}>();
+  const topicStats=new Map<string,{topicId:string;attempts:number;correct:number}>();
+  const boardStats=new Map<string,{board:string;sessions:number;questions:number;correct:number}>();
+  let questions=0,correct=0,timeSpentSeconds=0;
+
+  for(const attempt of attempts as any[]){
+    const questionCount=Math.max(0,Number(attempt.question_count||0));
+    const correctCount=Math.max(0,Number(attempt.correct_count||0));
+    questions+=questionCount;
+    correct+=correctCount;
+    timeSpentSeconds+=Math.max(0,Number(attempt.time_spent_seconds||0));
+    const board=String(attempt.board||'unknown').toLowerCase();
+    const boardRow=boardStats.get(board)||{board,sessions:0,questions:0,correct:0};
+    boardRow.sessions+=1; boardRow.questions+=questionCount; boardRow.correct+=correctCount; boardStats.set(board,boardRow);
+    const answerRows=Array.isArray(attempt.answers)?attempt.answers:[];
+    for(const answer of answerRows){
+      if(!answer?.answered)continue;
+      const subjectId=String(answer?.subjectId||'');
+      const topicId=String(answer?.topicId||'');
+      if(subjectId){
+        const row=subjectStats.get(subjectId)||{subjectId,attempts:0,correct:0};
+        row.attempts+=1;if(answer?.isCorrect)row.correct+=1;subjectStats.set(subjectId,row);
+      }
+      if(topicId){
+        const row=topicStats.get(topicId)||{topicId,attempts:0,correct:0};
+        row.attempts+=1;if(answer?.isCorrect)row.correct+=1;topicStats.set(topicId,row);
+      }
+    }
+  }
+
+  const subjectIds=[...subjectStats.keys()];
+  const topicIds=[...topicStats.keys()];
+  const[{data:subjectRows,error:subjectError},{data:topicRows,error:topicError}]=await Promise.all([
+    subjectIds.length?admin.from('subjects').select('id,name').in('id',subjectIds):Promise.resolve({data:[],error:null}),
+    topicIds.length?admin.from('topics').select('id,name,subject_id').in('id',topicIds):Promise.resolve({data:[],error:null}),
+  ]);
+  if(subjectError)throw subjectError;if(topicError)throw topicError;
+  const subjectName=new Map((subjectRows||[]).map((row:any)=>[String(row.id),String(row.name||'Subject')]));
+  const topicName=new Map((topicRows||[]).map((row:any)=>[String(row.id),String(row.name||'Topic')]));
+  const topicSubject=new Map((topicRows||[]).map((row:any)=>[String(row.id),String(row.subject_id||'')]));
+
+  const subjects=[...subjectStats.values()].map(row=>({
+    subjectId:row.subjectId,
+    subjectName:subjectName.get(row.subjectId)||'Subject',
+    attempts:row.attempts,
+    correct:row.correct,
+    accuracy:row.attempts?Math.round(row.correct/row.attempts*10000)/100:0,
+  })).sort((a,b)=>b.attempts-a.attempts);
+
+  const topics=[...topicStats.values()].map(row=>({
+    topicId:row.topicId,
+    topicName:topicName.get(row.topicId)||'Topic',
+    subjectId:topicSubject.get(row.topicId)||null,
+    subjectName:subjectName.get(topicSubject.get(row.topicId)||'')||'Subject',
+    attempts:row.attempts,
+    correct:row.correct,
+    accuracy:row.attempts?Math.round(row.correct/row.attempts*10000)/100:0,
+  }));
+  const strongTopics=topics.filter(row=>row.attempts>=3&&row.accuracy>=75)
+    .sort((a,b)=>b.accuracy-a.accuracy||b.attempts-a.attempts).slice(0,8);
+  const weakTopics=topics.filter(row=>row.attempts>=3&&row.accuracy<60)
+    .sort((a,b)=>a.accuracy-b.accuracy||b.attempts-a.attempts).slice(0,8);
+  const weakSubjects=subjects.filter(row=>row.attempts>=5&&row.accuracy<60)
+    .sort((a,b)=>a.accuracy-b.accuracy||b.attempts-a.attempts).slice(0,8);
+  const boards=[...boardStats.values()].map(row=>({
+    ...row,
+    accuracy:row.questions?Math.round(row.correct/row.questions*10000)/100:0,
+  })).sort((a,b)=>b.sessions-a.sessions);
+
+  return json({data:{insights:{
+    sessions:attempts.length,
+    questions,
+    correct,
+    accuracy:questions?Math.round(correct/questions*10000)/100:0,
+    timeSpentSeconds,
+    boards,
+    subjects,
+    strongTopics,
+    weakTopics,
+    weakSubjects,
+    recentAttempts:attempts.slice(0,10).map((row:any)=>({
+      id:row.id,
+      board:row.board,
+      year:row.year,
+      questionCount:Number(row.question_count||0),
+      correctCount:Number(row.correct_count||0),
+      percentage:Number(row.percentage||0),
+      timeSpentSeconds:Number(row.time_spent_seconds||0),
+      submittedAt:row.submitted_at,
+    })),
+  }}},200,origin)
 }
 const questionCheck=path.match(/^\/(questions|past-questions)\/([0-9a-f-]+)\/check$/i);if(request.method==='POST'&&questionCheck){await requireUser();const payload=await request.json().catch(()=>({}));const submitted=scalarAnswer(payload?.answer);if(!submitted)return json({error:{message:'Answer is required'}},400,origin);const table=questionCheck[1]==='past-questions'?'past_questions':'questions';const columns=table==='past_questions'?'id,correct_answer,explanation,is_active':'id,correct_answer,explanation,explanation_image_url,is_active';const{data:row,error}=await admin.from(table).select(columns).eq('id',questionCheck[2]).eq('is_active',true).maybeSingle();if(error||!row)return json({error:{message:'Question not found'}},404,origin);const correctAnswer=scalarAnswer((row as any).correct_answer);if(!correctAnswer)return json({data:{result:{isCorrect:null,correctAnswer:null,explanation:(row as any).explanation||'This source question does not include a verified answer key yet. Your response is kept as practice and is not marked right or wrong.',explanationImageUrl:(row as any).explanation_image_url||null}}},200,origin);const isCorrect=submitted.toLowerCase()===correctAnswer.toLowerCase();return json({data:{result:{isCorrect,correctAnswer,explanation:(row as any).explanation||null,explanationImageUrl:(row as any).explanation_image_url||null}}},200,origin)}
 
