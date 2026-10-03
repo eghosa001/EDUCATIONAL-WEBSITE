@@ -103,6 +103,7 @@ export default function PastQuestionsPage() {
   const [selectedYear, setSelectedYear] = useState('');
   const [questionCount, setQuestionCount] = useState(20);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [classPracticeSessionId, setClassPracticeSessionId] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [flagged, setFlagged] = useState<Set<string>>(new Set());
   const [index, setIndex] = useState(0);
@@ -187,6 +188,7 @@ export default function PastQuestionsPage() {
 
   const resetSession = () => {
     setQuestions([]);
+    setClassPracticeSessionId(null);
     setAnswers({});
     setFlagged(new Set());
     setIndex(0);
@@ -268,13 +270,19 @@ export default function PastQuestionsPage() {
     try {
       let loaded: Question[] = [];
       if (mode === 'class') {
-        const { data, error: rpcError } = await supabase.rpc('cbt_get_questions', {
-          p_class_id: selectedClass,
-          p_subject_id: selectedSubjects[0],
-          p_count: questionCount,
+        const response = await fetch(`${learnerApiConfig.baseUrl}/class-practice/session`, {
+          method: 'POST',
+          headers: getLearnerApiHeaders(token),
+          credentials: learnerApiConfig.credentials,
+          body: JSON.stringify({
+            classId: selectedClass,
+            subjectId: selectedSubjects[0],
+            count: questionCount,
+          }),
         });
-        if (rpcError) throw rpcError;
-        loaded = (data || []).map((question: any) => ({
+        const payload = await handleApiResponse<any>(response);
+        setClassPracticeSessionId(String(payload.data?.sessionId || ''));
+        loaded = (payload.data?.questions || []).map((question: any) => ({
           id: String(question.id),
           question_text: String(question.question_text || ''),
           options: question.options,
@@ -323,10 +331,17 @@ export default function PastQuestionsPage() {
     try {
       let result: GradeResult;
       if (mode === 'class') {
-        const payload = questions.map(question => ({ question_id: question.id, answer: answers[question.id] || '' }));
-        const { data, error: gradeError } = await supabase.rpc('cbt_grade', { p_answers: payload });
-        if (gradeError) throw gradeError;
-        result = data as GradeResult;
+        if (!classPracticeSessionId) throw new Error('Class practice session is missing. Please start a new set.');
+        const response = await fetch(`${learnerApiConfig.baseUrl}/class-practice/${classPracticeSessionId}/grade`, {
+          method: 'POST',
+          headers: getLearnerApiHeaders(token),
+          credentials: learnerApiConfig.credentials,
+          body: JSON.stringify({
+            answers: questions.map(question => ({ questionId: question.id, answer: answers[question.id] || '' })),
+          }),
+        });
+        const payload = await handleApiResponse<any>(response);
+        result = payload.data.result as GradeResult;
       } else {
         const response = await fetch(`${learnerApiConfig.baseUrl}/past-questions/grade`, {
           method: 'POST',
