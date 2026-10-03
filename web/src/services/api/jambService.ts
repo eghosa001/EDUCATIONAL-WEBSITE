@@ -65,3 +65,19 @@ export async function gradeJambCbtSession(
   const payload = await handleApiResponse<{ data: { result: any } }>(response);
   return payload.data.result;
 }
+
+
+export async function saveJambCbtAnswer(
+  token: string,
+  sessionId: string,
+  questionId: string,
+  answer: string,
+) {
+  const response = await fetch(`${learnerApiConfig.baseUrl}/jamb-cbt/${sessionId}/answer`, {
+    method: 'POST',
+    headers: getLearnerApiHeaders(token),
+    credentials: learnerApiConfig.credentials,
+    body: JSON.stringify({ questionId, answer }),
+  });
+  return handleApiResponse<{ data: { saved: boolean; questionId: string } }>(response);
+}
