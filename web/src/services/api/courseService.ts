@@ -116,7 +116,66 @@ export const deleteCourse = async (courseId: string, _token: string) => { const 
 export const fetchCourseStats = async (courseId: string, _token: string): Promise<CourseStats> => { const supabase = getSupabase(); const [{ count: enrollmentCount }, { count: lessonCount }] = await Promise.all([supabase.from('student_courses').select('*', { count: 'exact', head: true }).eq('course_id', courseId), supabase.from('lessons').select('*', { count: 'exact', head: true }).eq('course_id', courseId)]); return { enrollmentCount: enrollmentCount || 0, lessonCount: lessonCount || 0 }; };
 export const enrollInCourse = async (courseId: string, _token: string) => { const { data: auth } = await getSupabase().auth.getUser(); if (!auth.user) throw new Error('You must be signed in to enroll'); const { data, error } = await getSupabase().from('student_courses').insert({ student_id: auth.user.id, course_id: courseId }).select().single(); if (error) throw new Error(error.code === '23505' ? 'You are already enrolled in this course' : error.message); return { enrollment: data }; };
 export const unenrollFromCourse = async (courseId: string, _token: string) => { const { data: auth } = await getSupabase().auth.getUser(); if (!auth.user) throw new Error('You must be signed in'); const { error } = await getSupabase().from('student_courses').delete().eq('student_id', auth.user.id).eq('course_id', courseId); if (error) throw new Error(error.message); return { success: true }; };
-export const fetchMyCourses = async (_token: string): Promise<{ courses: any[] }> => { const supabase = getSupabase(); const { data: auth } = await supabase.auth.getUser(); if (!auth.user) return { courses: [] }; const { data, error } = await supabase.from('student_courses').select('*, courses(*)').eq('student_id', auth.user.id).order('last_accessed_at', { ascending: false, nullsFirst: false }); if (error) throw new Error(error.message); return { courses: (data || []).map((row: any) => ({ ...row, courseId: row.course_id, courseTitle: row.courses?.title || 'Course', courseThumbnail: row.courses?.thumbnail_url, progressPercentage: Number(row.progress_percentage || 0), lastAccessedAt: row.last_accessed_at || row.enrolled_at })) }; };
+export const fetchMyCourses = async (_token: string): Promise<{ courses: any[] }> => {
+  const supabase = getSupabase();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { courses: [] };
+
+  const { data, error } = await supabase
+    .from('student_courses')
+    .select('*, courses(*)')
+    .eq('student_id', auth.user.id)
+    .order('last_accessed_at', { ascending: false, nullsFirst: false });
+  if (error) throw new Error(error.message);
+
+  const rows = data || [];
+  const courseIds = [...new Set(rows.map((row: any) => row.course_id).filter(Boolean))];
+  const totalByCourse = new Map<string, number>();
+  const completedByCourse = new Map<string, number>();
+
+  if (courseIds.length) {
+    const [{ data: lessons, error: lessonError }, { data: completed, error: progressError }] = await Promise.all([
+      supabase.from('lessons').select('id,course_id').in('course_id', courseIds).eq('is_published', true),
+      supabase.from('lesson_progress').select('lesson_id,course_id').eq('student_id', auth.user.id).in('course_id', courseIds).eq('status', 'completed'),
+    ]);
+    if (lessonError) throw new Error(lessonError.message);
+    if (progressError) throw new Error(progressError.message);
+
+    for (const lesson of lessons || []) {
+      const key = String((lesson as any).course_id);
+      totalByCourse.set(key, (totalByCourse.get(key) || 0) + 1);
+    }
+    const seen = new Set<string>();
+    for (const progress of completed || []) {
+      const dedupe = String((progress as any).course_id) + ':' + String((progress as any).lesson_id);
+      if (seen.has(dedupe)) continue;
+      seen.add(dedupe);
+      const key = String((progress as any).course_id);
+      completedByCourse.set(key, (completedByCourse.get(key) || 0) + 1);
+    }
+  }
+
+  return {
+    courses: rows.map((row: any) => {
+      const courseId = String(row.course_id);
+      const totalLessons = totalByCourse.get(courseId) || 0;
+      const completedLessons = completedByCourse.get(courseId) || 0;
+      const progressPercentage = totalLessons ? Math.round((completedLessons / totalLessons) * 100) : Number(row.progress_percentage || 0);
+      return {
+        ...row,
+        courseId,
+        courseSlug: row.courses?.slug || courseId,
+        courseTitle: row.courses?.title || 'Course',
+        courseThumbnail: row.courses?.thumbnail_url,
+        progressPercentage,
+        completedLessons,
+        totalLessons,
+        completedAt: row.completed_at,
+        lastAccessedAt: row.last_accessed_at || row.enrolled_at,
+      };
+    }),
+  };
+};
 export const fetchCourseStudents = async (courseId: string, _token: string) => { const { data, error } = await getSupabase().from('student_courses').select('*, profiles(*)').eq('course_id', courseId); if (error) throw new Error(error.message); return { students: data || [] }; };
 export interface CourseSectionData { title: string; description?: string; orderIndex: number; }
 export const createCourseSection = async (courseId: string, sectionData: CourseSectionData, _token: string) => { const { data, error } = await getSupabase().from('course_sections').insert({ course_id: courseId, title: sectionData.title, description: sectionData.description, order_index: sectionData.orderIndex }).select().single(); if (error) throw new Error(error.message); return { section: data }; };

@@ -12,10 +12,9 @@ import {
   Flame,
 } from 'lucide-react';
 import { useAuthStore } from '@/state/auth/authStore';
-import { fetchStudentOverview } from '@/services/api/progressService';
+import { fetchLearningInsights, fetchStudentOverview, type LearningInsights } from '@/services/api/progressService';
 import { fetchMyCourses } from '@/services/api/courseService';
 import { fetchMyExamAttempts } from '@/services/api/examService';
-import { fetchMyStreak } from '@/services/api/gamificationService';
 import { exportCsv } from '@/utils/exportCsv';
 
 interface Overview {
@@ -32,7 +31,7 @@ export default function StudentReportsPage() {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [courses, setCourses] = useState<any[]>([]);
   const [attempts, setAttempts] = useState<any[]>([]);
-  const [streak, setStreak] = useState<{ currentStreak: number; longestStreak: number }>({ currentStreak: 0, longestStreak: 0 });
+  const [insights, setInsights] = useState<LearningInsights | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -40,16 +39,16 @@ export default function StudentReportsPage() {
     if (!token) return;
     (async () => {
       try {
-        const [overviewRes, coursesRes, attemptsRes, streakRes] = await Promise.all([
+        const [overviewRes, coursesRes, attemptsRes, insightRes] = await Promise.all([
           fetchStudentOverview(token),
           fetchMyCourses(token),
           fetchMyExamAttempts(1, 50, token),
-          fetchMyStreak(token),
+          fetchLearningInsights(token),
         ]);
         setOverview(overviewRes.overview || null);
         setCourses(coursesRes.courses || []);
         setAttempts((attemptsRes as any).attempts || attemptsRes.data || []);
-        setStreak(streakRes.streak || { currentStreak: 0, longestStreak: 0 });
+        setInsights(insightRes);
       } catch (err) {
         console.error('Failed to load reports:', err);
         setError('Failed to load report data');
@@ -80,8 +79,10 @@ export default function StudentReportsPage() {
       { metric: 'Study Time', value: formatTime(overview?.totalStudyTimeSeconds ?? 0) },
       { metric: 'Average Exam Score', value: `${overview?.averageExamScore ?? 0}%` },
       { metric: 'Average Course Progress', value: `${overview?.averageCourseProgress ?? 0}%` },
-      { metric: 'Current Streak', value: streak.currentStreak },
-      { metric: 'Longest Streak', value: streak.longestStreak },
+      { metric: 'Practice Accuracy', value: `${insights?.practiceAccuracy ?? 0}%` },
+      { metric: 'Practice Questions Answered', value: insights?.practiceAttempts ?? 0 },
+      { metric: 'Current Streak', value: insights?.currentStreak ?? 0 },
+      { metric: 'Longest Streak', value: insights?.longestStreak ?? 0 },
     ]);
     exportCsv('course-progress.csv', courses.map(c => ({
       course: c.title || c.courseTitle || '—',
@@ -97,6 +98,24 @@ export default function StudentReportsPage() {
       percentage: a.percentage != null ? `${a.percentage}%` : '—',
       result: a.isPassed ? 'Passed' : a.percentage != null ? 'Failed' : '—',
     })));
+    exportCsv('topic-performance.csv', [
+      ...(insights?.strongTopics || []).map(topic => ({
+        category: 'Strong',
+        subject: topic.subjectName,
+        topic: topic.topicName,
+        attempts: topic.attempts,
+        correct: topic.correct,
+        accuracy: `${topic.accuracy}%`,
+      })),
+      ...(insights?.weakTopics || []).map(topic => ({
+        category: 'Needs attention',
+        subject: topic.subjectName,
+        topic: topic.topicName,
+        attempts: topic.attempts,
+        correct: topic.correct,
+        accuracy: `${topic.accuracy}%`,
+      })),
+    ]);
   };
 
   if (loading) {
@@ -117,8 +136,8 @@ export default function StudentReportsPage() {
     { label: 'Study Time', value: formatTime(overview?.totalStudyTimeSeconds ?? 0), icon: Clock, color: 'orange' },
     { label: 'Avg Exam Score', value: `${(overview?.averageExamScore ?? 0).toFixed(0)}%`, icon: TrendingUp, color: 'teal' },
     { label: 'Avg Course Progress', value: `${overview?.averageCourseProgress ?? 0}%`, icon: TrendingUp, color: 'indigo' },
-    { label: 'Current Streak', value: `${streak.currentStreak}d`, icon: Flame, color: 'rose' },
-    { label: 'Longest Streak', value: `${streak.longestStreak}d`, icon: Flame, color: 'amber' },
+    { label: 'Practice Accuracy', value: `${insights?.practiceAccuracy ?? 0}%`, icon: ClipboardCheck, color: 'cyan' },
+    { label: 'Current Streak', value: `${insights?.currentStreak ?? 0}d`, icon: Flame, color: 'rose' },
   ];
 
   const sortedCourses = [...courses].sort((a, b) => {
@@ -168,6 +187,33 @@ export default function StudentReportsPage() {
           </div>
         ))}
       </div>
+
+      {(insights?.strongTopics.length || insights?.weakTopics.length) ? (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="rounded-xl border border-green-200 bg-green-50/50 p-6">
+            <h2 className="font-semibold text-gray-900">Strong Topics</h2>
+            <div className="mt-4 space-y-2">
+              {(insights?.strongTopics || []).map(topic => (
+                <div key={topic.topicId} className="flex items-center justify-between rounded-lg bg-white px-4 py-3 text-sm">
+                  <span><b>{topic.topicName}</b><span className="ml-2 text-gray-500">{topic.subjectName}</span></span>
+                  <span className="font-semibold text-green-700">{topic.accuracy}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-6">
+            <h2 className="font-semibold text-gray-900">Topics Needing Attention</h2>
+            <div className="mt-4 space-y-2">
+              {(insights?.weakTopics || []).map(topic => (
+                <div key={topic.topicId} className="flex items-center justify-between rounded-lg bg-white px-4 py-3 text-sm">
+                  <span><b>{topic.topicName}</b><span className="ml-2 text-gray-500">{topic.subjectName}</span></span>
+                  <span className="font-semibold text-amber-700">{topic.accuracy}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Course progress */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">

@@ -314,9 +314,21 @@ Deno.serve(async request => {
       const selectedIndex = answerId.length === 1 ? answerId.charCodeAt(0) - 65 : -1;
       if (selectedIndex < 0 || selectedIndex >= question.options.length) return json({ error: 'Invalid answer choice' }, 400);
       const correctIndex = question.options.findIndex(option => option === question.correctAnswer);
+      const isCorrect = selectedIndex === correctIndex;
+      const { error: analyticsError } = await admin.from('lesson_practice_attempts').insert({
+        user_id: user.id,
+        lesson_id: lessonId,
+        topic_id: lesson.topic_id || null,
+        subject_id: course.subject_id || null,
+        question_index: questionIndex,
+        selected_answer_id: answerId,
+        is_correct: isCorrect,
+        generation_method: String(cached?.generation_method || 'grounded-fallback'),
+      });
+      if (analyticsError) console.error('Unable to record lesson practice analytics', analyticsError.message);
       return json({
         result: {
-          isCorrect: selectedIndex === correctIndex,
+          isCorrect,
           correctAnswer: optionId(correctIndex),
           explanation: question.explanation,
         },
