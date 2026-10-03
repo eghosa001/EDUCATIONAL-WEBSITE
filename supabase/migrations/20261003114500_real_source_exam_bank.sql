@@ -1,3 +1,51 @@
+-- Real source-paper questions are exam questions, not curriculum-generated questions.
+-- Preserve the curriculum integrity rule while allowing source-paper rows to remain
+-- untied to an arbitrary curriculum topic.
+create or replace function public.enforce_active_question_quality()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+declare
+  answer_id text;
+  has_answer boolean := false;
+begin
+  if coalesce(new.is_active, false) is not true then
+    return new;
+  end if;
+
+  if new.topic_id is null
+     and coalesce(new.source,'') !~* '^SOURCE_PAPER:(WAEC|JAMB|NECO|NABTEB)$' then
+    raise exception 'Active curriculum questions must be linked to a topic';
+  end if;
+
+  if length(trim(coalesce(new.question_text, ''))) < 8 then
+    raise exception 'Active question text is too short';
+  end if;
+
+  if new.question_type = 'mcq' then
+    if jsonb_typeof(coalesce(new.options, '[]'::jsonb)) <> 'array'
+       or jsonb_array_length(coalesce(new.options, '[]'::jsonb)) < 2 then
+      raise exception 'Active MCQ requires at least two options';
+    end if;
+    answer_id := new.correct_answer #>> '{}';
+    if answer_id is null or length(trim(answer_id)) = 0 then
+      raise exception 'Active MCQ requires a correct answer';
+    end if;
+    select exists(
+      select 1
+      from jsonb_array_elements(new.options) option_row
+      where option_row->>'id' = answer_id
+    ) into has_answer;
+    if not has_answer then
+      raise exception 'Active MCQ correct answer must reference one of its option IDs';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
 -- Promote only scoreable questions extracted from real Supabase source papers
 -- into the secure exam engine. Keep provenance explicit and do not invent years.
 insert into public.questions (
