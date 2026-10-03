@@ -15,6 +15,89 @@ const asInt=(value:string|null,fallback:number,min=1,max=100)=>{const parsed=Num
 const scalarAnswer=(value:unknown):string=>{if(value===null||value===undefined)return '';if(typeof value==='string'||typeof value==='number'||typeof value==='boolean')return String(value).trim();if(typeof value==='object'){const record=value as Record<string,unknown>;for(const key of ['id','label','answer','value','correct_answer','correctAnswer'])if(record[key]!==undefined&&record[key]!==null)return scalarAnswer(record[key])}return ''};
 const normalizeAnswer=(value:unknown)=>scalarAnswer(value).toLowerCase().replace(/\s+/g,' ').trim();
 const isVerifiedExamSource=(source:unknown)=>/^(?:(WAEC|JAMB|NECO|NABTEB)\s+[0-9]{4}|SOURCE_PAPER:(WAEC|JAMB|NECO|NABTEB))$/i.test(String(source||'').trim());
+const inferPastQuestionTopic=(subject:unknown,tags:unknown,text:unknown)=>{
+  const subjectName=String(subject||'').trim();
+  const raw=String(text||'').toLowerCase();
+  const tagRows=Array.isArray(tags)?tags.map(value=>String(value||'').trim()).filter(Boolean):[];
+  const ignored=new Set(['jamb','waec','neco','nabteb','easy','medium','hard',subjectName.toLowerCase()]);
+  const topicalTag=tagRows.find(tag=>{
+    const lower=tag.toLowerCase();
+    return !ignored.has(lower)&&!lower.endsWith('.pdf')&&!lower.includes('past-question')&&!lower.includes('past question')&&tag.length<=48;
+  });
+  if(topicalTag)return topicalTag.replace(/[_-]+/g,' ').replace(/\b\w/g,char=>char.toUpperCase());
+
+  const has=(...terms:string[])=>terms.some(term=>raw.includes(term));
+  const subjectKey=subjectName.toLowerCase();
+  if(subjectKey.includes('economics')){
+    if(has('demand','supply','elastic','price mechanism','equilibrium price'))return 'Demand, Supply & Price';
+    if(has('utility','consumer','consumption'))return 'Consumer Behaviour';
+    if(has('cost','revenue','diminishing return','production','productivity'))return 'Production, Costs & Revenue';
+    if(has('monopoly','oligopoly','perfect competition','market structure'))return 'Market Structures';
+    if(has('money market','bank','money supply','central bank','commercial bank','credit'))return 'Money & Banking';
+    if(has('tax','public finance','government revenue','government expenditure','fiscal'))return 'Public Finance';
+    if(has('balance of payment','balance of trade','foreign trade','international trade','exchange rate','tariff'))return 'International Trade & Balance of Payments';
+    if(has('national income','gross domestic','gdp','gnp','per capita income'))return 'National Income';
+    if(has('inflation','unemployment','deflation'))return 'Inflation & Unemployment';
+    if(has('development','economic growth','development indicator'))return 'Economic Growth & Development';
+    if(has('population','labour','labor','wage','employment'))return 'Population & Labour';
+    if(has('co-operative','cooperative','company','business firm','sole propriet'))return 'Business Organisations';
+    if(has('capitalism','socialism','mixed economy','economic system'))return 'Economic Systems';
+    if(has('scarcity','opportunity cost','scale of preference','choice'))return 'Basic Economic Concepts';
+    if(has('frequency','mean','median','mode','index number','standard deviation','∑'))return 'Economic Statistics';
+  }
+  if(subjectKey.includes('english')){
+    if(has('nearest meaning','opposite meaning','synonym','antonym','meaning of'))return 'Vocabulary & Lexis';
+    if(has('stress','vowel','consonant','diphthong','rhymes','syllable'))return 'Oral English';
+    if(has('passage','comprehension','according to the passage'))return 'Comprehension';
+    if(has('noun','verb','pronoun','adjective','adverb','preposition','concord','tense','clause','phrase'))return 'Grammar & Structure';
+    if(has('character','novel','poem','drama','author','community','protagonist'))return 'Literature & Textual Study';
+  }
+  if(subjectKey.includes('mathematics')){
+    if(has('algebra','equation','factor','indices','logarithm','simplify','polynomial'))return 'Algebra';
+    if(has('triangle','circle','angle','geometry','trigon','sine','cosine','tangent'))return 'Geometry & Trigonometry';
+    if(has('probability','mean','median','mode','frequency','variance','standard deviation'))return 'Statistics & Probability';
+    if(has('differentiat','integrat','gradient','calculus'))return 'Calculus';
+    if(has('fraction','ratio','percentage','decimal','number','base'))return 'Numbers & Arithmetic';
+  }
+  if(subjectKey.includes('physics')){
+    if(has('force','motion','velocity','acceleration','momentum','pressure'))return 'Mechanics';
+    if(has('current','voltage','resistance','electric','circuit','charge'))return 'Electricity';
+    if(has('wave','sound','light','lens','mirror','frequency','wavelength'))return 'Waves, Sound & Optics';
+    if(has('heat','temperature','thermal','specific heat'))return 'Heat & Thermal Physics';
+    if(has('unit','dimension','measurement','s.i.','si unit'))return 'Measurements & Units';
+  }
+  if(subjectKey.includes('chemistry')){
+    if(has('acid','base','ph','salt'))return 'Acids, Bases & Salts';
+    if(has('reaction','oxidation','reduction','redox','zinc','hydrochloric'))return 'Chemical Reactions';
+    if(has('organic','hydrocarbon','alkane','alkene','alcohol','ester'))return 'Organic Chemistry';
+    if(has('periodic','element','atomic','electron','proton'))return 'Atomic Structure & Periodicity';
+    if(has('mole','stoichiometr','molar','mass','formula'))return 'Mole Concept & Stoichiometry';
+    if(has('electrolysis','electrode','electrolyte'))return 'Electrochemistry';
+  }
+  if(subjectKey.includes('biology')){
+    if(has('cell','tissue','organelle'))return 'Cell Biology';
+    if(has('ecology','ecosystem','habitat','food chain','population'))return 'Ecology';
+    if(has('gene','genetic','heredity','chromosome','inherit'))return 'Genetics & Heredity';
+    if(has('reproduction','fertilization','fertilisation','gamete'))return 'Reproduction';
+    if(has('photosynthesis','transpiration','plant','root','leaf'))return 'Plant Biology';
+    if(has('digestion','nutrition','respiration','circulation','excretion'))return 'Human & Animal Physiology';
+  }
+  if(subjectKey.includes('government')){
+    if(has('constitution','constitutional'))return 'Constitution';
+    if(has('election','electoral','voting','political party'))return 'Elections & Political Parties';
+    if(has('legislature','executive','judiciary','separation of powers'))return 'Organs of Government';
+    if(has('federal','federalism','unitary','confederation'))return 'Systems of Government';
+    if(has('colonial','nationalism','independence'))return 'Colonialism & Nationalism';
+    if(has('united nations','ecowas','african union','commonwealth'))return 'International Organisations';
+  }
+  if(subjectKey.includes('geography')){
+    if(has('climate','rainfall','weather','temperature'))return 'Weather & Climate';
+    if(has('map','scale','bearing','contour'))return 'Map Reading';
+    if(has('population','settlement','migration'))return 'Human Geography';
+    if(has('rock','soil','river','erosion','landform'))return 'Physical Geography';
+  }
+  return 'General ' + (subjectName||'Subject');
+};
 const answersEqual=(correct:unknown,submitted:unknown,type:string)=>{
   if(type==='multiple_select'){
     const expected=(Array.isArray(correct)?correct:[correct]).map(normalizeAnswer).filter(Boolean).sort();
@@ -73,26 +156,170 @@ if(request.method==='POST'&&path==='/past-questions/session'){
   return json({data:{questions:selected,requestedCount:requested,returnedCount:selected.length,availableCount:total}},200,origin)
 }
 if(request.method==='POST'&&path==='/past-questions/grade'){
-  await requireUser();
+  const user=await requireUser();
   const body=await request.json().catch(()=>null);
   const answers=Array.isArray(body?.answers)?body.answers.slice(0,100):[];
   if(!answers.length)return json({error:{message:'Answers are required'}},400,origin);
   const ids=[...new Set(answers.map((item:any)=>String(item?.questionId||'')).filter((id:string)=>/^[0-9a-f-]{36}$/i.test(id)))];
   if(!ids.length)return json({error:{message:'Valid question IDs are required'}},400,origin);
-  const{data,error}=await admin.from('past_questions').select('id,question_text,correct_answer,explanation,is_active').in('id',ids).eq('is_active',true);
+  const{data,error}=await admin.from('past_questions')
+    .select('id,board,year,subject_id,topic_id,tags,question_text,correct_answer,explanation,is_active,subject:subjects(name),topic:topics(name)')
+    .in('id',ids).eq('is_active',true);
   if(error)throw error;
-  const byId=new Map((data||[]).map((row:any)=>[String(row.id),row]));
+  const rows=data||[];
+  const byId=new Map(rows.map((row:any)=>[String(row.id),row]));
   let correct=0,incorrect=0,unanswered=0;
+  const analyticsAnswers:any[]=[];
   const results=answers.map((item:any)=>{
     const id=String(item?.questionId||''),row:any=byId.get(id),submitted=scalarAnswer(item?.answer);
     const expected=row?scalarAnswer(row.correct_answer):null;
-    if(!row||!submitted){unanswered++;return{question_id:id,is_correct:false,correct_answer:expected,explanation:row?.explanation||null}}
+    const answered=Boolean(row&&submitted);
+    if(!row||!submitted){
+      unanswered++;
+      if(row)analyticsAnswers.push({
+        questionId:id,
+        subjectId:row.subject_id||null,
+        topicId:row.topic_id||null,
+        topicLabel:String(row.topic?.name||inferPastQuestionTopic(row.subject?.name,row.tags,row.question_text)),
+        answered:false,
+        isCorrect:false,
+      });
+      return{question_id:id,is_correct:false,correct_answer:expected,explanation:row?.explanation||null};
+    }
     const ok=Boolean(expected&&submitted.toLowerCase()===expected.toLowerCase());
     if(ok)correct++;else incorrect++;
-    return{question_id:id,is_correct:ok,correct_answer:expected,explanation:row.explanation||null}
+    analyticsAnswers.push({
+      questionId:id,
+      subjectId:row.subject_id||null,
+      topicId:row.topic_id||null,
+      topicLabel:String(row.topic?.name||inferPastQuestionTopic(row.subject?.name,row.tags,row.question_text)),
+      answered,
+      isCorrect:ok,
+    });
+    return{question_id:id,is_correct:ok,correct_answer:expected,explanation:row.explanation||null};
   });
-  const total=answers.length,percentage=total?Math.round(correct/total*10000)/100:0;
-  return json({data:{result:{total,correct,incorrect,unanswered,percentage,results}}},200,origin)
+  const total=answers.length,answered=Math.max(0,total-unanswered),percentage=total?Math.round(correct/total*10000)/100:0;
+  const requestedBoard=String(body?.board||'').toLowerCase();
+  const inferredBoard=String(rows[0]?.board||'').toLowerCase();
+  const board=['jamb','waec','neco','nabteb'].includes(requestedBoard)?requestedBoard:(inferredBoard||'unknown');
+  const requestedYear=Number(body?.year||0);
+  const year=Number.isInteger(requestedYear)&&requestedYear>=1900&&requestedYear<=2200?requestedYear:null;
+  const timeSpentSeconds=Math.max(0,Math.min(86400,Number(body?.timeSpentSeconds||0)||0));
+  const{data:attempt,error:attemptError}=await admin.from('past_question_attempts').insert({
+    user_id:user.id,
+    board,
+    year,
+    question_count:total,
+    answered_count:answered,
+    correct_count:correct,
+    incorrect_count:incorrect,
+    unanswered_count:unanswered,
+    percentage,
+    time_spent_seconds:timeSpentSeconds,
+    answers:analyticsAnswers,
+    submitted_at:new Date().toISOString(),
+  }).select('id,submitted_at').single();
+  if(attemptError)throw attemptError;
+  return json({data:{result:{total,answered,correct,incorrect,unanswered,percentage,attemptId:attempt.id,results}}},200,origin)
+}
+
+if(request.method==='GET'&&path==='/past-questions/insights'){
+  const user=await requireUser();
+  const limit=asInt(url.searchParams.get('limit'),200,1,500);
+  const{data:attemptRows,error:attemptError}=await admin.from('past_question_attempts')
+    .select('id,board,year,question_count,answered_count,correct_count,incorrect_count,unanswered_count,percentage,time_spent_seconds,answers,submitted_at')
+    .eq('user_id',user.id).order('submitted_at',{ascending:false}).limit(limit);
+  if(attemptError)throw attemptError;
+  const attempts=attemptRows||[];
+  const subjectStats=new Map<string,{subjectId:string;attempts:number;correct:number}>();
+  const topicStats=new Map<string,{key:string;topicId:string|null;topicName:string;subjectId:string;attempts:number;correct:number}>();
+  const boardStats=new Map<string,{board:string;sessions:number;questions:number;correct:number}>();
+  let questions=0,correct=0,timeSpentSeconds=0;
+
+  for(const attempt of attempts as any[]){
+    const questionCount=Math.max(0,Number(attempt.question_count||0));
+    const correctCount=Math.max(0,Number(attempt.correct_count||0));
+    questions+=questionCount;
+    correct+=correctCount;
+    timeSpentSeconds+=Math.max(0,Number(attempt.time_spent_seconds||0));
+    const board=String(attempt.board||'unknown').toLowerCase();
+    const boardRow=boardStats.get(board)||{board,sessions:0,questions:0,correct:0};
+    boardRow.sessions+=1; boardRow.questions+=questionCount; boardRow.correct+=correctCount; boardStats.set(board,boardRow);
+    const answerRows=Array.isArray(attempt.answers)?attempt.answers:[];
+    for(const answer of answerRows){
+      if(!answer?.answered)continue;
+      const subjectId=String(answer?.subjectId||'');
+      const topicId=String(answer?.topicId||'');
+      const topicName=String(answer?.topicLabel||'').trim();
+      if(subjectId){
+        const row=subjectStats.get(subjectId)||{subjectId,attempts:0,correct:0};
+        row.attempts+=1;if(answer?.isCorrect)row.correct+=1;subjectStats.set(subjectId,row);
+      }
+      if(topicName){
+        const key=(topicId?'id:'+topicId:'label:'+subjectId+':'+topicName.toLowerCase());
+        const row=topicStats.get(key)||{key,topicId:topicId||null,topicName,subjectId,attempts:0,correct:0};
+        row.attempts+=1;if(answer?.isCorrect)row.correct+=1;topicStats.set(key,row);
+      }
+    }
+  }
+
+  const subjectIds=[...subjectStats.keys()];
+  const{data:subjectRows,error:subjectError}=subjectIds.length
+    ?await admin.from('subjects').select('id,name').in('id',subjectIds)
+    :{data:[],error:null};
+  if(subjectError)throw subjectError;
+  const subjectName=new Map((subjectRows||[]).map((row:any)=>[String(row.id),String(row.name||'Subject')]));
+
+  const subjects=[...subjectStats.values()].map(row=>({
+    subjectId:row.subjectId,
+    subjectName:subjectName.get(row.subjectId)||'Subject',
+    attempts:row.attempts,
+    correct:row.correct,
+    accuracy:row.attempts?Math.round(row.correct/row.attempts*10000)/100:0,
+  })).sort((a,b)=>b.attempts-a.attempts);
+
+  const topics=[...topicStats.values()].map(row=>({
+    topicId:row.topicId||row.key,
+    topicName:row.topicName,
+    subjectId:row.subjectId||null,
+    subjectName:subjectName.get(row.subjectId)||'Subject',
+    attempts:row.attempts,
+    correct:row.correct,
+    accuracy:row.attempts?Math.round(row.correct/row.attempts*10000)/100:0,
+  }));
+  const strongTopics=topics.filter(row=>row.attempts>=3&&row.accuracy>=75)
+    .sort((a,b)=>b.accuracy-a.accuracy||b.attempts-a.attempts).slice(0,8);
+  const weakTopics=topics.filter(row=>row.attempts>=3&&row.accuracy<60)
+    .sort((a,b)=>a.accuracy-b.accuracy||b.attempts-a.attempts).slice(0,8);
+  const weakSubjects=subjects.filter(row=>row.attempts>=5&&row.accuracy<60)
+    .sort((a,b)=>a.accuracy-b.accuracy||b.attempts-a.attempts).slice(0,8);
+  const boards=[...boardStats.values()].map(row=>({
+    ...row,
+    accuracy:row.questions?Math.round(row.correct/row.questions*10000)/100:0,
+  })).sort((a,b)=>b.sessions-a.sessions);
+
+  return json({data:{insights:{
+    sessions:attempts.length,
+    questions,
+    correct,
+    accuracy:questions?Math.round(correct/questions*10000)/100:0,
+    timeSpentSeconds,
+    boards,
+    subjects,
+    strongTopics,
+    weakTopics,
+    weakSubjects,
+    recentAttempts:attempts.slice(0,10).map((row:any)=>({
+      id:row.id,
+      board:row.board,
+      year:row.year,
+      questionCount:Number(row.question_count||0),
+      correctCount:Number(row.correct_count||0),
+      percentage:Number(row.percentage||0),
+      timeSpentSeconds:Number(row.time_spent_seconds||0),
+      submittedAt:row.submitted_at,
+    })),
+  }}},200,origin)
 }
 const questionCheck=path.match(/^\/(questions|past-questions)\/([0-9a-f-]+)\/check$/i);if(request.method==='POST'&&questionCheck){await requireUser();const payload=await request.json().catch(()=>({}));const submitted=scalarAnswer(payload?.answer);if(!submitted)return json({error:{message:'Answer is required'}},400,origin);const table=questionCheck[1]==='past-questions'?'past_questions':'questions';const columns=table==='past_questions'?'id,correct_answer,explanation,is_active':'id,correct_answer,explanation,explanation_image_url,is_active';const{data:row,error}=await admin.from(table).select(columns).eq('id',questionCheck[2]).eq('is_active',true).maybeSingle();if(error||!row)return json({error:{message:'Question not found'}},404,origin);const correctAnswer=scalarAnswer((row as any).correct_answer);if(!correctAnswer)return json({data:{result:{isCorrect:null,correctAnswer:null,explanation:(row as any).explanation||'This source question does not include a verified answer key yet. Your response is kept as practice and is not marked right or wrong.',explanationImageUrl:(row as any).explanation_image_url||null}}},200,origin);const isCorrect=submitted.toLowerCase()===correctAnswer.toLowerCase();return json({data:{result:{isCorrect,correctAnswer,explanation:(row as any).explanation||null,explanationImageUrl:(row as any).explanation_image_url||null}}},200,origin)}
 
