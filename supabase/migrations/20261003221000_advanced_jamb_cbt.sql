@@ -139,7 +139,6 @@ as $$
     and lower(pq.board)='jamb'
     and pq.question_type='mcq'
     and pq.correct_answer is not null
-    and pq.source like 'storage:%'
   group by pq.subject_id;
 $$;
 
