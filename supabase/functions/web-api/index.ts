@@ -288,6 +288,311 @@ if(request.method==='POST'&&gradeClassPracticeMatch){
   return json({data:{result:{total,answered,correct,incorrect,unanswered,percentage,results}}},200,origin);
 }
 
+if(request.method==='GET'&&path==='/jamb/course-presets'){
+  await requireUser();
+  const[{data:presetRows,error:presetError},{data:subjectRows,error:subjectError},{data:availabilityRows,error:availabilityError}]=await Promise.all([
+    admin.from('jamb_course_presets').select('id,course_name,aliases,notes,source_url,priority').eq('is_active',true).order('priority').order('course_name'),
+    admin.from('jamb_course_preset_subjects').select('preset_id,subject_id,order_index,subject:subjects(id,name,code)').order('order_index'),
+    admin.rpc('get_jamb_subject_availability'),
+  ]);
+  if(presetError)throw presetError;if(subjectError)throw subjectError;if(availabilityError)throw availabilityError;
+  const availability=new Map((availabilityRows||[]).map((row:any)=>[String(row.subject_id),Number(row.question_count||0)]));
+  const grouped=new Map<string,any[]>();
+  for(const row of subjectRows||[]){
+    const key=String((row as any).preset_id||'');
+    const list=grouped.get(key)||[];
+    list.push({
+      id:String((row as any).subject_id),
+      name:String((row as any).subject?.name||'Subject'),
+      code:String((row as any).subject?.code||''),
+      orderIndex:Number((row as any).order_index||0),
+      availableQuestions:availability.get(String((row as any).subject_id))||0,
+    });
+    grouped.set(key,list);
+  }
+  const subjectAvailability=Object.fromEntries([...availability.entries()]);
+  const presets=(presetRows||[]).map((row:any)=>{
+    const subjects=(grouped.get(String(row.id))||[]).sort((a,b)=>a.orderIndex-b.orderIndex);
+    const maxBalancedCount=subjects.length?Math.min(...subjects.map(item=>item.availableQuestions)):0;
+    return{
+      id:String(row.id),
+      courseName:String(row.course_name),
+      aliases:Array.isArray(row.aliases)?row.aliases:[],
+      notes:String(row.notes||''),
+      sourceUrl:String(row.source_url||'https://eligibility.jamb.gov.ng/'),
+      subjects,
+      maxBalancedCount,
+      readyForTenEach:subjects.length===4&&maxBalancedCount>=10,
+    };
+  });
+  return json({data:{presets,subjectAvailability}},200,origin);
+}
+
+if(request.method==='POST'&&path==='/jamb-cbt/session'){
+  const user=await requireUser();
+  const body=await request.json().catch(()=>null);
+  const durationMinutes=asInt(String(body?.durationMinutes||40),40,5,240);
+  const rawPlan=Array.isArray(body?.subjects)?body.subjects.slice(0,4):[];
+  const coursePresetId=String(body?.coursePresetId||'');
+  if(rawPlan.length!==4)return json({error:{message:'JAMB CBT requires exactly four subjects'}},400,origin);
+
+  const plan=rawPlan.map((item:any)=>({
+    subjectId:String(item?.subjectId||''),
+    count:asInt(String(item?.count||10),10,1,100),
+  }));
+  if(plan.some(item=>!/^[0-9a-f-]{36}$/i.test(item.subjectId)))return json({error:{message:'Every JAMB subject must be valid'}},400,origin);
+  if(new Set(plan.map(item=>item.subjectId)).size!==4)return json({error:{message:'Select four different JAMB subjects'}},400,origin);
+  const totalRequested=plan.reduce((sum,item)=>sum+item.count,0);
+  if(totalRequested<4||totalRequested>200)return json({error:{message:'Combined JAMB CBT must contain between 4 and 200 questions'}},400,origin);
+
+  const subjectIds=plan.map(item=>item.subjectId);
+  const[{data:subjects,error:subjectsError},{data:availabilityRows,error:availabilityError}]=await Promise.all([
+    admin.from('subjects').select('id,name,code').in('id',subjectIds).eq('is_active',true),
+    admin.rpc('get_jamb_subject_availability'),
+  ]);
+  if(subjectsError)throw subjectsError;if(availabilityError)throw availabilityError;
+  if((subjects||[]).length!==4)return json({error:{message:'One or more selected subjects are unavailable'}},400,origin);
+  const subjectMap=new Map((subjects||[]).map((row:any)=>[String(row.id),row]));
+  const englishSelected=(subjects||[]).some((row:any)=>/^(english language|use of english)$/i.test(String(row.name||'').trim()));
+  if(!englishSelected)return json({error:{message:'JAMB CBT must include Use of English / English Language'}},400,origin);
+
+  if(coursePresetId){
+    if(!/^[0-9a-f-]{36}$/i.test(coursePresetId))return json({error:{message:'Invalid course preset'}},400,origin);
+    const{data:presetSubjects,error:presetError}=await admin.from('jamb_course_preset_subjects')
+      .select('subject_id').eq('preset_id',coursePresetId);
+    if(presetError)throw presetError;
+    const expected=new Set((presetSubjects||[]).map((row:any)=>String(row.subject_id)));
+    if(expected.size!==4||subjectIds.some(id=>!expected.has(id))){
+      return json({error:{message:'Selected subjects do not match the chosen course preset'}},400,origin);
+    }
+  }
+
+  const availability=new Map((availabilityRows||[]).map((row:any)=>[String(row.subject_id),Number(row.question_count||0)]));
+  for(const item of plan){
+    const available=availability.get(item.subjectId)||0;
+    if(available<item.count){
+      const name=String((subjectMap.get(item.subjectId) as any)?.name||'This subject');
+      return json({error:{message:`${name} currently has ${available} verified JAMB past question(s), below the requested ${item.count}.`,code:'INSUFFICIENT_JAMB_BANK',subjectId:item.subjectId,available,requested:item.count}},409,origin);
+    }
+  }
+
+  const columns='id,year,subject_id,topic_id,question_text,question_image_url,options,difficulty,marks,source,tags,correct_answer,explanation';
+  const loadSubject=async(item:{subjectId:string;count:number})=>{
+    const available=availability.get(item.subjectId)||0;
+    const windowSize=Math.min(250,Math.max(item.count*4,80));
+    const windows=available<=windowSize?1:Math.min(6,Math.ceil((item.count*6)/windowSize));
+    const pool:any[]=[];const seen=new Set<string>();
+    for(let index=0;index<windows&&pool.length<Math.max(item.count*2,item.count+10);index++){
+      const offset=available<=windowSize?0:Math.floor(Math.random()*Math.max(1,available-windowSize+1));
+      const{data,error}=await admin.from('past_questions').select(columns)
+        .eq('is_active',true)
+        .ilike('board','jamb')
+        .eq('subject_id',item.subjectId)
+        .eq('question_type','mcq')
+        .not('correct_answer','is',null)
+        .or('source.like.storage:%,source.like.JAMB %')
+        .range(offset,Math.min(available-1,offset+windowSize-1));
+      if(error)throw error;
+      for(const row of data||[]){
+        if(seen.has(String(row.id)))continue;
+        const answer=scalarAnswer(row.correct_answer);
+        const options=Array.isArray(row.options)?row.options:[];
+        if(!answer||options.length<4||!options.some((option:any)=>String(option?.id||'').toUpperCase()===answer.toUpperCase()))continue;
+        seen.add(String(row.id));pool.push(row);
+      }
+    }
+    for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}
+    if(pool.length<item.count){
+      const name=String((subjectMap.get(item.subjectId) as any)?.name||'Subject');
+      throw Object.assign(new Error(`Only ${pool.length} clean verified ${name} questions could be assembled for this session`),{status:409});
+    }
+    return pool.slice(0,item.count).map((row:any)=>({
+      id:String(row.id),
+      year:row.year||null,
+      subjectId:item.subjectId,
+      subjectName:String((subjectMap.get(item.subjectId) as any)?.name||'Subject'),
+      topicId:row.topic_id||null,
+      questionText:String(row.question_text||''),
+      questionImageUrl:row.question_image_url||null,
+      options:row.options,
+      difficulty:row.difficulty||null,
+      marks:Number(row.marks||1),
+      source:String(row.source||''),
+      tags:Array.isArray(row.tags)?row.tags:[],
+      correctAnswer:scalarAnswer(row.correct_answer),
+      explanation:String(row.explanation||''),
+    }));
+  };
+
+  const groups=await Promise.all(plan.map(loadSubject));
+  const privateQuestions=groups.flat();
+  for(let i=privateQuestions.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[privateQuestions[i],privateQuestions[j]]=[privateQuestions[j],privateQuestions[i]]}
+  const subjectPlan=plan.map(item=>({
+    subjectId:item.subjectId,
+    subjectName:String((subjectMap.get(item.subjectId) as any)?.name||'Subject'),
+    count:item.count,
+    availableQuestions:availability.get(item.subjectId)||0,
+  }));
+  const startedAt=new Date();
+  const expiresAt=new Date(startedAt.getTime()+durationMinutes*60*1000);
+  const{data:session,error:sessionError}=await admin.from('jamb_cbt_sessions').insert({
+    user_id:user.id,
+    course_preset_id:coursePresetId||null,
+    duration_minutes:durationMinutes,
+    subject_plan:subjectPlan,
+    questions:privateQuestions,
+    question_count:privateQuestions.length,
+    status:'active',
+    started_at:startedAt.toISOString(),
+    expires_at:expiresAt.toISOString(),
+  }).select('id,started_at,expires_at,duration_minutes').single();
+  if(sessionError)throw sessionError;
+
+  const publicQuestions=privateQuestions.map((question:any)=>({
+    id:question.id,
+    year:question.year,
+    subject_id:question.subjectId,
+    subject_name:question.subjectName,
+    question_text:question.questionText,
+    question_image_url:question.questionImageUrl,
+    options:question.options,
+    difficulty:question.difficulty,
+    marks:question.marks,
+    board:'jamb',
+    source:'exam',
+  }));
+  return json({data:{
+    sessionId:session.id,
+    startedAt:session.started_at,
+    expiresAt:session.expires_at,
+    durationMinutes:session.duration_minutes,
+    subjectPlan,
+    questionCount:publicQuestions.length,
+    questions:publicQuestions,
+  }},201,origin);
+}
+
+const saveJambAnswerMatch=path.match(/^\/jamb-cbt\/([0-9a-f-]+)\/answer$/i);
+if(request.method==='POST'&&saveJambAnswerMatch){
+  const user=await requireUser();
+  const sessionId=saveJambAnswerMatch[1];
+  const body=await request.json().catch(()=>null);
+  const questionId=String(body?.questionId||'');
+  const answer=scalarAnswer(body?.answer).toUpperCase();
+  if(!/^[0-9a-f-]{36}$/i.test(sessionId)||!questionId||!/^[A-E]$/.test(answer)){
+    return json({error:{message:'Valid JAMB session, question and answer are required'}},400,origin);
+  }
+  const{data:saved,error:saveError}=await admin.rpc('save_jamb_cbt_answer',{
+    p_session_id:sessionId,
+    p_user_id:user.id,
+    p_question_id:questionId,
+    p_answer:answer,
+  });
+  if(saveError)throw saveError;
+  if(!saved)return json({error:{message:'Answer could not be saved because the session expired or the question is invalid'}},409,origin);
+  return json({data:{saved:true,questionId}},200,origin);
+}
+
+const gradeJambCbtMatch=path.match(/^\/jamb-cbt\/([0-9a-f-]+)\/grade$/i);
+if(request.method==='POST'&&gradeJambCbtMatch){
+  const user=await requireUser();
+  const sessionId=gradeJambCbtMatch[1];
+  const body=await request.json().catch(()=>null);
+  const answers=Array.isArray(body?.answers)?body.answers.slice(0,200):[];
+  const{data:session,error:sessionError}=await admin.from('jamb_cbt_sessions').select('*')
+    .eq('id',sessionId).eq('user_id',user.id).maybeSingle();
+  if(sessionError||!session)return json({error:{message:'JAMB CBT session not found'}},404,origin);
+  if(session.status!=='active')return json({error:{message:'This JAMB CBT session has already been submitted'}},409,origin);
+
+  const questions=Array.isArray(session.questions)?session.questions:[];
+  const nowMs=Date.now();
+  const expiresMs=new Date(session.expires_at).getTime();
+  const timedOut=nowMs>expiresMs;
+  const savedAnswers=session.answers&&typeof session.answers==='object'&&!Array.isArray(session.answers)
+    ?session.answers as Record<string,unknown>
+    :{};
+  const finalAnswerMap=new Map<string,string>(
+    Object.entries(savedAnswers).map(([questionId,value])=>[questionId,scalarAnswer(value).toUpperCase()])
+  );
+  if(!timedOut){
+    for(const item of answers){
+      const questionId=String(item?.questionId||'');
+      const answer=scalarAnswer(item?.answer).toUpperCase();
+      if(questionId&&/^[A-E]$/.test(answer))finalAnswerMap.set(questionId,answer);
+    }
+  }
+  const byId=finalAnswerMap;
+  let correct=0,answered=0;
+  const analyticsAnswers:any[]=[];
+  const subjectStats=new Map<string,{subjectId:string;subjectName:string;total:number;correct:number;answered:number}>();
+  const results=questions.map((question:any)=>{
+    const submitted=String(byId.get(String(question.id))||'');
+    const expected=String(question.correctAnswer||'').toUpperCase();
+    const isAnswered=Boolean(submitted);
+    const isCorrect=isAnswered&&submitted===expected;
+    if(isAnswered)answered++;if(isCorrect)correct++;
+    const stat=subjectStats.get(String(question.subjectId))||{
+      subjectId:String(question.subjectId),
+      subjectName:String(question.subjectName||'Subject'),
+      total:0,correct:0,answered:0,
+    };
+    stat.total++;if(isAnswered)stat.answered++;if(isCorrect)stat.correct++;subjectStats.set(stat.subjectId,stat);
+    analyticsAnswers.push({
+      questionId:String(question.id),
+      subjectId:String(question.subjectId),
+      topicId:question.topicId||null,
+      topicLabel:inferPastQuestionTopic(question.subjectName,question.tags,question.questionText),
+      answered:isAnswered,
+      isCorrect,
+    });
+    return{
+      question_id:String(question.id),
+      is_correct:isCorrect,
+      correct_answer:expected,
+      explanation:String(question.explanation||'')||null,
+    };
+  });
+
+  const total=questions.length;
+  const incorrect=Math.max(0,answered-correct);
+  const unanswered=Math.max(0,total-answered);
+  const percentage=total?Math.round(correct/total*10000)/100:0;
+  const startedMs=new Date(session.started_at).getTime();
+  const timeSpentSeconds=Math.max(0,Math.round((Math.min(nowMs,expiresMs)-startedMs)/1000));
+  const{data:attempt,error:attemptError}=await admin.from('past_question_attempts').insert({
+    user_id:user.id,
+    board:'jamb',
+    year:null,
+    question_count:total,
+    answered_count:answered,
+    correct_count:correct,
+    incorrect_count:incorrect,
+    unanswered_count:unanswered,
+    percentage,
+    time_spent_seconds:timeSpentSeconds,
+    answers:analyticsAnswers,
+    submitted_at:new Date().toISOString(),
+  }).select('id,submitted_at').single();
+  if(attemptError)throw attemptError;
+
+  const{error:updateError}=await admin.from('jamb_cbt_sessions').update({
+    status:'submitted',
+    submitted_at:new Date().toISOString(),
+    score:correct,
+    percentage,
+  }).eq('id',sessionId).eq('user_id',user.id);
+  if(updateError)throw updateError;
+
+  const subjectBreakdown=[...subjectStats.values()].map(row=>({
+    ...row,
+    percentage:row.total?Math.round(row.correct/row.total*10000)/100:0,
+  }));
+  return json({data:{result:{
+    total,answered,correct,incorrect,unanswered,percentage,
+    attemptId:attempt.id,results,subjectBreakdown,timedOut,timeSpentSeconds,
+  }}},200,origin);
+}
+
 if(request.method==='GET'&&path==='/past-questions'){const page=asInt(url.searchParams.get('page'),1,1,10000),limit=asInt(url.searchParams.get('limit'),20,1,100),board=url.searchParams.get('board'),subjectId=url.searchParams.get('subjectId'),year=url.searchParams.get('year'),questionType=String(url.searchParams.get('questionType')||'').toLowerCase(),from=(page-1)*limit;let query=admin.from('past_questions').select('id,board,year,subject_id,topic_id,question_type,question_text,question_image_url,options,difficulty,marks,source,tags,correct_answer',{count:'exact'}).eq('is_active',true).order('year',{ascending:false}).range(from,from+limit-1);if(board)query=query.ilike('board',board);if(subjectId)query=query.eq('subject_id',subjectId);if(year)query=query.eq('year',Number(year));if(['mcq','essay'].includes(questionType))query=query.eq('question_type',questionType);const{data,error,count}=await query;if(error)throw error;const questions=(data||[]).map((row:any)=>{const{correct_answer,...safe}=row;return{...safe,hasAnswer:Boolean(scalarAnswer(correct_answer)),storageBacked:String(row.source||'').startsWith('storage:')}});const total=count||0;return json({data:{questions},pagination:{page,limit,total,totalPages:Math.ceil(total/limit)}},200,origin)}
 if(request.method==='GET'&&path==='/past-question-availability'){const{data,error}=await admin.rpc('get_past_question_availability');if(error)throw error;return new Response(JSON.stringify({data:{availability:data||{}}}),{status:200,headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'GET, POST, PATCH, DELETE, OPTIONS','Cache-Control':'public, max-age=300, stale-while-revalidate=900','Vary':'Origin'}})}
 

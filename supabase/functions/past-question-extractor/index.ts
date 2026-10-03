@@ -53,6 +53,12 @@ async function verifyGitHubOidc(token: string) {
 }
 
 const norm = (value: unknown) => String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+const normQuestion = (value: unknown) => String(value ?? "")
+  .toLowerCase()
+  .replace(/https?:\/\/\S+|www\.\S+/gi, " ")
+  .replace(/\b(?:gis|ysc|w\.m|ww|ho|ol)\b/gi, " ")
+  .replace(/[^a-z0-9]+/g, "");
+
 const cleanText = (value: unknown, max = 2200) => String(value ?? "")
   .replace(/https?:\/\/\S+/gi, " ")
   .replace(/www\.[^\s]+/gi, " ")
@@ -114,6 +120,104 @@ Deno.serve(async (request) => {
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
     const body = await request.json().catch(() => ({}));
     const action = String(body?.action || "");
+
+    if (action === "answer_recovery_manifest") {
+      const requestedIds = Array.isArray(body?.fileIds)
+        ? body.fileIds.map((value: unknown) => String(value || "")).filter((value: string) => /^[0-9a-f-]{36}$/i.test(value)).slice(0, 20)
+        : [];
+      if (!requestedIds.length) return json({ error: "At least one valid fileId is required" }, 400);
+      const { data, error } = await admin.from("past_question_files")
+        .select("id,bucket_id,file_path,board,subject,year,file_name,metadata")
+        .in("id", requestedIds)
+        .eq("board", "jamb");
+      if (error) throw error;
+      const files = [];
+      for (const file of data || []) {
+        const name = String(file.file_name || "");
+        if (!/questions?.{0,12}(?:and|&).{0,12}answers?|answers?.{0,12}(?:and|&).{0,12}questions?/i.test(name)) continue;
+        const { data: signed, error: signedError } = await admin.storage.from(file.bucket_id).createSignedUrl(file.file_path, 900);
+        if (signedError || !signed?.signedUrl) continue;
+        const { bucket_id, file_path, ...safe } = file as any;
+        files.push({ ...safe, public_url: signed.signedUrl });
+      }
+      return json({ files, count: files.length });
+    }
+
+    if (action === "recover_answers") {
+      const fileId = String(body?.fileId || "");
+      const method = String(body?.method || "");
+      if (!/^[0-9a-f-]{36}$/i.test(fileId)) return json({ error: "Valid fileId required" }, 400);
+      if (method !== "pdf-text-answer-key") return json({ error: "Only embedded PDF answer-key recovery is trusted" }, 400);
+      const supplied = Array.isArray(body?.questions) ? body.questions.slice(0, 2500) : [];
+      const { data: file, error: fileError } = await admin.from("past_question_files")
+        .select("id,board,file_name,metadata").eq("id", fileId).maybeSingle();
+      if (fileError || !file || String(file.board || "").toLowerCase() !== "jamb") return json({ error: "JAMB source file not found" }, 404);
+      if (!/questions?.{0,12}(?:and|&).{0,12}answers?|answers?.{0,12}(?:and|&).{0,12}questions?/i.test(String(file.file_name || ""))) {
+        return json({ error: "Source file is not explicitly identified as questions-and-answers material" }, 400);
+      }
+
+      const source = `storage:${fileId}`;
+      const { data: existing, error: existingError } = await admin.from("past_questions")
+        .select("id,question_text,options,correct_answer,is_active")
+        .eq("source", source);
+      if (existingError) throw existingError;
+      const byQuestion = new Map<string, any[]>();
+      for (const row of existing || []) {
+        const key = normQuestion(row.question_text);
+        if (key.length < 18) continue;
+        const rows = byQuestion.get(key) || [];
+        rows.push(row);
+        byQuestion.set(key, rows);
+      }
+
+      const updates: Array<{ id: string; answer: string }> = [];
+      const seenIds = new Set<string>();
+      for (const incoming of supplied) {
+        const answer = String(incoming?.correctAnswer || incoming?.correct_answer || "").trim().toUpperCase();
+        if (!/^[A-E]$/.test(answer)) continue;
+        const key = normQuestion(incoming?.questionText || incoming?.question_text);
+        if (key.length < 18) continue;
+        const matches = byQuestion.get(key) || [];
+        if (matches.length !== 1) continue;
+        const row = matches[0];
+        if (row.correct_answer || seenIds.has(String(row.id))) continue;
+        const options = Array.isArray(row.options) ? row.options : [];
+        if (!options.some((option: any) => String(option?.id || "").trim().toUpperCase() === answer)) continue;
+        seenIds.add(String(row.id));
+        updates.push({ id: String(row.id), answer });
+      }
+
+      let recovered = 0;
+      const verifiedAt = new Date().toISOString();
+      for (let offset = 0; offset < updates.length; offset += 40) {
+        const chunk = updates.slice(offset, offset + 40);
+        const results = await Promise.all(chunk.map(item =>
+          admin.from("past_questions").update({
+            correct_answer: item.answer,
+            answer_source: "source-pdf-answer-key",
+            answer_verified_at: verifiedAt,
+          }).eq("id", item.id).is("correct_answer", null)
+        ));
+        for (const result of results) {
+          if (result.error) throw result.error;
+          recovered += 1;
+        }
+      }
+
+      const { count: answeredCount, error: countError } = await admin.from("past_questions")
+        .select("id", { count: "exact", head: true })
+        .eq("source", source).not("correct_answer", "is", null);
+      if (countError) throw countError;
+      const nextMetadata = {
+        ...(file.metadata || {}),
+        answer_recovery_method: method,
+        answer_recovery_at: verifiedAt,
+        answer_recovered: recovered,
+        answered_questions: answeredCount || 0,
+      };
+      await admin.from("past_question_files").update({ metadata: nextMetadata, updated_at: verifiedAt }).eq("id", fileId);
+      return json({ success: true, recovered, answered: answeredCount || 0, matchedCandidates: updates.length });
+    }
 
     if (action === "manifest") {
       const { data, error } = await admin.from("past_question_files")

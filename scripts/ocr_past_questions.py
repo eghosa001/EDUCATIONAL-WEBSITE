@@ -102,20 +102,29 @@ def clean_option_text(value):
     )
     return re.sub(r"\s+", " ", value).strip()
 
-def answer_key(text):
+def answer_key(raw):
     key = {}
-    marker = re.search(r"(?is)\b(answer\s*key|answers?)\b", text)
-    scope = text[marker.start():] if marker else ""
-    for m in re.finditer(r"(?m)^\s*(\d{1,3})\s*[\.\):\-]?\s*([A-E])\s*$", scope):
-        key[int(m.group(1))] = m.group(2).upper()
+    markers = list(re.finditer(
+        r"(?im)^\s*(?:answer\s*keys?|answers?(?:\s+to\s+(?:the\s+)?questions?)?)\s*[:\-]?\s*(?=(?:\d{1,3}\s*[\.\):=\-]?\s*[A-E]\b)|$)",
+        raw,
+    ))
+    if not markers:
+        markers = list(re.finditer(r"(?i)\banswer\s*keys?\b", raw))
+    if not markers:
+        return key
+    scope = raw[markers[-1].end():markers[-1].end() + 30000]
+    for m in re.finditer(r"(?<!\d)(\d{1,3})\s*[\.\):=\-]?\s*([A-E])\b", scope, flags=re.I):
+        number = int(m.group(1))
+        if 1 <= number <= 250:
+            key[number] = m.group(2).upper()
     return key
 
 OPTION_RE = re.compile(r"(?<!\w)(?:[\u2022\u25cf\u25aa\uf0b7]\s*)?(?:\(([A-E])\)|([A-E])[\.\):])\s+", re.I)
 QUESTION_RE = re.compile(r"(?m)^\s*(\d{1,3})\s*[\.\)]\s+(?=\S)")
 
 def parse_questions(raw):
+    answers = answer_key(raw)
     text = clean_text(raw)
-    answers = answer_key(text)
     starts = list(QUESTION_RE.finditer(text))
     if len(starts) < 2:
         starts = list(re.finditer(r"(?m)^\s*(\d{1,3})\s+(?=[A-Z(\"'])", text))
