@@ -173,12 +173,12 @@ Deno.serve(async (request) => {
       if (!/^[0-9a-f-]{36}$/i.test(fileId)) return json({ error: "Valid fileId required" }, 400);
       const embeddedMethod = method === "pdf-text-answer-key";
       const consensusMethod = method === "pdf-answer-key-ocr-consensus";
-      if (!embeddedMethod && !consensusMethod) return json({ error: "Unsupported answer recovery method" }, 400);
-      const consensusPasses = Number(body?.consensusPasses || 0);
-      const keyEntries = Number(body?.keyEntries || 0);
-      if (consensusMethod && (consensusPasses < 2 || keyEntries < 5)) {
-        return json({ error: "OCR answer recovery requires at least two agreeing passes and five keyed answers" }, 400);
+      if (consensusMethod) {
+        return json({ error: "OCR answer-key recovery is disabled because question-number alignment cannot be verified safely" }, 409);
       }
+      if (!embeddedMethod) return json({ error: "Unsupported answer recovery method" }, 400);
+      const consensusPasses = 0;
+      const keyEntries = 0;
       const supplied = Array.isArray(body?.questions) ? body.questions.slice(0, 2500) : [];
       const { data: file, error: fileError } = await admin.from("past_question_files")
         .select("id,board,file_name,metadata").eq("id", fileId).maybeSingle();
