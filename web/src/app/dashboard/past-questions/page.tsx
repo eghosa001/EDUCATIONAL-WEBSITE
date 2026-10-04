@@ -28,7 +28,7 @@ import {
 } from '@/services/api/jambService';
 
 type Mode = 'class' | 'exam';
-type Experience = 'legacy' | 'class' | 'school-past' | 'school-cbt' | 'jamb-past' | 'jamb-cbt';
+type Experience = 'legacy' | 'class' | 'school-past' | 'school-cbt' | 'jamb-past' | 'jamb-cbt' | 'verified-practice' | 'verified-cbt';
 type Phase = 'setup' | 'count' | 'exam' | 'results';
 type ClassRow = { id: string; name: string; code: string | null };
 type SubjectRow = { id: string; name: string; code: string | null };
@@ -41,7 +41,7 @@ type Question = {
   year?: number | null;
   board?: string | null;
   subject_id?: string | null;
-  source: 'class' | 'exam';
+  source: 'class' | 'exam' | 'verified';
   subject_name?: string | null;
 };
 type GradeRow = { question_id: string; is_correct: boolean; correct_answer: unknown; explanation: string | null };
@@ -102,6 +102,15 @@ function formatTime(seconds: number) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
+async function fetchVerifiedPracticeAvailability(token?: string | null) {
+  const response = await fetch(`${learnerApiConfig.baseUrl}/verified-practice-availability`, {
+    headers: getLearnerApiHeaders(token ?? undefined),
+    credentials: learnerApiConfig.credentials,
+  });
+  const payload = await handleApiResponse<any>(response);
+  return payload?.data?.availability || {};
+}
+
 export default function PastQuestionsPage() {
   const { token } = useAuth();
   const [phase, setPhase] = useState<Phase>('setup');
@@ -113,6 +122,8 @@ export default function PastQuestionsPage() {
   const [classAvailability, setClassAvailability] = useState<Record<string, string[]>>({});
   const [examYears, setExamYears] = useState<Record<string, number[]>>({});
   const [examSubjectCounts, setExamSubjectCounts] = useState<Record<string, Record<string, number>>>({});
+  const [verifiedAvailability, setVerifiedAvailability] = useState<Record<string, string[]>>({});
+  const [verifiedSubjectCounts, setVerifiedSubjectCounts] = useState<Record<string, Record<string, number>>>({});
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedExam, setSelectedExam] = useState('jamb');
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
@@ -146,7 +157,7 @@ export default function PastQuestionsPage() {
       const requestedBoard = String(query.get('board') || '').toLowerCase();
       const requestedExperience = String(query.get('experience') || '').toLowerCase() as Experience;
       const validBoard = EXAMS.some(exam => exam.code === requestedBoard);
-      const validExperience: Experience = ['class','school-past','school-cbt','jamb-past','jamb-cbt'].includes(requestedExperience)
+      const validExperience: Experience = ['class','school-past','school-cbt','jamb-past','jamb-cbt','verified-practice','verified-cbt'].includes(requestedExperience)
         ? requestedExperience
         : 'legacy';
 
@@ -164,7 +175,7 @@ export default function PastQuestionsPage() {
       const needsClassData = validExperience === 'class' || (!validBoard && validExperience === 'legacy');
       const needsExamData = validBoard || validExperience !== 'class';
 
-      const [classResult, subjectResult, courseResult, availability] = await Promise.all([
+      const [classResult, subjectResult, courseResult, availability, verifiedBank] = await Promise.all([
         needsClassData
           ? supabase.from('classes').select('id,name,code').eq('is_active', true).order('order_index')
           : Promise.resolve({ data: [] as any[], error: null }),
@@ -173,6 +184,7 @@ export default function PastQuestionsPage() {
           ? supabase.from('courses').select('class_id,subject_id').eq('status', 'published')
           : Promise.resolve({ data: [] as any[], error: null }),
         needsExamData ? fetchExamBoardAvailability(token).catch(() => ({})) : Promise.resolve({}),
+        needsExamData ? fetchVerifiedPracticeAvailability(token).catch(() => ({})) : Promise.resolve({}),
       ]);
       if (cancelled) return;
 
@@ -204,6 +216,17 @@ export default function PastQuestionsPage() {
       setExamAvailability(bySubject);
       setExamYears(byYear);
       setExamSubjectCounts(byCount);
+
+      const verifiedBySubject: Record<string, string[]> = {};
+      const verifiedByCount: Record<string, Record<string, number>> = {};
+      for (const [board, value] of Object.entries(verifiedBank || {}) as [string, any][]) {
+        verifiedBySubject[board] = Array.isArray(value?.subjectIds) ? value.subjectIds : [];
+        verifiedByCount[board] = value?.subjectCounts && typeof value.subjectCounts === 'object'
+          ? Object.fromEntries(Object.entries(value.subjectCounts).map(([subjectId, count]) => [subjectId, Math.max(0, Number(count) || 0)]))
+          : {};
+      }
+      setVerifiedAvailability(verifiedBySubject);
+      setVerifiedSubjectCounts(verifiedByCount);
     })().catch((err) => {
       if (!cancelled) setError(err instanceof Error ? err.message : 'Unable to load practice setup');
     });
@@ -240,7 +263,8 @@ export default function PastQuestionsPage() {
     }
   }, [subjects]);
 
-  const isUntimedPastQuestions = experience === 'school-past' || experience === 'jamb-past';
+  const isVerifiedPractice = experience === 'verified-practice' || experience === 'verified-cbt';
+  const isUntimedPastQuestions = experience === 'school-past' || experience === 'jamb-past' || experience === 'verified-practice';
   const isTimedSession = !isUntimedPastQuestions;
 
   useEffect(() => {
@@ -261,16 +285,16 @@ export default function PastQuestionsPage() {
 
   const examConfig = EXAMS.find(item => item.code === selectedExam)!;
   const visibleSubjects = mode === 'exam'
-    ? subjects.filter(subject => (examAvailability[selectedExam] || []).includes(subject.id))
+    ? subjects.filter(subject => ((isVerifiedPractice ? verifiedAvailability : examAvailability)[selectedExam] || []).includes(subject.id))
     : mode === 'class' && selectedClass
       ? subjects.filter(subject => (classAvailability[selectedClass] || []).includes(subject.id))
       : subjects;
   const availableYears = examYears[selectedExam] || [];
   const selectedNames = selectedSubjects.map(id => subjects.find(subject => subject.id === id)?.name).filter(Boolean) as string[];
   const isJambCbt = experience === 'jamb-cbt' || (experience === 'legacy' && mode === 'exam' && selectedExam === 'jamb');
-  const singleSubjectExternal = experience === 'jamb-past' || experience === 'school-past' || experience === 'school-cbt';
+  const singleSubjectExternal = experience === 'jamb-past' || experience === 'school-past' || experience === 'school-cbt' || experience === 'verified-practice' || experience === 'verified-cbt';
   const selectedExternalCapacity = singleSubjectExternal && mode === 'exam' && selectedSubjects.length === 1
-    ? Number(examSubjectCounts[selectedExam]?.[selectedSubjects[0]] || 0)
+    ? Number((isVerifiedPractice ? verifiedSubjectCounts : examSubjectCounts)[selectedExam]?.[selectedSubjects[0]] || 0)
     : 0;
   const countChoices = singleSubjectExternal && mode === 'exam' && selectedExternalCapacity > 0
     ? Array.from(new Set([...COUNTS.filter(count => count <= selectedExternalCapacity), selectedExternalCapacity])).sort((a, b) => a - b)
@@ -405,7 +429,7 @@ export default function PastQuestionsPage() {
     });
     const groups = await Promise.all(targets.map(async ({ subjectId, target }) => {
       if (target <= 0) return [] as Question[];
-      const response = await fetch(`${learnerApiConfig.baseUrl}/past-questions/session`, {
+      const response = await fetch(`${learnerApiConfig.baseUrl}/${isVerifiedPractice ? 'verified-practice' : 'past-questions'}/session`, {
         method: 'POST',
         headers: getLearnerApiHeaders(token ?? undefined),
         credentials: learnerApiConfig.credentials,
@@ -413,7 +437,7 @@ export default function PastQuestionsPage() {
           board: selectedExam,
           subjectId,
           count: Math.max(5, target),
-          ...(selectedYear ? { year: Number(selectedYear) } : {}),
+          ...(!isVerifiedPractice && selectedYear ? { year: Number(selectedYear) } : {}),
         }),
       });
       if (response.status === 404) return [] as Question[];
@@ -427,7 +451,7 @@ export default function PastQuestionsPage() {
         year: question.year ?? null,
         board: question.board ?? selectedExam,
         subject_id: question.subject_id ?? subjectId,
-        source: 'exam' as const,
+        source: (isVerifiedPractice ? 'verified' : 'exam') as 'verified' | 'exam',
       }));
     }));
     return shuffle(groups.flat());
@@ -531,6 +555,8 @@ export default function PastQuestionsPage() {
   const lockedExternalExperience = experience !== 'legacy' && experience !== 'class';
   const pageTitle = experience === 'jamb-past' ? 'JAMB Past Questions'
     : experience === 'jamb-cbt' ? 'JAMB CBT Examination'
+    : experience === 'verified-practice' ? `${examConfig.label} Verified Practice`
+    : experience === 'verified-cbt' ? `${examConfig.label} Verified Practice CBT`
     : experience === 'school-past' ? `${examConfig.label} Past Questions`
     : experience === 'school-cbt' ? `${examConfig.label} Timed CBT`
     : experience === 'class' ? 'Class Practice'
@@ -539,13 +565,17 @@ export default function PastQuestionsPage() {
     ? 'Choose one JAMB subject and revise verified past questions without a countdown timer.'
     : experience === 'jamb-cbt'
       ? 'Choose four subjects, set a separate question count for each and one total timer. Scored questions come only from verified JAMB past-question records.'
-      : experience === 'school-past'
-        ? `Study verified ${examConfig.label} past questions one subject at a time.`
-        : experience === 'school-cbt'
-          ? `Run a timed ${examConfig.label} CBT session for one subject.`
-          : experience === 'class'
-            ? 'Practise directly from the lessons in your selected class and subject.'
-            : 'Choose the practice source and subjects first.';
+      : experience === 'verified-practice'
+        ? `Practise original THE GUIDE ${examConfig.label}-aligned questions created from verified online sources. These are not historical past questions.`
+        : experience === 'verified-cbt'
+          ? `Run a timed ${examConfig.label}-aligned CBT using original THE GUIDE questions created from verified online sources, separate from historical past papers.`
+          : experience === 'school-past'
+            ? `Study verified ${examConfig.label} past questions one subject at a time.`
+            : experience === 'school-cbt'
+              ? `Run a timed ${examConfig.label} CBT session using verified historical questions.`
+              : experience === 'class'
+                ? 'Practise directly from the lessons in your selected class and subject.'
+                : 'Choose the practice source and subjects first.';
 
   async function submitCbt(automatic = false) {
     if (!token || !questions.length || submitting) return;
@@ -573,6 +603,19 @@ export default function PastQuestionsPage() {
           jambSessionId,
           questions.map(question => ({ questionId: question.id, answer: answers[question.id] || '' })),
         ) as GradeResult;
+      } else if (isVerifiedPractice) {
+        const response = await fetch(`${learnerApiConfig.baseUrl}/verified-practice/grade`, {
+          method: 'POST',
+          headers: getLearnerApiHeaders(token),
+          credentials: learnerApiConfig.credentials,
+          body: JSON.stringify({
+            board: selectedExam,
+            subjectId: selectedSubjects[0],
+            answers: questions.map(question => ({ questionId: question.id, answer: answers[question.id] || '' })),
+          }),
+        });
+        const payload = await handleApiResponse<any>(response);
+        result = payload.data.result as GradeResult;
       } else {
         const response = await fetch(`${learnerApiConfig.baseUrl}/past-questions/grade`, {
           method: 'POST',
@@ -721,7 +764,7 @@ export default function PastQuestionsPage() {
         {error && <div role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
         <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-5">{countChoices.map(count => <button key={count} onClick={() => setQuestionCount(count)} className={`rounded-xl border p-4 text-center font-bold transition ${questionCount === count ? 'border-[#151A3A] bg-[#151A3A] text-white' : 'border-stone-200 bg-stone-50 text-slate-700 dark:border-slate-700 dark:bg-[#151A3A] dark:text-white'}`}>{count}<span className="mt-1 block text-xs font-normal opacity-70">questions</span></button>)}</div>
         <div className="mt-6 rounded-xl bg-brand-50 p-4 text-sm text-slate-700 dark:bg-brand-950/30 dark:text-slate-200">{isTimedSession ? <><b>Timing:</b> 1 minute per loaded question. Answers are graded only when you submit.</> : <><b>Study mode:</b> No countdown timer. Work at your own pace, then submit for grading and review.</>}</div>
-        <button onClick={() => void startCbt()} disabled={loading} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#151A3A] py-3.5 font-semibold text-white disabled:opacity-50">{loading ? <><ClockIcon className="h-4 w-4 animate-spin"/>Loading questions…</> : <><PlayIcon className="h-4 w-4"/>{isTimedSession ? 'Start CBT' : 'Start Past Questions'}</>}</button>
+        <button onClick={() => void startCbt()} disabled={loading} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#151A3A] py-3.5 font-semibold text-white disabled:opacity-50">{loading ? <><ClockIcon className="h-4 w-4 animate-spin"/>Loading questions…</> : <><PlayIcon className="h-4 w-4"/>{isTimedSession ? 'Start CBT' : isVerifiedPractice ? 'Start Verified Practice' : 'Start Past Questions'}</>}</button>
       </section>
     </div>;
   }
