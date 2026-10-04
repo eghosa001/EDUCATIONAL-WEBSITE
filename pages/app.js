@@ -1,3 +1,4 @@
+// Secure curriculum CBT uses server-side class-practice sessions.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.112.3';
 import { marked } from 'https://esm.sh/marked@15.0.7';
 import DOMPurify from 'https://esm.sh/dompurify@3.2.6';
