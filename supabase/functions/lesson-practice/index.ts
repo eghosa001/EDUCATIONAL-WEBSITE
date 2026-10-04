@@ -345,9 +345,9 @@ Deno.serve(async request => {
       .maybeSingle();
 
     let cachedQuestions: PracticeQuestion[] | null = null;
-    if (cached?.content_fingerprint === fingerprint) {
+    if (cached?.content_fingerprint === fingerprint && Array.isArray(cached.questions) && cached.questions.length >= count) {
       try {
-        cachedQuestions = validateQuestions(cached.questions, count);
+        cachedQuestions = validateQuestions(cached.questions.slice(0, count), count);
       } catch {
         cachedQuestions = null;
       }
