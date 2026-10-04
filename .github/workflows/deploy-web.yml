@@ -1,5 +1,7 @@
 name: Deploy Website
 
+# Canonical production deploy: GitHub Actions is the sole Vercel build path.
+
 on:
   workflow_dispatch:
   push:
