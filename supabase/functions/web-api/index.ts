@@ -610,6 +610,92 @@ if(request.method==='POST'&&gradeJambCbtMatch){
   }}},200,origin);
 }
 
+
+if(request.method==='GET'&&path==='/verified-practice-availability'){
+  const{data,error}=await admin.rpc('get_verified_practice_availability');
+  if(error)throw error;
+  return new Response(JSON.stringify({data:{availability:data||{}}}),{status:200,headers:{
+    'Content-Type':'application/json','Access-Control-Allow-Origin':origin,
+    'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info',
+    'Access-Control-Allow-Methods':'GET, POST, PATCH, DELETE, OPTIONS',
+    'Cache-Control':'public, max-age=300, stale-while-revalidate=900','Vary':'Origin'
+  }});
+}
+
+if(request.method==='POST'&&path==='/verified-practice/session'){
+  await requireUser();
+  const body=await request.json().catch(()=>null);
+  const board=String(body?.board||'').toLowerCase();
+  const subjectId=String(body?.subjectId||'');
+  const requested=asInt(String(body?.count||20),20,5,100);
+  if(!['jamb','waec','neco','nabteb'].includes(board))return json({error:{message:'Valid examination board is required'}},400,origin);
+  if(!/^[0-9a-f-]{36}$/i.test(subjectId))return json({error:{message:'Valid subject is required'}},400,origin);
+
+  const{data:rows,error,count}=await admin.from('verified_practice_questions')
+    .select('id,board,subject_id,topic_label,question_text,options,difficulty,source_title,verification_method',{count:'exact'})
+    .eq('is_active',true).eq('board',board).eq('subject_id',subjectId).limit(200);
+  if(error)throw error;
+  const pool=[...(rows||[])];
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}
+  const selected=pool.slice(0,Math.min(requested,pool.length));
+  if(!selected.length)return json({error:{message:'No verified online practice questions are available for this selection yet'}},404,origin);
+  return json({data:{
+    questions:selected.map((row:any)=>({...row,source:'verified-online'})),
+    requestedCount:requested,returnedCount:selected.length,availableCount:count||pool.length,
+    provenance:'Original THE GUIDE practice questions created from verified online sources; not historical past questions.'
+  }},200,origin);
+}
+
+if(request.method==='POST'&&path==='/verified-practice/grade'){
+  const user=await requireUser();
+  const body=await request.json().catch(()=>null);
+  const board=String(body?.board||'').toLowerCase();
+  const subjectId=String(body?.subjectId||'');
+  const answers=Array.isArray(body?.answers)?body.answers.slice(0,100):[];
+  if(!['jamb','waec','neco','nabteb'].includes(board))return json({error:{message:'Valid examination board is required'}},400,origin);
+  if(!/^[0-9a-f-]{36}$/i.test(subjectId))return json({error:{message:'Valid subject is required'}},400,origin);
+  if(!answers.length)return json({error:{message:'Answers are required'}},400,origin);
+  const ids=[...new Set(answers.map((item:any)=>String(item?.questionId||'')).filter((id:string)=>/^[0-9a-f-]{36}$/i.test(id)))];
+  if(!ids.length)return json({error:{message:'Valid question IDs are required'}},400,origin);
+
+  const{data,error}=await admin.from('verified_practice_questions')
+    .select('id,board,subject_id,topic_label,correct_answer,explanation,source_title,verification_method')
+    .in('id',ids).eq('is_active',true).eq('board',board).eq('subject_id',subjectId);
+  if(error)throw error;
+  const byId=new Map((data||[]).map((row:any)=>[String(row.id),row]));
+  let correct=0,answered=0;
+  const analytics:any[]=[];
+  const results=answers.map((item:any)=>{
+    const id=String(item?.questionId||''),row:any=byId.get(id);
+    const submitted=String(item?.answer||'').trim().toUpperCase();
+    const isAnswered=Boolean(row&&/^[A-D]$/.test(submitted));
+    const isCorrect=Boolean(isAnswered&&submitted===String(row.correct_answer||'').toUpperCase());
+    if(isAnswered)answered++;
+    if(isCorrect)correct++;
+    if(row)analytics.push({
+      questionId:id,answered:isAnswered,isCorrect,topicLabel:String(row.topic_label||'General')
+    });
+    return{
+      question_id:id,is_correct:isCorrect,
+      correct_answer:row?String(row.correct_answer||''):null,
+      explanation:row?String(row.explanation||''):null,
+      source_title:row?String(row.source_title||'Verified online source'):null,
+      verification_method:row?String(row.verification_method||''):null
+    };
+  });
+  const total=answers.length,incorrect=Math.max(0,answered-correct),unanswered=Math.max(0,total-answered);
+  const percentage=total?Math.round(correct/total*10000)/100:0;
+  const{data:attempt,error:attemptError}=await admin.from('verified_practice_attempts').insert({
+    user_id:user.id,board,subject_id:subjectId,question_count:total,answered_count:answered,
+    correct_count:correct,percentage,answers:analytics,submitted_at:new Date().toISOString()
+  }).select('id').single();
+  if(attemptError)throw attemptError;
+  return json({data:{result:{
+    total,answered,correct,incorrect,unanswered,percentage,attemptId:attempt.id,results,
+    provenance:'Original THE GUIDE practice questions created from verified online sources; not historical past questions.'
+  }}},200,origin);
+}
+
 if(request.method==='GET'&&path==='/past-questions'){const page=asInt(url.searchParams.get('page'),1,1,10000),limit=asInt(url.searchParams.get('limit'),20,1,100),board=url.searchParams.get('board'),subjectId=url.searchParams.get('subjectId'),year=url.searchParams.get('year'),questionType=String(url.searchParams.get('questionType')||'').toLowerCase(),from=(page-1)*limit;let query=admin.from('learner_past_questions').select('id,board,year,subject_id,topic_id,question_type,question_text,question_image_url,options,difficulty,marks,source,tags,correct_answer',{count:'exact'}).order('year',{ascending:false}).range(from,from+limit-1);if(board){query=query.eq('board',String(board).toLowerCase());if(['jamb','waec','neco','nabteb'].includes(String(board).toLowerCase()))query=query.like('source','storage:%')}if(subjectId)query=query.eq('subject_id',subjectId);if(year)query=query.eq('year',Number(year));if(['mcq','essay'].includes(questionType))query=query.eq('question_type',questionType);const{data,error,count}=await query;if(error)throw error;const questions=(data||[]).map((row:any)=>{const{correct_answer,...safe}=row;return{...safe,hasAnswer:Boolean(scalarAnswer(correct_answer)),storageBacked:String(row.source||'').startsWith('storage:')}});const total=count||0;return json({data:{questions},pagination:{page,limit,total,totalPages:Math.ceil(total/limit)}},200,origin)}
 if(request.method==='GET'&&path==='/past-question-availability'){const{data,error}=await admin.rpc('get_past_question_availability');if(error)throw error;return new Response(JSON.stringify({data:{availability:data||{}}}),{status:200,headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'GET, POST, PATCH, DELETE, OPTIONS','Cache-Control':'public, max-age=300, stale-while-revalidate=900','Vary':'Origin'}})}
 
