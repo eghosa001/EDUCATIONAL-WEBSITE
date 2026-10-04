@@ -114,7 +114,7 @@ export const generateAiFlashcards = async (data: AiFlashcardRequest, token?: str
   return result as { flashcards: AiFlashcard[] };
 };
 
-export interface SavedFlashcard { id: string; front: string; back: string; subjectId?: string; topicId?: string; courseId?: string; difficulty?: string; }
+export interface SavedFlashcard { id: string; front: string; back: string; subjectId?: string; topicId?: string; courseId?: string; lessonId?: string; title?: string; difficulty?: string; }
 
 /** The database stores one flashcard set per row in `flashcards.cards` JSONB. */
 export const fetchMyFlashcards = async (_token?: string, params: { page?: number; limit?: number; difficulty?: string } = {}): Promise<{ flashcards: SavedFlashcard[]; pagination: { page: number; limit: number; total: number } }> => {
@@ -156,6 +156,56 @@ export const fetchMyFlashcards = async (_token?: string, params: { page?: number
   }
 
   return { flashcards, pagination: { page, limit, total: count || 0 } };
+};
+
+export const fetchPrebuiltFlashcards = async (params: {
+  subjectId?: string;
+  topicId?: string;
+  lessonId?: string;
+  limit?: number;
+} = {}): Promise<SavedFlashcard[]> => {
+  const limit = Math.min(100, Math.max(1, params.limit || 20));
+  let query = getSupabase()
+    .from('flashcards')
+    .select('id,course_id,lesson_id,topic_id,subject_id,title,cards,created_at')
+    .eq('is_public', true)
+    .is('created_by', null)
+    .eq('mode', 'curriculum-prebuilt')
+    .order('created_at', { ascending: true })
+    .limit(40);
+
+  if (params.subjectId) query = query.eq('subject_id', params.subjectId);
+  if (params.topicId) query = query.eq('topic_id', params.topicId);
+  if (params.lessonId) query = query.eq('lesson_id', params.lessonId);
+
+  const { data: sets, error } = await query;
+  if (error) throw new Error(error.message);
+
+  const flashcards: SavedFlashcard[] = [];
+  for (const set of sets || []) {
+    const cards = Array.isArray(set.cards) ? set.cards : [];
+    for (let index = 0; index < cards.length && flashcards.length < limit; index += 1) {
+      const raw = cards[index];
+      if (!raw || typeof raw !== 'object') continue;
+      const card = raw as Record<string, unknown>;
+      const front = String(card.front ?? '').trim();
+      const back = String(card.back ?? '').trim();
+      if (!front || !back) continue;
+      flashcards.push({
+        id: `${set.id}:${index}`,
+        front,
+        back,
+        subjectId: set.subject_id || undefined,
+        topicId: set.topic_id || undefined,
+        courseId: set.course_id || undefined,
+        lessonId: set.lesson_id || undefined,
+        title: set.title || undefined,
+        difficulty: String(card.difficulty ?? '').trim().toLowerCase() || undefined,
+      });
+    }
+    if (flashcards.length >= limit) break;
+  }
+  return flashcards;
 };
 
 export interface AiSummarizeRequest { content: string; type: 'lesson' | 'article' | 'video_transcript'; length?: 'short' | 'medium' | 'detailed'; }
