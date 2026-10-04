@@ -14,9 +14,11 @@ const safeOrigin=(request:Request)=>{const value=request.headers.get('origin');i
 const asInt=(value:string|null,fallback:number,min=1,max=100)=>{const parsed=Number.parseInt(String(value??''),10);return Number.isFinite(parsed)?Math.min(max,Math.max(min,parsed)):fallback};
 const scalarAnswer=(value:unknown):string=>{if(value===null||value===undefined)return '';if(typeof value==='string'||typeof value==='number'||typeof value==='boolean')return String(value).trim();if(typeof value==='object'){const record=value as Record<string,unknown>;for(const key of ['id','label','answer','value','correct_answer','correctAnswer','text'])if(record[key]!==undefined&&record[key]!==null)return scalarAnswer(record[key])}return ''};
 const normalizeAnswer=(value:unknown)=>scalarAnswer(value).toLowerCase().replace(/\s+/g,' ').trim();
+const verifiedHistoricalAnswerSources=new Set(['manual-content-validation','public-archive-cross-validation','source-pdf-answer-key','source-pdf-embedded-answer']);
 const isScoreableExamRow=(row:any)=>{
   const board=String(row?.board||'').toLowerCase();
-  if(!['jamb','waec','neco','nabteb'].includes(board)||String(row?.source||'').indexOf('storage:')!==0||String(row?.question_type||'mcq').toLowerCase()!=='mcq')return false;
+  const answerSource=String(row?.answer_source||'').trim();
+  if(!['jamb','waec','neco','nabteb'].includes(board)||String(row?.source||'').indexOf('storage:')!==0||String(row?.question_type||'mcq').toLowerCase()!=='mcq'||!row?.answer_verified_at||!verifiedHistoricalAnswerSources.has(answerSource))return false;
   const expected=normalizeAnswer(row?.correct_answer);
   const options=Array.isArray(row?.options)?row.options:[];
   if(!expected||options.length<2)return false;
@@ -658,7 +660,7 @@ if(request.method==='POST'&&path==='/past-questions/grade'){
   const ids=[...new Set(answers.map((item:any)=>String(item?.questionId||'')).filter((id:string)=>/^[0-9a-f-]{36}$/i.test(id)))];
   if(!ids.length)return json({error:{message:'Valid question IDs are required'}},400,origin);
   const{data,error}=await admin.from('past_questions')
-    .select('id,board,year,subject_id,topic_id,tags,question_type,question_text,options,correct_answer,explanation,is_active,source,subject:subjects(name),topic:topics(name)')
+    .select('id,board,year,subject_id,topic_id,tags,question_type,question_text,options,correct_answer,explanation,is_active,source,answer_source,answer_verified_at,subject:subjects(name),topic:topics(name)')
     .in('id',ids).eq('is_active',true);
   if(error)throw error;
   const rows=(data||[]).filter(isScoreableExamRow);
@@ -831,7 +833,7 @@ if(request.method==='POST'&&explainPastQuestionMatch){
   if(!(attemptRows||[]).length)return json({error:{message:'Submit this question in a graded CBT before requesting an explanation'}},403,origin);
 
   const{data:question,error:questionError}=await admin.from('past_questions')
-    .select('id,board,year,subject_id,question_type,question_text,options,correct_answer,explanation,explanation_source,is_active,source,subject:subjects(name)')
+    .select('id,board,year,subject_id,question_type,question_text,options,correct_answer,explanation,explanation_source,is_active,source,answer_source,answer_verified_at,subject:subjects(name)')
     .eq('id',questionId).eq('is_active',true).maybeSingle();
   if(questionError||!question)return json({error:{message:'Question not found'}},404,origin);
   if(!isScoreableExamRow(question))return json({error:{message:'This historical question is not in the verified scoreable archive'}},409,origin);
@@ -889,7 +891,7 @@ if(request.method==='POST'&&explainPastQuestionMatch){
   return json({data:{explanation,source:'ai-grounded',cached:false}},200,origin);
 }
 
-const questionCheck=path.match(/^\/(questions|past-questions)\/([0-9a-f-]+)\/check$/i);if(request.method==='POST'&&questionCheck){await requireUser();const payload=await request.json().catch(()=>({}));const submitted=scalarAnswer(payload?.answer);if(!submitted)return json({error:{message:'Answer is required'}},400,origin);const table=questionCheck[1]==='past-questions'?'past_questions':'questions';const columns=table==='past_questions'?'id,correct_answer,explanation,is_active':'id,correct_answer,explanation,explanation_image_url,is_active';const{data:row,error}=await admin.from(table).select(columns).eq('id',questionCheck[2]).eq('is_active',true).maybeSingle();if(error||!row)return json({error:{message:'Question not found'}},404,origin);const correctAnswer=scalarAnswer((row as any).correct_answer);if(!correctAnswer)return json({data:{result:{isCorrect:null,correctAnswer:null,explanation:(row as any).explanation||'This source question does not include a verified answer key yet. Your response is kept as practice and is not marked right or wrong.',explanationImageUrl:(row as any).explanation_image_url||null}}},200,origin);const isCorrect=submitted.toLowerCase()===correctAnswer.toLowerCase();return json({data:{result:{isCorrect,correctAnswer,explanation:(row as any).explanation||null,explanationImageUrl:(row as any).explanation_image_url||null}}},200,origin)}
+const questionCheck=path.match(/^\/(questions|past-questions)\/([0-9a-f-]+)\/check$/i);if(request.method==='POST'&&questionCheck){await requireUser();const payload=await request.json().catch(()=>({}));const submitted=scalarAnswer(payload?.answer);if(!submitted)return json({error:{message:'Answer is required'}},400,origin);const table=questionCheck[1]==='past-questions'?'past_questions':'questions';const columns=table==='past_questions'?'id,board,question_type,options,correct_answer,explanation,is_active,source,answer_source,answer_verified_at':'id,correct_answer,explanation,explanation_image_url,is_active';const{data:row,error}=await admin.from(table).select(columns).eq('id',questionCheck[2]).eq('is_active',true).maybeSingle();if(error||!row)return json({error:{message:'Question not found'}},404,origin);if(table==='past_questions'&&!isScoreableExamRow(row))return json({data:{result:{isCorrect:null,correctAnswer:null,explanation:'This historical question does not have a verified source-backed answer key yet.',explanationImageUrl:null}}},200,origin);const correctAnswer=scalarAnswer((row as any).correct_answer);if(!correctAnswer)return json({data:{result:{isCorrect:null,correctAnswer:null,explanation:(row as any).explanation||'This source question does not include a verified answer key yet. Your response is kept as practice and is not marked right or wrong.',explanationImageUrl:(row as any).explanation_image_url||null}}},200,origin);const isCorrect=submitted.toLowerCase()===correctAnswer.toLowerCase();return json({data:{result:{isCorrect,correctAnswer,explanation:(row as any).explanation||null,explanationImageUrl:(row as any).explanation_image_url||null}}},200,origin)}
 
 if(request.method==='GET'&&path==='/exams'){
   const page=asInt(url.searchParams.get('page'),1,1,10000),limit=asInt(url.searchParams.get('limit'),100,1,100),from=(page-1)*limit;
