@@ -12,8 +12,24 @@ const json = (body: unknown, status = 200, origin = '*') => new Response(JSON.st
 });
 const safeOrigin=(request:Request)=>{const value=request.headers.get('origin');if(!value)return '*';try{const parsed=new URL(value);return ['http:','https:'].includes(parsed.protocol)?parsed.origin:'*'}catch{return '*'}};
 const asInt=(value:string|null,fallback:number,min=1,max=100)=>{const parsed=Number.parseInt(String(value??''),10);return Number.isFinite(parsed)?Math.min(max,Math.max(min,parsed)):fallback};
-const scalarAnswer=(value:unknown):string=>{if(value===null||value===undefined)return '';if(typeof value==='string'||typeof value==='number'||typeof value==='boolean')return String(value).trim();if(typeof value==='object'){const record=value as Record<string,unknown>;for(const key of ['id','label','answer','value','correct_answer','correctAnswer'])if(record[key]!==undefined&&record[key]!==null)return scalarAnswer(record[key])}return ''};
+const scalarAnswer=(value:unknown):string=>{if(value===null||value===undefined)return '';if(typeof value==='string'||typeof value==='number'||typeof value==='boolean')return String(value).trim();if(typeof value==='object'){const record=value as Record<string,unknown>;for(const key of ['id','label','answer','value','correct_answer','correctAnswer','text'])if(record[key]!==undefined&&record[key]!==null)return scalarAnswer(record[key])}return ''};
 const normalizeAnswer=(value:unknown)=>scalarAnswer(value).toLowerCase().replace(/\s+/g,' ').trim();
+const isScoreableExamRow=(row:any)=>{
+  const board=String(row?.board||'').toLowerCase();
+  if(!['jamb','waec','neco','nabteb'].includes(board)||String(row?.source||'').indexOf('storage:')!==0||String(row?.question_type||'mcq').toLowerCase()!=='mcq')return false;
+  const expected=normalizeAnswer(row?.correct_answer);
+  const options=Array.isArray(row?.options)?row.options:[];
+  if(!expected||options.length<2)return false;
+  const matches=options.filter((option:any)=>{
+    if(normalizeAnswer(option)===expected)return true;
+    if(option&&typeof option==='object'){
+      const record=option as Record<string,unknown>;
+      return ['id','value','label','text'].some(key=>normalizeAnswer(record[key])===expected);
+    }
+    return false;
+  });
+  return matches.length===1;
+};
 const isVerifiedExamSource=(source:unknown)=>/^(?:(WAEC|JAMB|NECO|NABTEB)\s+[0-9]{4}|SOURCE_PAPER:(WAEC|JAMB|NECO|NABTEB))$/i.test(String(source||'').trim());
 const inferPastQuestionTopic=(subject:unknown,tags:unknown,text:unknown)=>{
   const subjectName=String(subject||'').trim();
@@ -384,8 +400,7 @@ if(request.method==='POST'&&path==='/jamb-cbt/session'){
     const pool:any[]=[];const seen=new Set<string>();
     for(let index=0;index<windows&&pool.length<Math.max(item.count*2,item.count+10);index++){
       const offset=available<=windowSize?0:Math.floor(Math.random()*Math.max(1,available-windowSize+1));
-      const{data,error}=await admin.from('past_questions').select(columns)
-        .eq('is_active',true)
+      const{data,error}=await admin.from('learner_past_questions').select(columns)
         .ilike('board','jamb')
         .eq('subject_id',item.subjectId)
         .eq('question_type','mcq')
@@ -593,7 +608,7 @@ if(request.method==='POST'&&gradeJambCbtMatch){
   }}},200,origin);
 }
 
-if(request.method==='GET'&&path==='/past-questions'){const page=asInt(url.searchParams.get('page'),1,1,10000),limit=asInt(url.searchParams.get('limit'),20,1,100),board=url.searchParams.get('board'),subjectId=url.searchParams.get('subjectId'),year=url.searchParams.get('year'),questionType=String(url.searchParams.get('questionType')||'').toLowerCase(),from=(page-1)*limit;let query=admin.from('past_questions').select('id,board,year,subject_id,topic_id,question_type,question_text,question_image_url,options,difficulty,marks,source,tags,correct_answer',{count:'exact'}).eq('is_active',true).order('year',{ascending:false}).range(from,from+limit-1);if(board){query=query.eq('board',String(board).toLowerCase());if(['jamb','waec','neco','nabteb'].includes(String(board).toLowerCase()))query=query.like('source','storage:%')}if(subjectId)query=query.eq('subject_id',subjectId);if(year)query=query.eq('year',Number(year));if(['mcq','essay'].includes(questionType))query=query.eq('question_type',questionType);const{data,error,count}=await query;if(error)throw error;const questions=(data||[]).map((row:any)=>{const{correct_answer,...safe}=row;return{...safe,hasAnswer:Boolean(scalarAnswer(correct_answer)),storageBacked:String(row.source||'').startsWith('storage:')}});const total=count||0;return json({data:{questions},pagination:{page,limit,total,totalPages:Math.ceil(total/limit)}},200,origin)}
+if(request.method==='GET'&&path==='/past-questions'){const page=asInt(url.searchParams.get('page'),1,1,10000),limit=asInt(url.searchParams.get('limit'),20,1,100),board=url.searchParams.get('board'),subjectId=url.searchParams.get('subjectId'),year=url.searchParams.get('year'),questionType=String(url.searchParams.get('questionType')||'').toLowerCase(),from=(page-1)*limit;let query=admin.from('learner_past_questions').select('id,board,year,subject_id,topic_id,question_type,question_text,question_image_url,options,difficulty,marks,source,tags,correct_answer',{count:'exact'}).order('year',{ascending:false}).range(from,from+limit-1);if(board){query=query.eq('board',String(board).toLowerCase());if(['jamb','waec','neco','nabteb'].includes(String(board).toLowerCase()))query=query.like('source','storage:%')}if(subjectId)query=query.eq('subject_id',subjectId);if(year)query=query.eq('year',Number(year));if(['mcq','essay'].includes(questionType))query=query.eq('question_type',questionType);const{data,error,count}=await query;if(error)throw error;const questions=(data||[]).map((row:any)=>{const{correct_answer,...safe}=row;return{...safe,hasAnswer:Boolean(scalarAnswer(correct_answer)),storageBacked:String(row.source||'').startsWith('storage:')}});const total=count||0;return json({data:{questions},pagination:{page,limit,total,totalPages:Math.ceil(total/limit)}},200,origin)}
 if(request.method==='GET'&&path==='/past-question-availability'){const{data,error}=await admin.rpc('get_past_question_availability');if(error)throw error;return new Response(JSON.stringify({data:{availability:data||{}}}),{status:200,headers:{'Content-Type':'application/json','Access-Control-Allow-Origin':origin,'Access-Control-Allow-Headers':'authorization, apikey, content-type, x-client-info','Access-Control-Allow-Methods':'GET, POST, PATCH, DELETE, OPTIONS','Cache-Control':'public, max-age=300, stale-while-revalidate=900','Vary':'Origin'}})}
 
 if(request.method==='POST'&&path==='/past-questions/session'){
@@ -611,7 +626,7 @@ if(request.method==='POST'&&path==='/past-questions/session'){
     if(year)q=q.eq('year',year);
     return q;
   };
-  const countResult=await applyFilters(admin.from('past_questions').select('id',{count:'exact',head:true}));
+  const countResult=await applyFilters(admin.from('learner_past_questions').select('id',{count:'exact',head:true}));
   if(countResult.error)throw countResult.error;
   const total=countResult.count||0;
   if(!total)return json({error:{message:'No graded multiple-choice questions are available for this selection yet'}},404,origin);
@@ -621,7 +636,7 @@ if(request.method==='POST'&&path==='/past-questions/session'){
   const windows=total<=windowSize?1:Math.min(5,Math.ceil((requested*5)/windowSize));
   for(let i=0;i<windows;i++){
     const offset=total<=windowSize?0:Math.floor(Math.random()*Math.max(1,total-windowSize+1));
-    const query=applyFilters(admin.from('past_questions').select(columns)).range(offset,Math.min(total-1,offset+windowSize-1));
+    const query=applyFilters(admin.from('learner_past_questions').select(columns)).range(offset,Math.min(total-1,offset+windowSize-1));
     const{data,error}=await query;if(error)throw error;
     for(const row of data||[]){
       if(seen.has(row.id))continue;
@@ -643,10 +658,10 @@ if(request.method==='POST'&&path==='/past-questions/grade'){
   const ids=[...new Set(answers.map((item:any)=>String(item?.questionId||'')).filter((id:string)=>/^[0-9a-f-]{36}$/i.test(id)))];
   if(!ids.length)return json({error:{message:'Valid question IDs are required'}},400,origin);
   const{data,error}=await admin.from('past_questions')
-    .select('id,board,year,subject_id,topic_id,tags,question_text,correct_answer,explanation,is_active,source,subject:subjects(name),topic:topics(name)')
+    .select('id,board,year,subject_id,topic_id,tags,question_type,question_text,options,correct_answer,explanation,is_active,source,subject:subjects(name),topic:topics(name)')
     .in('id',ids).eq('is_active',true);
   if(error)throw error;
-  const rows=(data||[]).filter((row:any)=>String(row.board||'').toLowerCase()!=='jamb'||String(row.source||'').startsWith('storage:'));
+  const rows=(data||[]).filter(isScoreableExamRow);
   const byId=new Map(rows.map((row:any)=>[String(row.id),row]));
   let correct=0,incorrect=0,unanswered=0;
   const analyticsAnswers:any[]=[];
@@ -816,9 +831,10 @@ if(request.method==='POST'&&explainPastQuestionMatch){
   if(!(attemptRows||[]).length)return json({error:{message:'Submit this question in a graded CBT before requesting an explanation'}},403,origin);
 
   const{data:question,error:questionError}=await admin.from('past_questions')
-    .select('id,board,year,subject_id,question_text,options,correct_answer,explanation,explanation_source,is_active,subject:subjects(name)')
+    .select('id,board,year,subject_id,question_type,question_text,options,correct_answer,explanation,explanation_source,is_active,source,subject:subjects(name)')
     .eq('id',questionId).eq('is_active',true).maybeSingle();
   if(questionError||!question)return json({error:{message:'Question not found'}},404,origin);
+  if(!isScoreableExamRow(question))return json({error:{message:'This historical question is not in the verified scoreable archive'}},409,origin);
   const correct=scalarAnswer(question.correct_answer);
   if(!correct)return json({error:{message:'This question does not have a verified answer key yet'}},409,origin);
 
