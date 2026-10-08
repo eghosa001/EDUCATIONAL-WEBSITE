@@ -17,6 +17,7 @@ const availabilityCacheKey = (kind: 'historical' | 'verified', token?: string | 
 };
 
 const selectAvailability = (payload: any): ExamBoardAvailabilityMap => payload?.data?.availability || {};
+const ttlFor = (force?: boolean) => force ? -1 : AVAILABILITY_TTL_MS;
 
 export const fetchExamBoardAvailability = async (
   token?: string | null,
@@ -30,7 +31,7 @@ export const fetchExamBoardAvailability = async (
     },
     {
       cacheKey: availabilityCacheKey('historical', token),
-      ttlMs: options.force ? 0 : AVAILABILITY_TTL_MS,
+      ttlMs: ttlFor(options.force),
       signal: options.signal,
       retries: 2,
       allowStaleOnError: true,
@@ -51,7 +52,7 @@ export const fetchVerifiedPracticeAvailability = async (
     },
     {
       cacheKey: availabilityCacheKey('verified', token),
-      ttlMs: options.force ? 0 : AVAILABILITY_TTL_MS,
+      ttlMs: ttlFor(options.force),
       signal: options.signal,
       retries: 2,
       allowStaleOnError: true,
