@@ -1,7 +1,10 @@
 -- Content count and quality coverage gate for learner-facing banks.
 -- This does not inflate question counts. It measures readiness and exposes deficits so thin banks cannot look complete.
 
-create or replace view public.learning_content_coverage
+drop function if exists public.get_learning_content_coverage();
+drop view if exists public.learning_content_coverage;
+
+create view public.learning_content_coverage
 with (security_invoker = true) as
 with learner_past as (
   select
@@ -115,7 +118,7 @@ from combined;
 revoke all on table public.learning_content_coverage from public, anon, authenticated;
 grant select on table public.learning_content_coverage to service_role;
 
-create or replace function public.get_learning_content_coverage()
+create function public.get_learning_content_coverage()
 returns jsonb
 language sql
 stable
