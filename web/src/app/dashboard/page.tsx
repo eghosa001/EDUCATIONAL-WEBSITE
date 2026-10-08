@@ -20,7 +20,6 @@ interface CourseItem {
   id: string;
   courseId: string;
   courseTitle: string;
-  courseThumbnail?: string;
   progressPercentage: number;
   completedAt?: string | null;
   lastAccessedAt: string;
@@ -29,42 +28,17 @@ interface CourseItem {
 }
 
 const priorityActions = [
-  {
-    label: 'Start focused session',
-    href: '/dashboard/exams',
-    eyebrow: 'Choose exam body',
-    description: 'Pick WAEC, NECO, NABTEB or class practice before selecting subjects and mode.',
-  },
-  {
-    label: 'Continue last CBT',
-    href: '/dashboard/past-questions/analytics',
-    eyebrow: 'Return quickly',
-    description: 'Resume from recent exam work and see what still needs correction.',
-  },
-  {
-    label: 'Review wrong answers',
-    href: '/dashboard/past-questions/analytics',
-    eyebrow: 'Fix weak areas',
-    description: 'Use corrections and explanations after each scored session.',
-  },
-  {
-    label: 'Open flashcards',
-    href: '/dashboard/flashcards',
-    eyebrow: 'Fast revision',
-    description: 'Revise prebuilt cards by subject without waiting for generation.',
-  },
-  {
-    label: 'JAMB CBT centre',
-    href: '/dashboard/jamb',
-    eyebrow: 'UTME path',
-    description: 'Keep JAMB past questions, verified practice and four-subject CBT separate.',
-  },
+  { label: 'Start focused session', href: '/dashboard/exams', eyebrow: 'Choose exam body', description: 'Pick WAEC, NECO, NABTEB or class practice before selecting subjects and mode.' },
+  { label: 'Continue last CBT', href: '/dashboard/past-questions/analytics', eyebrow: 'Return quickly', description: 'Resume from recent exam work and see what still needs correction.' },
+  { label: 'Review wrong answers', href: '/dashboard/past-questions/analytics', eyebrow: 'Fix weak areas', description: 'Use corrections and explanations after each scored session.' },
+  { label: 'Open flashcards', href: '/dashboard/flashcards', eyebrow: 'Fast revision', description: 'Revise prebuilt cards by subject without waiting for generation.' },
 ];
 
-const returnPlan = [
-  { title: 'Daily practice', copy: 'Complete one small session instead of opening every feature at once.' },
-  { title: 'Weak areas', copy: 'Use recent scores to decide the next subject, topic or flashcard set.' },
-  { title: 'Saved revision', copy: 'Return to the learning mode that helped most: CBT, lessons or cards.' },
+const retentionCards = [
+  { title: 'Daily practice', copy: 'Complete one small session instead of opening every feature at once.', href: '/dashboard/exams' },
+  { title: 'Weak-topic review', copy: 'Use recent scores to decide the next subject, topic or flashcard set.', href: '/dashboard/past-questions/analytics' },
+  { title: 'Recently viewed', copy: 'Return to the last course, CBT, subject or revision card set quickly.', href: '/dashboard/courses' },
+  { title: 'Saved questions', copy: 'Keep difficult questions together so revision is not scattered.', href: '/dashboard/library' },
 ];
 
 export default function DashboardPage() {
@@ -76,20 +50,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (isLoading) return;
-
     if (!isAuthenticated || !token) {
       setLoading(false);
       router.replace('/login');
       return;
     }
-
     let cancelled = false;
     const loadData = async () => {
       try {
-        const [overviewRes, coursesRes] = await Promise.all([
-          fetchStudentOverview(token),
-          fetchMyCourses(token),
-        ]);
+        const [overviewRes, coursesRes] = await Promise.all([fetchStudentOverview(token), fetchMyCourses(token)]);
         if (cancelled) return;
         setOverview(overviewRes?.overview || null);
         setRecentCourses(Array.isArray(coursesRes?.courses) ? coursesRes.courses.slice(0, 3) : []);
@@ -99,7 +68,6 @@ export default function DashboardPage() {
         if (!cancelled) setLoading(false);
       }
     };
-
     loadData();
     return () => { cancelled = true; };
   }, [token, isAuthenticated, isLoading, router]);
@@ -110,8 +78,7 @@ export default function DashboardPage() {
     const safeSeconds = Number.isFinite(seconds) && seconds >= 0 ? seconds : 0;
     const h = Math.floor(safeSeconds / 3600);
     const m = Math.floor((safeSeconds % 3600) / 60);
-    if (h > 0) return `${h}h ${m}m`;
-    return `${m}m`;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
   };
 
   const stats = [
@@ -121,9 +88,6 @@ export default function DashboardPage() {
     { label: 'Study Time', value: loading ? '—' : formatStudyTime(overview?.totalStudyTimeSeconds ?? 0) },
   ];
 
-  const averageCourseProgress = Math.max(0, Math.min(100, overview?.averageCourseProgress ?? 0));
-  const averageExamScore = Math.max(0, Math.min(100, overview?.averageExamScore ?? 0));
-
   return (
     <div className="space-y-6">
       <section className="overflow-hidden rounded-3xl bg-[#151A3A] p-6 text-white shadow-sm sm:p-8">
@@ -132,11 +96,11 @@ export default function DashboardPage() {
             <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-brand-300">Student command centre</p>
             <h1 className="mt-3 text-3xl font-extrabold sm:text-4xl">Welcome back, {user?.firstName || 'Student'}.</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-              Choose one clear next action: continue learning, start CBT, revise cards or review weak areas from your last scored session.
+              Your Next best step is always visible: continue CBT, revise flashcards, review wrong answers or return to weak topics.
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <Link href="/dashboard/exams" className="inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#151A3A] transition hover:bg-brand-50">Start focused session</Link>
-              <Link href="/dashboard/jamb" className="inline-flex items-center justify-center rounded-xl border border-white/20 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10">Open JAMB centre</Link>
+              <Link href="/dashboard/jamb" className="inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#151A3A] transition hover:bg-brand-50">Open JAMB centre</Link>
+              <Link href="/dashboard/flashcards" className="inline-flex items-center justify-center rounded-xl border border-white/20 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10">Open flashcards</Link>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 rounded-2xl bg-white/10 p-4 backdrop-blur-sm sm:grid-cols-4 lg:grid-cols-2">
@@ -172,13 +136,13 @@ export default function DashboardPage() {
 
         <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-[#1b2045] sm:p-6">
           <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">Return plan</p>
-          <h2 className="mt-1 text-xl font-extrabold text-[#151A3A] dark:text-white">Keep tomorrow simple</h2>
+          <h2 className="mt-1 text-xl font-extrabold text-[#151A3A] dark:text-white">Make tomorrow easier</h2>
           <div className="mt-4 space-y-3">
-            {returnPlan.map((item) => (
-              <div key={item.title} className="rounded-2xl bg-brand-50 p-4 dark:bg-[#151A3A]">
+            {retentionCards.map((item) => (
+              <Link key={item.title} href={item.href} className="block rounded-2xl bg-brand-50 p-4 transition hover:bg-brand-100 dark:bg-[#151A3A] dark:hover:bg-[#202750]">
                 <h3 className="font-bold text-[#151A3A] dark:text-white">{item.title}</h3>
                 <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.copy}</p>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -193,9 +157,7 @@ export default function DashboardPage() {
           <Link href="/dashboard/courses" className="text-sm font-bold text-brand-700 hover:text-brand-800 dark:text-brand-300">View all</Link>
         </div>
         {loading ? (
-          <div className="space-y-3 py-2">
-            {[0, 1, 2].map((item) => <div key={item} className="h-16 animate-pulse rounded-lg bg-stone-100 dark:bg-slate-800" />)}
-          </div>
+          <div className="space-y-3 py-2">{[0, 1, 2].map((item) => <div key={item} className="h-16 animate-pulse rounded-lg bg-stone-100 dark:bg-slate-800" />)}</div>
         ) : recentCourses.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-stone-300 p-8 text-center dark:border-slate-700">
             <p className="text-sm text-slate-500 dark:text-slate-400">No courses enrolled yet.</p>
@@ -213,28 +175,13 @@ export default function DashboardPage() {
                     <p className="text-xs text-slate-500 dark:text-slate-400">{course.completedLessons ?? 0}/{course.totalLessons ?? 0} lessons</p>
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-stone-100 dark:bg-slate-700"><div className="h-full rounded-full bg-brand-600 transition-all" style={{ width: `${progress}%` }} /></div>
                   </div>
-                  <span className={`text-sm font-bold ${progress >= 100 ? 'text-emerald-600' : 'text-brand-700 dark:text-brand-300'}`}>{progress}%</span>
+                  <span className="text-sm font-bold text-brand-700 dark:text-brand-300">{progress}%</span>
                 </Link>
               );
             })}
           </div>
         )}
       </section>
-
-      {(averageExamScore > 0 || averageCourseProgress > 0) && (
-        <section className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl border border-brand-100 bg-brand-50 p-5 dark:border-brand-900 dark:bg-brand-950/20">
-            <p className="text-3xl font-extrabold text-[#151A3A] dark:text-white">{averageCourseProgress}%</p>
-            <p className="mt-1 text-sm font-semibold text-brand-700 dark:text-brand-300">Average course progress</p>
-          </div>
-          {averageExamScore > 0 && (
-            <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-950/20">
-              <p className="text-3xl font-extrabold text-emerald-700 dark:text-emerald-300">{averageExamScore}%</p>
-              <p className="mt-1 text-sm font-semibold text-emerald-700 dark:text-emerald-300">Average exam score</p>
-            </div>
-          )}
-        </section>
-      )}
     </div>
   );
 }
