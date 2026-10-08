@@ -63,7 +63,7 @@ export type CachedJsonOptions<T> = ApiFetchOptions & {
 const memoryCache = new Map<string, RequestCacheRecord<unknown>>();
 const inFlightJson = new Map<string, Promise<unknown>>();
 
-const sleep = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise(resolve => globalThis.setTimeout(resolve, ms));
 
 const isBrowser = () => typeof window !== 'undefined';
 
@@ -75,7 +75,7 @@ const readCache = <T>(key: string, storage: 'session' | 'memory', ttlMs?: number
         ? JSON.parse(window.sessionStorage.getItem(key) || 'null') as RequestCacheRecord<T> | null
         : null;
     if (!record?.savedAt) return null;
-    if (ttlMs && Date.now() - Number(record.savedAt) > ttlMs) return null;
+    if (typeof ttlMs === 'number' && Date.now() - Number(record.savedAt) > ttlMs) return null;
     return record.data ?? null;
   } catch {
     return null;
@@ -147,7 +147,7 @@ export const apiFetch = async (
     const controller = new AbortController();
     let didTimeout = false;
     const timeout = timeoutMs > 0
-      ? window.setTimeout(() => { didTimeout = true; controller.abort(); }, timeoutMs)
+      ? globalThis.setTimeout(() => { didTimeout = true; controller.abort(); }, timeoutMs)
       : null;
     const abortFromParent = () => controller.abort();
     if (options.signal) {
@@ -164,7 +164,7 @@ export const apiFetch = async (
       const shouldRetry = didTimeout || (!isAbortError(error) && attempt < retries);
       if (!shouldRetry) throw error;
     } finally {
-      if (timeout) window.clearTimeout(timeout);
+      if (timeout) globalThis.clearTimeout(timeout);
       if (options.signal) options.signal.removeEventListener('abort', abortFromParent);
     }
 
