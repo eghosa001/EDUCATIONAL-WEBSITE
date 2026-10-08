@@ -51,7 +51,13 @@ const nextConfig = {
         ],
       },
       {
-        source: '/:all*(svg|jpg|jpeg|png|gif|webp|avif|ico|jfif)',
+        source: '/logos/:path*',
+        headers: [
+          { key: 'Cache-Control', value: oneYearImmutable },
+        ],
+      },
+      {
+        source: '/favicon.ico',
         headers: [
           { key: 'Cache-Control', value: oneYearImmutable },
         ],
