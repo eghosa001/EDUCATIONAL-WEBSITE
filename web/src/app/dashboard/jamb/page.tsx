@@ -4,14 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BarChart3, BookOpenCheck, Clock3, GraduationCap, Loader2, Sparkles, Trophy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchExamBoardAvailability, type ExamBoardAvailabilityMap } from '@/services/api/examBoardService';
-import { learnerApiConfig, getLearnerApiHeaders, handleApiResponse } from '@/services/api/config';
-
-async function fetchVerifiedAvailability(token?: string | null): Promise<ExamBoardAvailabilityMap> {
-  const response = await fetch(`${learnerApiConfig.baseUrl}/verified-practice-availability`, { headers: getLearnerApiHeaders(token ?? undefined), credentials: learnerApiConfig.credentials });
-  const payload = await handleApiResponse<any>(response);
-  return payload?.data?.availability || {};
-}
+import { fetchExamBoardAvailability, fetchVerifiedPracticeAvailability, type ExamBoardAvailabilityMap } from '@/services/api/examBoardService';
 
 const cbtSteps = [
   { title: 'Subject combination', copy: 'Pick exactly four subjects so the session matches JAMB structure.' },
@@ -28,12 +21,25 @@ export default function JambHubPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    const controller = new AbortController();
     let cancelled = false;
-    void Promise.all([fetchExamBoardAvailability(token), fetchVerifiedAvailability(token)])
-      .then(([historical, verified]) => { if (!cancelled) { setAvailability(historical); setVerifiedAvailability(verified); } })
-      .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : 'Unable to load JAMB question availability'); })
+    setLoading(true);
+    setError('');
+
+    void Promise.allSettled([
+      fetchExamBoardAvailability(token, { signal: controller.signal }),
+      fetchVerifiedPracticeAvailability(token, { signal: controller.signal }),
+    ])
+      .then(([historical, verified]) => {
+        if (cancelled) return;
+        const failed = [historical, verified].filter(result => result.status === 'rejected').length;
+        if (historical.status === 'fulfilled') setAvailability(historical.value);
+        if (verified.status === 'fulfilled') setVerifiedAvailability(verified.value);
+        if (failed === 2) setError('Question availability is taking longer than expected. Cached data will be used when available.');
+      })
       .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+
+    return () => { cancelled = true; controller.abort(); };
   }, [token]);
 
   const jamb = availability.jamb;
@@ -47,7 +53,7 @@ export default function JambHubPage() {
       </div>
     </header>
 
-    {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+    {error && <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{error}</div>}
 
     <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-[#1b2045] sm:p-6">
       <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">JAMB 4-step CBT setup</p>

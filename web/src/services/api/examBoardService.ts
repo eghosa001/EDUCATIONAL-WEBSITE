@@ -1,4 +1,4 @@
-import { learnerApiConfig, getLearnerApiHeaders, handleApiResponse } from '@/services/api/config';
+import { fetchCachedJson, getLearnerApiHeaders, learnerApiConfig } from '@/services/api/config';
 
 export interface ExamBoardAvailability {
   subjectIds: string[];
@@ -9,56 +9,54 @@ export interface ExamBoardAvailability {
 
 export type ExamBoardAvailabilityMap = Record<string, ExamBoardAvailability>;
 
-// Availability cache v2 includes per-subject verified source capacities.
-const CACHE_KEY = 'the-guide:exam-board-availability:v2';
-const CACHE_TTL_MS = 5 * 60 * 1000;
-let inFlight: Promise<ExamBoardAvailabilityMap> | null = null;
+const AVAILABILITY_TTL_MS = 5 * 60 * 1000;
 
-const readCache = (): ExamBoardAvailabilityMap | null => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = window.sessionStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed?.savedAt || Date.now() - Number(parsed.savedAt) > CACHE_TTL_MS) return null;
-    return parsed.data || null;
-  } catch {
-    return null;
-  }
+const availabilityCacheKey = (kind: 'historical' | 'verified', token?: string | null) => {
+  const authBucket = token ? 'auth' : 'anon';
+  return `the-guide:${kind}-exam-board-availability:v3:${authBucket}`;
 };
 
-const writeCache = (data: ExamBoardAvailabilityMap) => {
-  if (typeof window === 'undefined') return;
-  try {
-    window.sessionStorage.setItem(CACHE_KEY, JSON.stringify({ savedAt: Date.now(), data }));
-  } catch {
-    // Session cache is only a performance optimization.
-  }
-};
+const selectAvailability = (payload: any): ExamBoardAvailabilityMap => payload?.data?.availability || {};
+const ttlFor = (force?: boolean) => force ? -1 : AVAILABILITY_TTL_MS;
 
 export const fetchExamBoardAvailability = async (
   token?: string | null,
-  options: { force?: boolean } = {},
+  options: { force?: boolean; signal?: AbortSignal } = {},
 ): Promise<ExamBoardAvailabilityMap> => {
-  if (!options.force) {
-    const cached = readCache();
-    if (cached) return cached;
-    if (inFlight) return inFlight;
-  }
+  return fetchCachedJson<ExamBoardAvailabilityMap>(
+    `${learnerApiConfig.baseUrl}/past-question-availability`,
+    {
+      headers: getLearnerApiHeaders(token ?? undefined),
+      credentials: learnerApiConfig.credentials,
+    },
+    {
+      cacheKey: availabilityCacheKey('historical', token),
+      ttlMs: ttlFor(options.force),
+      signal: options.signal,
+      retries: 2,
+      allowStaleOnError: true,
+      select: selectAvailability,
+    },
+  );
+};
 
-  inFlight = fetch(`${learnerApiConfig.baseUrl}/past-question-availability`, {
-    headers: getLearnerApiHeaders(token ?? undefined),
-    credentials: learnerApiConfig.credentials,
-  })
-    .then(handleApiResponse<{ data: { availability: ExamBoardAvailabilityMap } }>)
-    .then((payload) => {
-      const data = payload.data?.availability || {};
-      writeCache(data);
-      return data;
-    })
-    .finally(() => {
-      inFlight = null;
-    });
-
-  return inFlight;
+export const fetchVerifiedPracticeAvailability = async (
+  token?: string | null,
+  options: { force?: boolean; signal?: AbortSignal } = {},
+): Promise<ExamBoardAvailabilityMap> => {
+  return fetchCachedJson<ExamBoardAvailabilityMap>(
+    `${learnerApiConfig.baseUrl}/verified-practice-availability`,
+    {
+      headers: getLearnerApiHeaders(token ?? undefined),
+      credentials: learnerApiConfig.credentials,
+    },
+    {
+      cacheKey: availabilityCacheKey('verified', token),
+      ttlMs: ttlFor(options.force),
+      signal: options.signal,
+      retries: 2,
+      allowStaleOnError: true,
+      select: selectAvailability,
+    },
+  );
 };
