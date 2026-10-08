@@ -53,7 +53,7 @@ export type ApiFetchOptions = {
 };
 
 export type CachedJsonOptions<T> = ApiFetchOptions & {
-  cacheKey: string;
+  cacheKey?: string;
   ttlMs?: number;
   allowStaleOnError?: boolean;
   cacheStorage?: 'session' | 'memory';
@@ -103,6 +103,12 @@ const writeCache = <T>(key: string, storage: 'session' | 'memory', data: T) => {
   } catch {
     // Cache failures must never break navigation.
   }
+};
+
+const implicitCacheKey = (input: RequestInfo | URL, init: RequestInit = {}) => {
+  const method = String(init.method || 'GET').toUpperCase();
+  const body = typeof init.body === 'string' ? init.body.slice(0, 120) : '';
+  return `the-guide:api:${method}:${String(input)}:${body}`;
 };
 
 export const isTransientApiStatus = (status?: number) => Boolean(status && TRANSIENT_STATUS_CODES.has(status));
@@ -190,22 +196,23 @@ export const fetchCachedJson = async <T>(
 ): Promise<T> => {
   const storage = options.cacheStorage || 'session';
   const ttlMs = options.ttlMs ?? 5 * 60 * 1000;
-  const cached = readCache<T>(options.cacheKey, storage, ttlMs);
+  const cacheKey = options.cacheKey || implicitCacheKey(input, init);
+  const cached = readCache<T>(cacheKey, storage, ttlMs);
   if (cached) return cached;
 
-  const inFlightKey = `${options.cacheKey}:${String(input)}`;
+  const inFlightKey = `${cacheKey}:${String(input)}`;
   const existing = inFlightJson.get(inFlightKey) as Promise<T> | undefined;
   if (existing) return existing;
 
   const promise = fetchApiJson<any>(input, init, options)
     .then(payload => {
       const data = options.select ? options.select(payload) : payload;
-      writeCache(options.cacheKey, storage, data);
+      writeCache(cacheKey, storage, data);
       return data;
     })
     .catch(error => {
       if (options.allowStaleOnError !== false) {
-        const stale = readStaleCache<T>(options.cacheKey, storage);
+        const stale = readStaleCache<T>(cacheKey, storage);
         if (stale) return stale;
       }
       throw error;
