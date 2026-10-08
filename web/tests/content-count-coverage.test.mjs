@@ -10,8 +10,10 @@ const migration = fs.readFileSync(
   'utf8',
 );
 
-test('content coverage gate measures every learner-facing bank instead of trusting raw counts', () => {
-  assert.match(migration, /create or replace view public\.learning_content_coverage/);
+test('content coverage gate replaces stale views and measures every learner-facing bank', () => {
+  assert.match(migration, /drop function if exists public\.get_learning_content_coverage\(\)/);
+  assert.match(migration, /drop view if exists public\.learning_content_coverage/);
+  assert.match(migration, /create view public\.learning_content_coverage/);
   assert.match(migration, /learner_past_questions/);
   assert.match(migration, /verified_practice_questions/);
   assert.match(migration, /curriculum_questions/);
@@ -40,7 +42,7 @@ test('coverage gate checks active and verified question counts, not just importe
 test('coverage report is service-only and returns deficit details for the API layer', () => {
   assert.match(migration, /revoke all on table public\.learning_content_coverage from public, anon, authenticated/);
   assert.match(migration, /grant select on table public\.learning_content_coverage to service_role/);
-  assert.match(migration, /create or replace function public\.get_learning_content_coverage\(\)/);
+  assert.match(migration, /create function public\.get_learning_content_coverage\(\)/);
   assert.match(migration, /security definer/);
   assert.match(migration, /grant execute on function public\.get_learning_content_coverage\(\) to service_role/);
   assert.match(migration, /'deficitTo9Plus'/);
