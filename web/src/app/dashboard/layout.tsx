@@ -8,7 +8,18 @@ import BrandLogo from '@/components/BrandLogo';
 import { Home, BookOpen, ClipboardCheck as ClipboardDocumentCheckIcon, MessageSquare as ChatBubbleLeftRightIcon, Bookmark as LibraryBookmarkIcon, Lightbulb as LightBulbIcon, Users as UserGroupIcon, Trophy, Bell, FileText as DocumentTextIcon, LogOut as ArrowLeftStartOnRectangleIcon, Menu as Bars3Icon, X as XMarkIcon, Settings as Cog6ToothIcon, GraduationCap, Library, CreditCard } from 'lucide-react';
 
 const studentNavItems = [
-  { label: 'Dashboard', href: '/dashboard', icon: Home }, { label: 'Courses', href: '/dashboard/courses', icon: BookOpen }, { label: 'Curriculum', href: '/dashboard/curriculum', icon: GraduationCap }, { label: 'Exams', href: '/dashboard/exams', icon: ClipboardDocumentCheckIcon }, { label: 'JAMB', href: '/dashboard/jamb', icon: LibraryBookmarkIcon }, { label: 'Library', href: '/dashboard/library', icon: Library }, { label: 'AI Tutor', href: '/dashboard/ai/tutor', icon: LightBulbIcon }, { label: 'Flashcards', href: '/dashboard/flashcards', icon: BookOpen }, { label: 'Plans', href: '/dashboard/subscriptions/plans', icon: CreditCard }, { label: 'Community', href: '/dashboard/community', icon: ChatBubbleLeftRightIcon }, { label: 'Progress', href: '/dashboard/progress', icon: Trophy }, { label: 'Reports', href: '/dashboard/reports', icon: DocumentTextIcon },
+  { label: 'Dashboard', href: '/dashboard', icon: Home },
+  { label: 'JAMB', href: '/dashboard/jamb', icon: LibraryBookmarkIcon },
+  { label: 'School Exams', href: '/dashboard/exams', icon: ClipboardDocumentCheckIcon },
+  { label: 'Flashcards', href: '/dashboard/flashcards', icon: BookOpen },
+  { label: 'Courses', href: '/dashboard/courses', icon: BookOpen },
+  { label: 'Curriculum', href: '/dashboard/curriculum', icon: GraduationCap },
+  { label: 'Progress', href: '/dashboard/progress', icon: Trophy },
+  { label: 'AI Tutor', href: '/dashboard/ai/tutor', icon: LightBulbIcon },
+  { label: 'Library', href: '/dashboard/library', icon: Library },
+  { label: 'Plans', href: '/dashboard/subscriptions/plans', icon: CreditCard },
+  { label: 'Community', href: '/dashboard/community', icon: ChatBubbleLeftRightIcon },
+  { label: 'Reports', href: '/dashboard/reports', icon: DocumentTextIcon },
 ];
 const teacherNavItems = [
   { label: 'Dashboard', href: '/dashboard', icon: Home }, { label: 'My Courses', href: '/dashboard/courses', icon: BookOpen }, { label: 'Assignments', href: '/dashboard/assignments', icon: ClipboardDocumentCheckIcon }, { label: 'Students', href: '/dashboard/teacher', icon: UserGroupIcon }, { label: 'Earnings', href: '/dashboard/teacher', icon: Trophy }, { label: 'Reports', href: '/dashboard/teacher/report', icon: DocumentTextIcon },
