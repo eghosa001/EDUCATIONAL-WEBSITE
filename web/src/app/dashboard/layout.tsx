@@ -54,9 +54,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (!isAuthenticated) return;
     const prefetch = () => dashboardPrefetchRoutes.forEach(href => router.prefetch(href));
-    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-      const id = window.requestIdleCallback(prefetch, { timeout: 2000 });
-      return () => window.cancelIdleCallback(id);
+    const idleWindow = typeof window !== 'undefined' ? window as typeof window & { requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number; cancelIdleCallback?: (id: number) => void } : null;
+    if (idleWindow?.requestIdleCallback) {
+      const id = idleWindow.requestIdleCallback(prefetch, { timeout: 2000 });
+      return () => idleWindow.cancelIdleCallback?.(id);
     }
     const id = window.setTimeout(prefetch, 250);
     return () => window.clearTimeout(id);
