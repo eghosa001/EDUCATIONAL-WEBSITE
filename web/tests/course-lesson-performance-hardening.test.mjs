@@ -5,7 +5,9 @@ import path from 'node:path';
 
 const repoRoot = path.resolve(process.cwd(), '..');
 const webRoot = path.join(repoRoot, 'web');
+const migrationPath = path.join(repoRoot, 'supabase/migrations/20261008191500_course_lesson_hotpath_indexes.sql');
 const read = (relativePath) => fs.readFileSync(path.join(webRoot, relativePath), 'utf8');
+const readMigration = () => fs.readFileSync(migrationPath, 'utf8');
 
 describe('course and lesson performance hardening', () => {
   it('keeps the course detail route on metadata-only lesson queries', () => {
@@ -34,5 +36,14 @@ describe('course and lesson performance hardening', () => {
     assert.doesNotMatch(courseError, /<div>Error<\/div>/);
     assert.match(courseError, /reset\(\)/);
     assert.match(courseError, /Back to courses/);
+  });
+
+  it('adds database indexes for the exact course and lesson hot paths', () => {
+    const sql = readMigration();
+    assert.match(sql, /courses_status_slug_hotpath_idx/);
+    assert.match(sql, /lessons_course_published_order_hotpath_idx/);
+    assert.match(sql, /lessons_course_slug_hotpath_idx/);
+    assert.match(sql, /lesson_resources_lesson_created_hotpath_idx/);
+    assert.match(sql, /questions_topic_class_subject_active_hotpath_idx/);
   });
 });
