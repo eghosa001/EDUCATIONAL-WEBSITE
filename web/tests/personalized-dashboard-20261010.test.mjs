@@ -89,3 +89,20 @@ test('weak-topic evidence and due review counts are user-scoped and bounded', ()
   assert.match(snippet, /topic\?\.class_id && topic\?\.subject_id/);
   assert.match(snippet, /partialFailure/);
 });
+
+test('database overview aggregates full study history in one RLS-safe RPC', () => {
+  const service = read('../src/services/api/progressService.ts');
+  const snippet = service.slice(service.indexOf('export const fetchStudentOverview'), service.indexOf('export const fetchLearningInsights'));
+  assert.match(snippet, /\.rpc\('student_dashboard_overview'\)/);
+  assert.doesNotMatch(snippet, /\.from\('study_sessions'\)/);
+  assert.doesNotMatch(snippet, /\.from\('exam_attempts'\)/);
+  assert.match(snippet, /Student overview response was malformed/);
+  const migration = read('../../supabase/migrations/20261010001000_student_dashboard_overview_rpc.sql');
+  assert.match(migration, /SECURITY INVOKER/i);
+  assert.match(migration, /auth\.uid\(\)/);
+  assert.match(migration, /REVOKE ALL ON FUNCTION public\.student_dashboard_overview\(\) FROM PUBLIC, anon/i);
+  assert.match(migration, /GRANT EXECUTE ON FUNCTION public\.student_dashboard_overview\(\) TO authenticated/i);
+  assert.match(migration, /count\(DISTINCT lp\.lesson_id\)/);
+  assert.match(migration, /e\.submitted_at IS NOT NULL/);
+  assert.doesNotMatch(migration, /SECURITY DEFINER/i);
+});
