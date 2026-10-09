@@ -165,12 +165,13 @@ export const fetchPrebuiltFlashcards = async (params: {
   topicId?: string;
   lessonId?: string;
   limit?: number;
+  /** Set only for a logged-in learner. RLS still enforces ownership. */
+  userId?: string;
 } = {}): Promise<SavedFlashcard[]> => {
   const limit = Math.min(100, Math.max(1, params.limit || 20));
   if (params.classId && !params.subjectId) throw new Error('A subject is required for class-specific review.');
 
-  // Flashcard sets are linked to curriculum topics. Filter the allowed topic IDs
-  // before selecting sets so a learner cannot accidentally study another class.
+  // Build the class/subject boundary before fetching any personal review cards.
   let allowedTopicIds: string[] | null = null;
   if (params.classId) {
     const { data, error } = await getSupabase().from('topics')
@@ -178,21 +179,90 @@ export const fetchPrebuiltFlashcards = async (params: {
       .eq('subject_id', params.subjectId!)
       .eq('class_id', params.classId)
       .eq('is_active', true)
-      .limit(500);
+      .limit(800);
     if (error) throw new Error(error.message);
     allowedTopicIds = (data || []).map(topic => topic.id);
     if (!allowedTopicIds.length) return [];
   }
   if (params.topicId && allowedTopicIds && !allowedTopicIds.includes(params.topicId)) return [];
-  let query = getSupabase()
-    .from('flashcards')
+
+  const selected: SavedFlashcard[] = [];
+  const used = new Set<string>();
+  const addCard = (set: {
+    id: string; cards: unknown; course_id?: string | null; lesson_id?: string | null;
+    topic_id?: string | null; subject_id?: string | null; title?: string | null;
+  }, index: number): boolean => {
+    const cards = Array.isArray(set.cards) ? set.cards : [];
+    const raw = cards[index];
+    if (!raw || typeof raw !== 'object') return false;
+    const card = raw as Record<string, unknown>;
+    const front = String(card.front ?? '').trim();
+    const back = String(card.back ?? '').trim();
+    if (!front || !back) return false;
+    const id = `${set.id}:${index}`;
+    if (used.has(id)) return false;
+    used.add(id);
+    selected.push({
+      id, front, back,
+      subjectId: set.subject_id || undefined,
+      topicId: set.topic_id || undefined,
+      courseId: set.course_id || undefined,
+      lessonId: set.lesson_id || undefined,
+      title: set.title || undefined,
+      difficulty: String(card.difficulty ?? '').trim().toLowerCase() || undefined,
+    });
+    return true;
+  };
+
+  // Revisit due cards ACROSS the learner's decks before sampling the latest
+  // published decks. The previous 80-deck window could starve older due cards.
+  if (params.userId) {
+    const { data: dueRows, error: dueError } = await getSupabase()
+      .from('flashcard_reviews')
+      .select('flashcard_id,card_index,next_review_at')
+      .eq('user_id', params.userId)
+      .lte('next_review_at', new Date().toISOString())
+      .order('next_review_at', { ascending: true })
+      .limit(500);
+    if (dueError) throw new Error(dueError.message);
+    const dueIds = [...new Set((dueRows || []).map(row => row.flashcard_id).filter(Boolean))];
+    if (dueIds.length) {
+      // Keep UUID IN filters bounded to avoid overlong URLs for active students.
+      const chunks: string[][] = [];
+      for (let start = 0; start < dueIds.length; start += 60) chunks.push(dueIds.slice(start, start + 60));
+      const groups = await Promise.all(chunks.map(async ids => {
+        let dueQuery = getSupabase().from('flashcards')
+          .select('id,course_id,lesson_id,topic_id,subject_id,title,cards')
+          .in('id', ids)
+          .eq('is_public', true)
+          .is('created_by', null)
+          .eq('mode', 'curriculum-prebuilt');
+        if (params.subjectId) dueQuery = dueQuery.eq('subject_id', params.subjectId);
+        if (params.topicId) dueQuery = dueQuery.eq('topic_id', params.topicId);
+        else if (allowedTopicIds) dueQuery = dueQuery.in('topic_id', allowedTopicIds);
+        if (params.lessonId) dueQuery = dueQuery.eq('lesson_id', params.lessonId);
+        const { data, error } = await dueQuery;
+        if (error) throw new Error(error.message);
+        return data || [];
+      }));
+      const byId = new Map(groups.flat().map(set => [set.id, set]));
+      for (const row of dueRows || []) {
+        const set = byId.get(row.flashcard_id);
+        if (set && Number.isInteger(row.card_index) && row.card_index >= 0) {
+          addCard(set, row.card_index);
+        }
+        if (selected.length >= limit) return selected;
+      }
+    }
+  }
+
+  let query = getSupabase().from('flashcards')
     .select('id,course_id,lesson_id,topic_id,subject_id,title,cards')
     .eq('is_public', true)
     .is('created_by', null)
     .eq('mode', 'curriculum-prebuilt')
     .order('created_at', { ascending: false })
     .limit(80);
-
   if (params.subjectId) query = query.eq('subject_id', params.subjectId);
   if (allowedTopicIds && !params.topicId) query = query.in('topic_id', allowedTopicIds);
   if (params.topicId) query = query.eq('topic_id', params.topicId);
@@ -200,41 +270,19 @@ export const fetchPrebuiltFlashcards = async (params: {
 
   const { data: sets, error } = await query;
   if (error) throw new Error(error.message);
-
-  // Rotate through sets, rather than draining the first lesson's cards before
-  // introducing another topic. This creates a useful mixed revision session.
-  const buckets = (sets || []).map((set) => ({
-    set,
-    cards: Array.isArray(set.cards) ? set.cards : [],
-  }));
-  const flashcards: SavedFlashcard[] = [];
-  for (let index = 0; flashcards.length < limit; index += 1) {
+  const buckets = (sets || []).map(set => ({ set, cards: Array.isArray(set.cards) ? set.cards : [] }));
+  // Round-robin the lessons for balanced revision, without duplicating due cards.
+  for (let index = 0; selected.length < limit; index += 1) {
     let found = false;
     for (const { set, cards } of buckets) {
       if (index >= cards.length) continue;
       found = true;
-      const raw = cards[index];
-      if (!raw || typeof raw !== 'object') continue;
-      const card = raw as Record<string, unknown>;
-      const front = String(card.front ?? '').trim();
-      const back = String(card.back ?? '').trim();
-      if (!front || !back) continue;
-      flashcards.push({
-        id: `${set.id}:${index}`,
-        front,
-        back,
-        subjectId: set.subject_id || undefined,
-        topicId: set.topic_id || undefined,
-        courseId: set.course_id || undefined,
-        lessonId: set.lesson_id || undefined,
-        title: set.title || undefined,
-        difficulty: String(card.difficulty ?? '').trim().toLowerCase() || undefined,
-      });
-      if (flashcards.length >= limit) break;
+      addCard(set, index);
+      if (selected.length >= limit) break;
     }
     if (!found) break;
   }
-  return flashcards;
+  return selected;
 };
 
 export interface AiSummarizeRequest { content: string; type: 'lesson' | 'article' | 'video_transcript'; length?: 'short' | 'medium' | 'detailed'; }
