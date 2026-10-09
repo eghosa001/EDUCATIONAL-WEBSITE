@@ -41,7 +41,9 @@ describe('dashboard navigation and data loading hardening', () => {
   });
 
   it('prefetches dashboard routes and gives immediate navigation feedback', () => {
-    expect(dashboardLayout).toContain('dashboardPrefetchRoutes');
+    expect(dashboardLayout).toContain('likelyDestinations');
+    expect(dashboardLayout).toContain('prefetch={false}');
+    expect(dashboardLayout).toContain('connection.connection?.saveData');
     expect(dashboardLayout).toContain('router.prefetch');
     expect(dashboardLayout).toContain('pendingHref');
     expect(dashboardLayout).toContain('requestIdleCallback');

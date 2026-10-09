@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, Loader2, Sparkles } from 'lucide-react';
 import { getSupabase } from '@/lib/supabase';
 import { fetchPrebuiltFlashcards, sendAiTutorMessage } from '@/services/api/aiService';
@@ -28,15 +30,56 @@ function cacheKey(courseRef: string, lessonRef: string) { return `the-guide:less
 function readCachedLesson(courseRef: string, lessonRef: string) { if (typeof window === 'undefined') return null; try { const raw = window.sessionStorage.getItem(cacheKey(courseRef, lessonRef)); if (!raw) return null; const parsed = JSON.parse(raw); if (!parsed?.savedAt || Date.now() - Number(parsed.savedAt) > LESSON_ROUTE_CACHE_TTL_MS) return null; return parsed.data || null; } catch { return null; } }
 function writeCachedLesson(courseRef: string, lessonRef: string, data: any) { if (typeof window === 'undefined') return; try { window.sessionStorage.setItem(cacheKey(courseRef, lessonRef), JSON.stringify({ savedAt: Date.now(), data })); } catch { /* cache is optional */ } }
 
+function readableMathExpression(input: string) {
+  return input.trim()
+    .replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, '($1)/($2)')
+    .replace(/\\sqrt\s*\{([^{}]+)\}/g, '√($1)')
+    .replace(/\\times\b/g, '×')
+    .replace(/\\div\b/g, '÷')
+    .replace(/\\cdot\b/g, '·')
+    .replace(/\\leq\b/g, '≤')
+    .replace(/\\geq\b/g, '≥')
+    .replace(/\\pi\b/g, 'π')
+    .replace(/\\left\b|\\right\b/g, '');
+}
+
+function normalizeLessonMath(content: string) {
+  // Preserve readable notation without assuming a math typesetting dependency.
+  return content
+    .replace(/\$\$([\s\S]*?)\$\$/g, (_, expr: string) => '\n\n' + readableMathExpression(expr) + '\n\n')
+    .replace(/(^|[^\\])\$([^$\n]+?)\$/gm, (_, prefix: string, expr: string) => prefix + readableMathExpression(expr))
+    .replace(/\\\(([\s\S]*?)\\\)/g, (_, expr: string) => readableMathExpression(expr));
+}
+
 function LessonContent({ content }: { content: string }) {
-  const safe = String(content || '').replace(/\$\$([\s\S]*?)\$\$/g, '$1').replace(/(^|[^\\])\$([^$\n]+?)\$/gm, '$1$2').trim();
+  const safe = normalizeLessonMath(String(content || '')).trim();
   if (!safe) return <div className="rounded-2xl border border-dashed border-stone-300 p-8 text-slate-500">No written lesson content is available yet.</div>;
-  const blocks = safe.split(/\n{2,}/).map(block => block.trim()).filter(Boolean);
-  return <article className="lesson-prose text-[16px] leading-8 text-slate-700 dark:text-slate-200">{blocks.map((block, index) => {
-    if (/^#{1,3}\s+/.test(block)) return <h2 key={index} className="mb-4 mt-8 text-2xl font-extrabold text-[#151A3A] dark:text-white">{block.replace(/^#{1,3}\s+/, '')}</h2>;
-    if (/^[-*]\s+/m.test(block)) return <ul key={index} className="mb-6 ml-6 list-disc space-y-2">{block.split('\n').map((line, itemIndex) => <li key={itemIndex}>{line.replace(/^[-*]\s+/, '')}</li>)}</ul>;
-    return <p key={index} className="mb-5 whitespace-pre-wrap">{block}</p>;
-  })}</article>;
+
+  // react-markdown renders ordinary Markdown and GFM tables safely by default;
+  // unlike the earlier paragraph splitter it preserves ordered steps, exact
+  // quotes, strong/emphasis, lists and original model passages for every lesson.
+  // HTML from the database is not interpreted as executable markup.
+  return <article className="lesson-prose min-w-0 text-[16px] leading-8 text-slate-700 dark:text-slate-200">
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
+      h1: ({ children }) => <h2 className="mb-4 mt-7 text-2xl font-extrabold leading-snug text-[#151A3A] dark:text-white">{children}</h2>,
+      h2: ({ children }) => <h3 className="mb-3 mt-8 text-xl font-bold leading-snug text-[#151A3A] dark:text-white">{children}</h3>,
+      h3: ({ children }) => <h4 className="mb-2 mt-6 text-lg font-bold text-[#151A3A] dark:text-white">{children}</h4>,
+      h4: ({ children }) => <h5 className="mb-2 mt-5 font-bold text-[#151A3A] dark:text-white">{children}</h5>,
+      p: ({ children }) => <p className="mb-5 break-words leading-8">{children}</p>,
+      ul: ({ children }) => <ul className="mb-6 ml-5 list-disc space-y-2 pl-2">{children}</ul>,
+      ol: ({ children }) => <ol className="mb-6 ml-5 list-decimal space-y-2 pl-2">{children}</ol>,
+      li: ({ children }) => <li className="pl-1 leading-7">{children}</li>,
+      strong: ({ children }) => <strong className="font-extrabold text-slate-900 dark:text-white">{children}</strong>,
+      blockquote: ({ children }) => <blockquote className="mb-6 rounded-r-xl border-l-4 border-brand-500 bg-brand-50 p-4 italic text-slate-800 dark:bg-[#202650] dark:text-slate-100">{children}</blockquote>,
+      table: ({ children }) => <div className="mb-6 max-w-full overflow-x-auto rounded-xl border border-stone-200 dark:border-slate-700" role="region" aria-label="Lesson reference table" tabIndex={0}><table className="w-full min-w-[440px] border-collapse text-left text-sm">{children}</table></div>,
+      thead: ({ children }) => <thead className="bg-[#151A3A] text-white">{children}</thead>,
+      th: ({ children }) => <th className="border-b border-slate-200 px-4 py-3 text-left font-bold">{children}</th>,
+      td: ({ children }) => <td className="border-b border-stone-200 px-4 py-3 align-top dark:border-slate-700">{children}</td>,
+      a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="break-words font-semibold text-brand-700 underline underline-offset-4 hover:text-brand-900 dark:text-brand-300">{children}</a>,
+      pre: ({ children }) => <pre className="mb-6 max-w-full overflow-x-auto rounded-xl bg-slate-900 p-4 text-sm leading-6 text-slate-100">{children}</pre>,
+      code: ({ children }) => <code className="break-words rounded bg-stone-100 px-1 py-0.5 font-mono text-[0.875em] dark:bg-[#202650]">{children}</code>,
+    }}>{safe}</ReactMarkdown>
+  </article>;
 }
 
 function LessonVisualMap({ title, objectives, keyPoints }: { title: string; objectives: unknown; keyPoints: unknown }) {

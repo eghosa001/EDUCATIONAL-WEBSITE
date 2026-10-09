@@ -18,7 +18,7 @@ test('public homepage is a student-first exam journey, not a generic brochure', 
 });
 
 test('learner dashboard prioritises high-retention next actions', () => {
-  for (const text of ['Next best step', 'Continue last CBT', 'Daily practice', 'Weak-topic review', 'Recently viewed', 'Saved questions', 'Review wrong answers']) {
+  for (const text of ['Next best step', 'Review recent CBT', 'Daily practice', 'Weak-topic review', 'Recently viewed', 'Saved questions', 'Review wrong answers']) {
     assert.match(dashboard, new RegExp(text));
   }
   assert.match(dashboard, /href="\/dashboard\/jamb"/);
@@ -43,12 +43,12 @@ test('mobile navigation keeps high-frequency learning actions near the top', () 
   assert.match(layout, /label: 'JAMB'/);
   assert.match(layout, /label: 'School Exams'/);
   assert.match(layout, /label: 'Flashcards'/);
-  assert.match(layout, /aria-label="Toggle navigation"/);
+  assert.match(layout, /aria-label=\{sidebarOpen \? 'Close navigation'/);
   assert(layout.indexOf("label: 'JAMB'") < layout.indexOf("label: 'Courses'"));
 });
 
 test('flashcards read as fast spaced revision, not slow AI generation', () => {
-  for (const text of ['ready-made cards', 'already stored', 'Known / still learning', 'No AI wait', 'Spaced review']) {
+  for (const text of ['ready-made cards', 'already stored', 'Known / still learning', 'Adaptive review', 'scheduleFlashcard']) {
     assert.match(flashcards, new RegExp(text, 'i'));
   }
   assert.doesNotMatch(flashcards, /generate flashcards/i);

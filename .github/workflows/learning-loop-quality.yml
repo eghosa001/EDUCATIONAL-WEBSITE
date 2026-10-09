@@ -1,0 +1,42 @@
+name: Learning Loop Quality
+on:
+  pull_request:
+    paths:
+      - 'web/src/lib/flashcardReview.ts'
+      - 'web/src/app/dashboard/flashcards/page.tsx'
+      - 'web/src/app/dashboard/layout.tsx'
+      - 'web/src/app/dashboard/page.tsx'
+      - 'web/src/app/dashboard/lessons/**'
+      - 'web/src/services/api/aiService.ts'
+      - 'web/tests/learning-loop-benchmark-20261009.test.mjs'
+      - 'web/tests/education-ux-quality.test.mjs'
+      - 'supabase/migrations/*flashcard_reviews*.sql'
+      - '.github/workflows/learning-loop-quality.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: learning-loop-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  study-loop:
+    name: Typecheck and scoped study-flow regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install only frontend dependencies
+        run: npm install --workspaces=false --no-audit --no-fund --progress=false
+        working-directory: web
+      - name: Typecheck changed learner app
+        run: npm run typecheck
+        working-directory: web
+      - name: Run focused curriculum-learning and navigation regressions
+        run: node --test tests/learning-loop-benchmark-20261009.test.mjs tests/education-ux-quality.test.mjs tests/lesson-learning-completion.test.mjs tests/prebuilt-learning-resources.test.mjs
+        working-directory: web
