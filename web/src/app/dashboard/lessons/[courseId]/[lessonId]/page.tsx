@@ -32,15 +32,15 @@ function writeCachedLesson(courseRef: string, lessonRef: string, data: any) { if
 
 function readableMathExpression(input: string) {
   return input.trim()
-    .replace(/\\\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, '($1)/($2)')
-    .replace(/\\\\sqrt\s*\{([^{}]+)\}/g, '√($1)')
-    .replace(/\\\\times\b/g, '×')
-    .replace(/\\\\div\b/g, '÷')
-    .replace(/\\\\cdot\b/g, '·')
-    .replace(/\\\\leq\b/g, '≤')
-    .replace(/\\\\geq\b/g, '≥')
-    .replace(/\\\\pi\b/g, 'π')
-    .replace(/\\\\left\b|\\\\right\b/g, '');
+    .replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, '($1)/($2)')
+    .replace(/\\sqrt\s*\{([^{}]+)\}/g, '√($1)')
+    .replace(/\\times\b/g, '×')
+    .replace(/\\div\b/g, '÷')
+    .replace(/\\cdot\b/g, '·')
+    .replace(/\\leq\b/g, '≤')
+    .replace(/\\geq\b/g, '≥')
+    .replace(/\\pi\b/g, 'π')
+    .replace(/\\left\b|\\right\b/g, '');
 }
 
 function normalizeLessonMath(content: string) {
@@ -48,7 +48,7 @@ function normalizeLessonMath(content: string) {
   return content
     .replace(/\$\$([\s\S]*?)\$\$/g, (_, expr: string) => '\n\n' + readableMathExpression(expr) + '\n\n')
     .replace(/(^|[^\\])\$([^$\n]+?)\$/gm, (_, prefix: string, expr: string) => prefix + readableMathExpression(expr))
-    .replace(/\\\\\(([\s\S]*?)\\\\\)/g, (_, expr: string) => readableMathExpression(expr));
+    .replace(/\\\(([\s\S]*?)\\\)/g, (_, expr: string) => readableMathExpression(expr));
 }
 
 function LessonContent({ content }: { content: string }) {
