@@ -158,7 +158,7 @@ export default function FlashcardsPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [subjectId, classId, requestedTopicId]);
+  }, [subjectId, classId]);
 
   const startSession = (cards: Flashcard[]) => {
     setFlashcards(cards);
