@@ -85,5 +85,7 @@ test('flashcards use real persisted reviews, not only blind next-card advancemen
   }
   assert.doesNotMatch(page, /const rate = \(_rating:/);
   assert.match(service, /id: `\$\{set\.id\}:\$\{index\}`/);
-  assert.match(service, /for \(let index = 0; flashcards\.length < limit;/);
+  assert.match(service, /for \(let index = 0; selected\.length < limit;/);
+  assert.match(service, /\.from\('flashcard_reviews'\)/);
+  assert.match(service, /\.lte\('next_review_at'/);
 });
