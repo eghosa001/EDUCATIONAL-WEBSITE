@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BrainIcon, Check, ChevronLeft, ChevronRight, Loader2, LibraryBig } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSupabase } from '@/lib/supabase';
@@ -38,6 +38,8 @@ export default function FlashcardsPage() {
   const [syncing, setSyncing] = useState(0);
   const [failedWrites, setFailedWrites] = useState<Array<Record<string, unknown>>>([]);
   const [deferredCards, setDeferredCards] = useState<Record<string, boolean>>({});
+  const [reviewedIndices, setReviewedIndices] = useState<Record<number, boolean>>({});
+  const reviewWriteQueue = useRef(new Map<string, Promise<void>>());
   const [requestedTopicId, setRequestedTopicId] = useState('');
 
   useEffect(() => {
@@ -166,6 +168,7 @@ export default function FlashcardsPage() {
     setCurrentIndex(0);
     setMasteredInSession({});
     setDeferredCards({});
+    setReviewedIndices({});
     setIsFlipped(false);
   };
 
@@ -226,20 +229,46 @@ export default function FlashcardsPage() {
     setDueMessage('Optional early practice. Future review dates will update when you rate a card.');
   };
 
-  const saveReview = async (row: Record<string, unknown>) => {
-    setSyncing(value => value + 1);
-    try {
-      const { error: saveError } = await getSupabase()
-        .from('flashcard_reviews')
-        .upsert(row, { onConflict: 'flashcard_id,card_index,user_id' });
-      if (saveError) throw saveError;
-    } catch {
-      // Do not silently claim cloud persistence. Keep unsuccessful records retryable.
-      setFailedWrites(pending => [...pending.filter(item =>
-        item.flashcard_id !== row.flashcard_id || item.card_index !== row.card_index), row]);
-    } finally {
-      setSyncing(value => Math.max(0, value - 1));
-    }
+  const saveReview = (row: Record<string, unknown>): Promise<void> => {
+    // A student can miss a card and recall it seconds later. Serialize
+    // writes per card so the earlier "Hard" save cannot overwrite a later
+    // "Good" grade if the network resolves requests in the wrong order.
+    const key = `${row.user_id}:${row.flashcard_id}:${row.card_index}`;
+    const preceding = reviewWriteQueue.current.get(key) || Promise.resolve();
+    const pending = preceding.catch(() => undefined).then(async () => {
+      setSyncing(value => value + 1);
+      try {
+        const { error: saveError } = await getSupabase()
+          .from('flashcard_reviews')
+          .upsert(row, { onConflict: 'flashcard_id,card_index,user_id' });
+        if (saveError) throw saveError;
+        setFailedWrites(rows => rows.filter(item =>
+          item.user_id !== row.user_id ||
+          item.flashcard_id !== row.flashcard_id ||
+          item.card_index !== row.card_index ||
+          String(item.updated_at || '') > String(row.updated_at || '')));
+      } catch {
+        setFailedWrites(rows => {
+          const newer = rows.some(item =>
+            item.user_id === row.user_id &&
+            item.flashcard_id === row.flashcard_id &&
+            item.card_index === row.card_index &&
+            String(item.updated_at || '') > String(row.updated_at || ''));
+          return newer ? rows : [
+            ...rows.filter(item => item.user_id !== row.user_id ||
+              item.flashcard_id !== row.flashcard_id || item.card_index !== row.card_index),
+            row,
+          ];
+        });
+      } finally {
+        setSyncing(value => Math.max(0, value - 1));
+      }
+    });
+    reviewWriteQueue.current.set(key, pending);
+    void pending.then(() => {
+      if (reviewWriteQueue.current.get(key) === pending) reviewWriteQueue.current.delete(key);
+    });
+    return pending;
   };
 
   const retryFailed = async () => {
@@ -249,7 +278,7 @@ export default function FlashcardsPage() {
   };
 
   const rate = (rating: RecallRating) => {
-    if (!isFlipped || !user?.id) return;
+    if (!isFlipped || !user?.id || reviewedIndices[currentIndex]) return;
     const current = flashcards[studyOrder[currentIndex]];
     const identity = current && parseFlashcardId(current.id);
     if (!current || !identity) {
@@ -257,8 +286,14 @@ export default function FlashcardsPage() {
       return;
     }
     const next = scheduleFlashcard(reviews[current.id], rating);
+    setReviewedIndices(prev => ({ ...prev, [currentIndex]: true }));
     setReviews(prev => ({ ...prev, [current.id]: next }));
     if (rating === 'hard') {
+      setMasteredInSession(prev => {
+        const remaining = { ...prev };
+        delete remaining[current.id];
+        return remaining;
+      });
       // Return missed cards to the end of this session, rather than marking them mastered.
       setStudyOrder(prev => [...prev, prev[currentIndex]]);
     } else {
@@ -276,6 +311,11 @@ export default function FlashcardsPage() {
 
   const skip = () => {
     if (currentIndex >= studyOrder.length) return;
+    if (reviewedIndices[currentIndex]) {
+      setCurrentIndex(value => value + 1);
+      setIsFlipped(false);
+      return;
+    }
     const identity = flashcards[studyOrder[currentIndex]]?.id;
     // A card can return once per session. Repeated skips should not trap
     // the student in an endless loop of the same unanswered card.
@@ -292,6 +332,7 @@ export default function FlashcardsPage() {
   const current = flashcards[studyOrder[currentIndex]];
   const progress = flashcards.length ? Math.min(100, Math.round(Object.keys(masteredInSession).length / flashcards.length * 100)) : 0;
   const sessionFinished = flashcards.length > 0 && currentIndex >= studyOrder.length;
+  const alreadyReviewed = Boolean(reviewedIndices[currentIndex]);
 
   return <div className="space-y-6">
     <header className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-stone-200 dark:bg-[#1b2045] dark:ring-slate-700">
@@ -310,7 +351,7 @@ export default function FlashcardsPage() {
         <select aria-label="Class level" value={classId} onChange={e => { setClassId(e.target.value); setTopicId(''); }} disabled={!subjectId} className="min-w-0 rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-slate-800 dark:border-slate-700 dark:bg-[#151A3A] dark:text-white disabled:opacity-50"><option value="">All classes · mixed revision</option>{schoolClasses.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
         <select aria-label="Curriculum topic" value={topicId} onChange={e => setTopicId(e.target.value)} disabled={!subjectId || !classId || topicsLoading} className="min-w-0 rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-stone-50 disabled:text-slate-400 dark:border-slate-700 dark:bg-[#151A3A] dark:text-white"><option value="">{topicsLoading ? 'Loading topics…' : classId ? 'All topics in this class' : 'Select a class to narrow by topic'}</option>{topics.map(topic => <option key={topic.id} value={topic.id}>{topic.name} · {terms.find(term => term.id === topic.term_id)?.name || 'Term'}</option>)}</select>
         <select value={cardCount} onChange={e => setCardCount(Number(e.target.value))} aria-label="Review card count" className="rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-slate-800 dark:border-slate-700 dark:bg-[#151A3A] dark:text-white"><option value={10}>10 cards</option><option value={20}>20 cards</option><option value={30}>30 cards</option></select>
-        <button onClick={() => void loadPrebuilt()} disabled={!subjectId || loadingCards} className="rounded-xl bg-[#151A3A] px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">{loadingCards ? <><Loader2 className="mr-2 inline h-4 w-4 animate-spin"/>Loading cards…</> : `Open ${cardCount} cards`}</button>
+        <button onClick={() => void loadPrebuilt()} disabled={!subjectId || loadingCards || syncing > 0 || failedWrites.length > 0} className="rounded-xl bg-[#151A3A] px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">{loadingCards ? <><Loader2 className="mr-2 inline h-4 w-4 animate-spin"/>Loading cards…</> : `Open ${cardCount} cards`}</button>
       </div>
       <p className="mt-2 text-xs text-slate-500">Choose a subject for a mixed revision set, or choose your exact class and term-labelled topic. Reviews are tracked separately for each signed-in student and scheduled for later practice.</p>
       {dueMessage && <p className="mt-3 rounded-xl bg-brand-50 px-4 py-3 text-sm text-slate-700 dark:bg-[#151A3A] dark:text-slate-200" role="status">{dueMessage}</p>}
@@ -338,11 +379,11 @@ export default function FlashcardsPage() {
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <button type="button" onClick={() => { setCurrentIndex(i => Math.max(0, i - 1)); setIsFlipped(false); }} disabled={currentIndex === 0} className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm text-slate-700 disabled:opacity-40 dark:border-slate-600 dark:text-slate-200"><ChevronLeft className="mr-1 inline h-4 w-4"/>Previous</button>
         <div className="flex flex-wrap justify-center gap-2">
-          <button type="button" onClick={() => rate('hard')} disabled={!isFlipped} className="rounded-xl border border-red-200 px-4 py-2.5 text-sm text-red-700 hover:bg-red-50 disabled:opacity-40 dark:text-red-300">Hard · again</button>
-          <button type="button" onClick={() => rate('good')} disabled={!isFlipped} className="rounded-xl border border-amber-200 px-4 py-2.5 text-sm text-amber-800 hover:bg-amber-50 disabled:opacity-40 dark:text-amber-300">Good · later</button>
-          <button type="button" onClick={() => rate('easy')} disabled={!isFlipped} className="rounded-xl border border-emerald-200 px-4 py-2.5 text-sm text-emerald-800 hover:bg-emerald-50 disabled:opacity-40 dark:text-emerald-300">Easy · 3+ days</button>
+          <button type="button" onClick={() => rate('hard')} disabled={!isFlipped || alreadyReviewed} className="rounded-xl border border-red-200 px-4 py-2.5 text-sm text-red-700 hover:bg-red-50 disabled:opacity-40 dark:text-red-300">Hard · again</button>
+          <button type="button" onClick={() => rate('good')} disabled={!isFlipped || alreadyReviewed} className="rounded-xl border border-amber-200 px-4 py-2.5 text-sm text-amber-800 hover:bg-amber-50 disabled:opacity-40 dark:text-amber-300">Good · later</button>
+          <button type="button" onClick={() => rate('easy')} disabled={!isFlipped || alreadyReviewed} className="rounded-xl border border-emerald-200 px-4 py-2.5 text-sm text-emerald-800 hover:bg-emerald-50 disabled:opacity-40 dark:text-emerald-300">Easy · 3+ days</button>
         </div>
-        <button type="button" onClick={skip} className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm text-slate-700 dark:border-slate-600 dark:text-slate-200">{current.id && deferredCards[current.id] ? 'Leave for later' : 'Skip for now'}<ChevronRight className="ml-1 inline h-4 w-4"/></button>
+        <button type="button" onClick={skip} className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm text-slate-700 dark:border-slate-600 dark:text-slate-200">{alreadyReviewed ? 'Next review' : current.id && deferredCards[current.id] ? 'Leave for later' : 'Skip for now'}<ChevronRight className="ml-1 inline h-4 w-4"/></button>
       </div>
       <p className="mt-4 text-center text-xs text-slate-500 dark:text-slate-300" role="status"><Check className="mr-1 inline h-3 w-3"/>{progress}% mastered this session. Reveal the answer before rating.</p>
     </section> : sessionFinished ? <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center dark:border-emerald-900 dark:bg-emerald-950/30" role="status"><Check className="mx-auto mb-3 h-10 w-10 text-emerald-700"/><h2 className="text-xl font-bold text-slate-900 dark:text-white">Review session complete</h2><p className="mt-2 text-sm text-slate-700 dark:text-slate-200">You recalled {Object.keys(masteredInSession).length} of {flashcards.length} cards. Their next review dates have been scheduled.</p><button type="button" onClick={() => { setAheadCards([]); setDueMessage(''); startSession([]); }} className="mt-4 rounded-lg bg-[#151A3A] px-5 py-3 text-sm font-semibold text-white">Choose another session</button></section> : <section className="rounded-2xl border border-dashed border-stone-300 bg-white p-12 text-center dark:border-slate-700 dark:bg-[#1b2045]"><BrainIcon className="mx-auto mb-4 h-12 w-12 text-stone-300"/><h3 className="font-semibold text-[#151A3A] dark:text-white">Choose what you want to revise</h3><p className="mt-2 text-sm text-slate-500">Select a subject above to open its already-prepared flashcards.</p></section>}
