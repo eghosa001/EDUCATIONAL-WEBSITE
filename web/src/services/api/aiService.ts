@@ -135,7 +135,8 @@ export const fetchMyFlashcards = async (_token?: string, params: { page?: number
   const flashcards: SavedFlashcard[] = [];
   for (const set of sets || []) {
     const cards = Array.isArray(set.cards) ? set.cards : [];
-    for (const raw of cards) {
+    for (let index = 0; index < cards.length; index += 1) {
+      const raw = cards[index];
       if (!raw || typeof raw !== 'object') continue;
       const card = raw as Record<string, unknown>;
       const front = String(card.front ?? '').trim();
@@ -144,7 +145,7 @@ export const fetchMyFlashcards = async (_token?: string, params: { page?: number
       if (!front || !back) continue;
       if (params.difficulty && difficulty !== params.difficulty.toLowerCase()) continue;
       flashcards.push({
-        id: `${set.id}:${flashcards.length}`,
+        id: `${set.id}:${index}`,
         front,
         back,
         subjectId: set.subject_id || undefined,
@@ -167,12 +168,12 @@ export const fetchPrebuiltFlashcards = async (params: {
   const limit = Math.min(100, Math.max(1, params.limit || 20));
   let query = getSupabase()
     .from('flashcards')
-    .select('id,course_id,lesson_id,topic_id,subject_id,title,cards,created_at')
+    .select('id,course_id,lesson_id,topic_id,subject_id,title,cards')
     .eq('is_public', true)
     .is('created_by', null)
     .eq('mode', 'curriculum-prebuilt')
-    .order('created_at', { ascending: true })
-    .limit(40);
+    .order('created_at', { ascending: false })
+    .limit(80);
 
   if (params.subjectId) query = query.eq('subject_id', params.subjectId);
   if (params.topicId) query = query.eq('topic_id', params.topicId);
@@ -181,10 +182,18 @@ export const fetchPrebuiltFlashcards = async (params: {
   const { data: sets, error } = await query;
   if (error) throw new Error(error.message);
 
+  // Rotate through sets, rather than draining the first lesson's cards before
+  // introducing another topic. This creates a useful mixed revision session.
+  const buckets = (sets || []).map((set) => ({
+    set,
+    cards: Array.isArray(set.cards) ? set.cards : [],
+  }));
   const flashcards: SavedFlashcard[] = [];
-  for (const set of sets || []) {
-    const cards = Array.isArray(set.cards) ? set.cards : [];
-    for (let index = 0; index < cards.length && flashcards.length < limit; index += 1) {
+  for (let index = 0; flashcards.length < limit; index += 1) {
+    let found = false;
+    for (const { set, cards } of buckets) {
+      if (index >= cards.length) continue;
+      found = true;
       const raw = cards[index];
       if (!raw || typeof raw !== 'object') continue;
       const card = raw as Record<string, unknown>;
@@ -202,8 +211,9 @@ export const fetchPrebuiltFlashcards = async (params: {
         title: set.title || undefined,
         difficulty: String(card.difficulty ?? '').trim().toLowerCase() || undefined,
       });
+      if (flashcards.length >= limit) break;
     }
-    if (flashcards.length >= limit) break;
+    if (!found) break;
   }
   return flashcards;
 };
