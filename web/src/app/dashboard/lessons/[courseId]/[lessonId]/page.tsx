@@ -30,8 +30,29 @@ function cacheKey(courseRef: string, lessonRef: string) { return `the-guide:less
 function readCachedLesson(courseRef: string, lessonRef: string) { if (typeof window === 'undefined') return null; try { const raw = window.sessionStorage.getItem(cacheKey(courseRef, lessonRef)); if (!raw) return null; const parsed = JSON.parse(raw); if (!parsed?.savedAt || Date.now() - Number(parsed.savedAt) > LESSON_ROUTE_CACHE_TTL_MS) return null; return parsed.data || null; } catch { return null; } }
 function writeCachedLesson(courseRef: string, lessonRef: string, data: any) { if (typeof window === 'undefined') return; try { window.sessionStorage.setItem(cacheKey(courseRef, lessonRef), JSON.stringify({ savedAt: Date.now(), data })); } catch { /* cache is optional */ } }
 
+function readableMathExpression(input: string) {
+  return input.trim()
+    .replace(/\\\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, '($1)/($2)')
+    .replace(/\\\\sqrt\s*\{([^{}]+)\}/g, '√($1)')
+    .replace(/\\\\times\b/g, '×')
+    .replace(/\\\\div\b/g, '÷')
+    .replace(/\\\\cdot\b/g, '·')
+    .replace(/\\\\leq\b/g, '≤')
+    .replace(/\\\\geq\b/g, '≥')
+    .replace(/\\\\pi\b/g, 'π')
+    .replace(/\\\\left\b|\\\\right\b/g, '');
+}
+
+function normalizeLessonMath(content: string) {
+  // Preserve readable notation without assuming a math typesetting dependency.
+  return content
+    .replace(/\$\$([\s\S]*?)\$\$/g, (_, expr: string) => '\n\n' + readableMathExpression(expr) + '\n\n')
+    .replace(/(^|[^\\])\$([^$\n]+?)\$/gm, (_, prefix: string, expr: string) => prefix + readableMathExpression(expr))
+    .replace(/\\\\\(([\s\S]*?)\\\\\)/g, (_, expr: string) => readableMathExpression(expr));
+}
+
 function LessonContent({ content }: { content: string }) {
-  const safe = String(content || '').trim();
+  const safe = normalizeLessonMath(String(content || '')).trim();
   if (!safe) return <div className="rounded-2xl border border-dashed border-stone-300 p-8 text-slate-500">No written lesson content is available yet.</div>;
 
   // react-markdown renders ordinary Markdown and GFM tables safely by default;
