@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/state/auth/authStore';
-import { fetchStudentOverview } from '@/services/api/progressService';
-import { fetchMyCourses } from '@/services/api/courseService';
+import { fetchStudentOverview, fetchStudentFocus, type StudentFocus } from '@/services/api/progressService';
+import { fetchRecentCourses } from '@/services/api/courseService';
+import { chooseStudyRecommendation } from '@/lib/studyRecommendation';
 
 interface OverviewData {
   enrolledCourses: number;
@@ -36,8 +37,8 @@ const priorityActions = [
 
 const retentionCards = [
   { title: 'Daily practice', copy: 'Complete one small session instead of opening every feature at once.', href: '/dashboard/exams' },
-  { title: 'Weak-topic review', copy: 'Use recent scores to decide the next subject, topic or flashcard set.', href: '/dashboard/past-questions/analytics' },
-  { title: 'Recently viewed', copy: 'Return to the last course, CBT, subject or revision card set quickly.', href: '/dashboard/courses' },
+  { title: 'Weak-topic review', copy: 'Use your recent lesson practice results to focus on topics that need attention.', href: '/dashboard/progress' },
+  { title: 'Recently viewed', copy: 'Return to enrolled courses and pick up from the next lesson.', href: '/dashboard/courses' },
   { title: 'Saved questions', copy: 'Keep difficult questions together so revision is not scattered.', href: '/dashboard/library' },
 ];
 
@@ -46,31 +47,50 @@ export default function DashboardPage() {
   const { user, token, isAuthenticated, isLoading } = useAuthStore();
   const [overview, setOverview] = useState<OverviewData | null>(null);
   const [recentCourses, setRecentCourses] = useState<CourseItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [focus, setFocus] = useState<StudentFocus | null>(null);
+  const [overviewLoading, setOverviewLoading] = useState(true);
+  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [focusLoading, setFocusLoading] = useState(true);
+  const [overviewError, setOverviewError] = useState('');
+  const [coursesError, setCoursesError] = useState('');
+  const [focusError, setFocusError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (isLoading) return;
     if (!isAuthenticated || !token) {
-      setLoading(false);
       router.replace('/login');
       return;
     }
     let cancelled = false;
-    const loadData = async () => {
-      try {
-        const [overviewRes, coursesRes] = await Promise.all([fetchStudentOverview(token), fetchMyCourses(token)]);
-        if (cancelled) return;
-        setOverview(overviewRes?.overview || null);
-        setRecentCourses(Array.isArray(coursesRes?.courses) ? coursesRes.courses.slice(0, 3) : []);
-      } catch (err) {
-        if (!cancelled) console.error('Failed to load dashboard data:', err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    loadData();
+    // Independent requests: slow statistics must never block recent courses,
+    // and a failed optional recommendation must not blank the whole dashboard.
+    setOverviewLoading(true);
+    setCoursesLoading(true);
+    setFocusLoading(true);
+    setOverviewError('');
+    setCoursesError('');
+    setFocusError('');
+    void fetchStudentOverview(token)
+      .then(result => { if (!cancelled) setOverview(result.overview); })
+      .catch(() => {
+        if (!cancelled) { setOverview(null); setOverviewError('Study statistics are temporarily unavailable.'); }
+      })
+      .finally(() => { if (!cancelled) setOverviewLoading(false); });
+    void fetchRecentCourses(token, 3)
+      .then(result => { if (!cancelled) setRecentCourses(result.courses || []); })
+      .catch(() => {
+        if (!cancelled) { setRecentCourses([]); setCoursesError('Recent courses could not be loaded.'); }
+      })
+      .finally(() => { if (!cancelled) setCoursesLoading(false); });
+    void fetchStudentFocus(token)
+      .then(result => { if (!cancelled) setFocus(result); })
+      .catch(() => {
+        if (!cancelled) { setFocus(null); setFocusError('Personalised study suggestions are temporarily unavailable.'); }
+      })
+      .finally(() => { if (!cancelled) setFocusLoading(false); });
     return () => { cancelled = true; };
-  }, [token, isAuthenticated, isLoading, router]);
+  }, [token, isAuthenticated, isLoading, router, reloadKey]);
 
   if (isLoading || !isAuthenticated || !token) return null;
 
@@ -82,11 +102,14 @@ export default function DashboardPage() {
   };
 
   const stats = [
-    { label: 'Courses Enrolled', value: loading ? '—' : overview?.enrolledCourses ?? 0 },
-    { label: 'Lessons Completed', value: loading ? '—' : overview?.completedLessons ?? 0 },
-    { label: 'Exams Taken', value: loading ? '—' : overview?.examsTaken ?? 0 },
-    { label: 'Study Time', value: loading ? '—' : formatStudyTime(overview?.totalStudyTimeSeconds ?? 0) },
+    { label: 'Courses Enrolled', value: overviewLoading || !overview ? '—' : overview.enrolledCourses },
+    { label: 'Lessons Completed', value: overviewLoading || !overview ? '—' : overview.completedLessons },
+    { label: 'Exams Taken', value: overviewLoading || !overview ? '—' : overview.examsTaken },
+    { label: 'Study Time', value: overviewLoading || !overview ? '—' : formatStudyTime(overview.totalStudyTimeSeconds) },
   ];
+  const recommendation = chooseStudyRecommendation(focus, recentCourses);
+  const recommendationLoading = focusLoading || coursesLoading;
+  const hadError = Boolean(overviewError || coursesError || focusError || focus?.partialFailure);
 
   return (
     <div className="space-y-6">
@@ -96,7 +119,7 @@ export default function DashboardPage() {
             <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-brand-300">Student command centre</p>
             <h1 className="mt-3 text-3xl font-extrabold sm:text-4xl">Welcome back, {user?.firstName || 'Student'}.</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-              Your Next best step is always visible: continue CBT, revise flashcards, review wrong answers or return to weak topics.
+              Your Next best step is based on your recent lessons, due flashcards and practice results—not a generic ranking.
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <Link href="/dashboard/jamb" className="inline-flex items-center justify-center rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#151A3A] transition hover:bg-brand-50">Open JAMB centre</Link>
@@ -114,6 +137,13 @@ export default function DashboardPage() {
         </div>
       </section>
 
+      {hadError && (
+        <section role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+          <span>{overviewError || coursesError || focusError || 'Some study recommendations could not be fully checked.'} Your saved progress has not been reset.</span>
+          <button type="button" onClick={() => setReloadKey(key => key + 1)} className="rounded-lg border border-amber-500 px-4 py-2 font-semibold hover:bg-amber-100 dark:hover:bg-amber-950">Retry loading</button>
+        </section>
+      )}
+
       <section className="grid gap-4 lg:grid-cols-[1fr_0.85fr]">
         <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-[#1b2045] sm:p-6">
           <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -122,6 +152,22 @@ export default function DashboardPage() {
               <h2 className="text-xl font-extrabold text-[#151A3A] dark:text-white">Priority learning actions</h2>
             </div>
             <Link href="/dashboard/progress" className="text-sm font-bold text-brand-700 hover:text-brand-800 dark:text-brand-300">View progress →</Link>
+          </div>
+          <div className="mb-5 rounded-2xl border border-brand-200 bg-brand-50 p-5 dark:border-brand-900 dark:bg-[#151A3A]" aria-live="polite">
+            {recommendationLoading ? (
+              <div role="status" className="space-y-3">
+                <div className="h-4 w-40 animate-pulse rounded bg-brand-100 dark:bg-slate-700"/>
+                <div className="h-6 w-2/3 animate-pulse rounded bg-brand-100 dark:bg-slate-700"/>
+                <p className="text-sm text-slate-600 dark:text-slate-300">Finding your next useful study step…</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs font-bold uppercase tracking-wider text-brand-700 dark:text-brand-300">{recommendation.eyebrow}</p>
+                <h3 className="mt-2 text-lg font-extrabold text-[#151A3A] dark:text-white">{recommendation.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">{recommendation.explanation}</p>
+                <Link href={recommendation.href} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-[#151A3A] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#202750] focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-brand-700 dark:bg-brand-700">{recommendation.action} →</Link>
+              </>
+            )}
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             {priorityActions.map((action) => (
@@ -156,8 +202,12 @@ export default function DashboardPage() {
           </div>
           <Link href="/dashboard/courses" className="text-sm font-bold text-brand-700 hover:text-brand-800 dark:text-brand-300">View all</Link>
         </div>
-        {loading ? (
+        {coursesLoading ? (
           <div className="space-y-3 py-2">{[0, 1, 2].map((item) => <div key={item} className="h-16 animate-pulse rounded-lg bg-stone-100 dark:bg-slate-800" />)}</div>
+        ) : coursesError ? (
+          <div role="status" className="rounded-2xl border border-dashed border-amber-300 p-8 text-center dark:border-amber-900">
+            <p className="text-sm text-amber-800 dark:text-amber-200">Unable to show enrolled courses right now. Use Retry loading above.</p>
+          </div>
         ) : recentCourses.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-stone-300 p-8 text-center dark:border-slate-700">
             <p className="text-sm text-slate-500 dark:text-slate-400">No courses enrolled yet.</p>

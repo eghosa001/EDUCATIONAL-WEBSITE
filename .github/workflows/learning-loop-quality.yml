@@ -3,6 +3,9 @@ on:
   pull_request:
     paths:
       - 'web/src/lib/flashcardReview.ts'
+      - 'web/src/lib/studyRecommendation.ts'
+      - 'web/src/services/api/progressService.ts'
+      - 'web/src/services/api/courseService.ts'
       - 'web/src/app/dashboard/flashcards/page.tsx'
       - 'web/src/app/dashboard/progress/page.tsx'
       - 'web/src/app/dashboard/layout.tsx'
@@ -10,9 +13,11 @@ on:
       - 'web/src/app/dashboard/lessons/**'
       - 'web/src/services/api/aiService.ts'
       - 'web/tests/learning-loop-benchmark-20261009.test.mjs'
-      - 'web/tests/due-revision-and-weak-topic-20261009.test.mjs'
+      - 'web/tests/due-revision-and-weak-topic-20261009.test.mjs tests/personalized-dashboard-20261010.test.mjs'
+      - 'web/tests/personalized-dashboard-20261010.test.mjs'
       - 'web/tests/education-ux-quality.test.mjs'
       - 'supabase/migrations/*flashcard_reviews*.sql'
+      - 'supabase/migrations/*student_dashboard_overview*.sql'
       - '.github/workflows/learning-loop-quality.yml'
   workflow_dispatch:
 

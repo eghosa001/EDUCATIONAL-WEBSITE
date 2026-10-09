@@ -176,6 +176,67 @@ export const fetchMyCourses = async (_token: string): Promise<{ courses: any[] }
     }),
   };
 };
+/**
+ * Lightweight dashboard path. The complete course-progress report may scan
+ * every enrolled course; the homepage needs at most three recently accessed
+ * courses. Count their lessons and completed activity with narrow fields only.
+ */
+export const fetchRecentCourses = async (_token: string, limit = 3): Promise<{ courses: any[] }> => {
+  const supabase = getSupabase();
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError || !auth.user) throw new Error('You must be signed in');
+  const { data, error } = await supabase.from('student_courses')
+    .select('course_id,progress_percentage,completed_at,last_accessed_at,enrolled_at,courses(id,title,slug)')
+    .eq('student_id', auth.user.id)
+    .order('last_accessed_at', { ascending: false, nullsFirst: false })
+    .limit(Math.max(1, Math.min(5, limit)));
+  if (error) throw new Error(error.message);
+  const rows = data || [];
+  const ids = [...new Set(rows.map((row: any) => row.course_id).filter(Boolean))];
+  if (!ids.length) return { courses: [] };
+
+  const [{ data: lessons, error: lessonError }, { data: completed, error: progressError }] = await Promise.all([
+    supabase.from('lessons').select('id,course_id').in('course_id', ids).eq('is_published', true),
+    supabase.from('lesson_progress').select('lesson_id,course_id')
+      .eq('student_id', auth.user.id).in('course_id', ids).eq('status', 'completed'),
+  ]);
+  if (lessonError || progressError) throw new Error((lessonError || progressError)!.message);
+
+  const totals = new Map<string, number>();
+  for (const lesson of lessons || []) {
+    const id = String(lesson.course_id);
+    totals.set(id, (totals.get(id) || 0) + 1);
+  }
+  const completedCounts = new Map<string, number>();
+  const seen = new Set<string>();
+  for (const row of completed || []) {
+    const courseId = String(row.course_id);
+    const key = courseId + ':' + String(row.lesson_id);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    completedCounts.set(courseId, (completedCounts.get(courseId) || 0) + 1);
+  }
+  return {
+    courses: rows.map((row: any) => {
+      const courseId = String(row.course_id);
+      const totalLessons = totals.get(courseId) || 0;
+      const completedLessons = Math.min(totalLessons, completedCounts.get(courseId) || 0);
+      return {
+        courseId,
+        courseTitle: row.courses?.title || 'Course',
+        courseSlug: row.courses?.slug || courseId,
+        progressPercentage: totalLessons
+          ? Math.round((completedLessons / totalLessons) * 100)
+          : Number(row.progress_percentage || 0),
+        totalLessons,
+        completedLessons,
+        completedAt: row.completed_at,
+        lastAccessedAt: row.last_accessed_at || row.enrolled_at,
+      };
+    }),
+  };
+};
+
 export const fetchCourseStudents = async (courseId: string, _token: string) => { const { data, error } = await getSupabase().from('student_courses').select('*, profiles(*)').eq('course_id', courseId); if (error) throw new Error(error.message); return { students: data || [] }; };
 export interface CourseSectionData { title: string; description?: string; orderIndex: number; }
 export const createCourseSection = async (courseId: string, sectionData: CourseSectionData, _token: string) => { const { data, error } = await getSupabase().from('course_sections').insert({ course_id: courseId, title: sectionData.title, description: sectionData.description, order_index: sectionData.orderIndex }).select().single(); if (error) throw new Error(error.message); return { section: data }; };
