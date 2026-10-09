@@ -57,12 +57,36 @@ export default function FlashcardsPage() {
           setSchoolClasses((classRows || []) as SchoolClass[]);
           setTerms((termRows || []) as SchoolTerm[]);
           const savedCards = (saved.flashcards || []) as Flashcard[];
-          setFlashcards(savedCards);
-          setStudyOrder(savedCards.map((_, index) => index));
+          // Reuse the same account review history for learner-created decks.
+          // The initial saved set should not restart mastered cards as "new".
+          const savedSetIds = [...new Set(savedCards.map(card => parseFlashcardId(card.id)?.flashcard_id).filter((id): id is string => Boolean(id)))];
+          const savedReviews: Record<string, ReviewState> = {};
+          if (user?.id && savedSetIds.length) {
+            const { data: pastReviews, error: pastReviewError } = await supabase
+              .from('flashcard_reviews')
+              .select('flashcard_id,card_index,ease_factor,interval_days,next_review_at,reviews_count,last_answer_correct')
+              .eq('user_id', user.id)
+              .in('flashcard_id', savedSetIds);
+            if (pastReviewError) throw pastReviewError;
+            for (const entry of pastReviews || []) {
+              savedReviews[`${entry.flashcard_id}:${entry.card_index}`] = {
+                ease_factor: Number(entry.ease_factor) || 2.5,
+                interval_days: Number(entry.interval_days) || 0,
+                next_review_at: entry.next_review_at,
+                reviews_count: Number(entry.reviews_count) || 0,
+                last_answer_correct: entry.last_answer_correct,
+              };
+            }
+          }
+          const availableSaved = selectDueFlashcards(savedCards, savedReviews, 30);
+          if (cancelled) return;
+          setReviews(savedReviews);
+          setFlashcards(availableSaved.cards);
+          setStudyOrder(availableSaved.cards.map((_, index) => index));
           setCurrentIndex(0);
           setMasteredInSession({});
-          setAheadCards([]);
-          setDueMessage('');
+          setAheadCards(savedCards);
+          setDueMessage(savedCards.length && !availableSaved.cards.length ? 'Your saved cards are scheduled for later. Practise early if you want another round.' : '');
           setIsFlipped(false);
         }
       } catch (e: any) {
@@ -73,7 +97,7 @@ export default function FlashcardsPage() {
     };
     load();
     return () => { cancelled = true; };
-  }, [authLoading, token]);
+  }, [authLoading, token, user?.id]);
 
   useEffect(() => {
     setTopicId('');
