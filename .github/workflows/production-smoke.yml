@@ -26,10 +26,12 @@ jobs:
         run: |
           set -euo pipefail
           home="$(curl --fail --silent --show-error --retry 4 --retry-delay 5 --retry-all-errors "$WEB_URL/")"
-          printf '%s' "$home" | grep -q 'THE GUIDE'
-          printf '%s' "$home" | grep -q 'Study with structure'
+          # Check stable app structure, not marketing copy. Bash matching avoids
+          # grep -q + pipefail broken-pipe false failures on large Next.js HTML.
+          [[ "$home" == *"THE GUIDE"* ]] || { echo 'Homepage brand missing'; exit 1; }
+          [[ "$home" == *'href="/login"'* ]] || { echo 'Homepage login link missing'; exit 1; }
           login="$(curl --fail --silent --show-error --retry 4 --retry-delay 5 --retry-all-errors "$WEB_URL/login")"
-          printf '%s' "$login" | grep -q 'THE GUIDE'
+          [[ "$login" == *"Sign in to your account"* ]] || { echo 'Login form missing'; exit 1; }
           echo 'Canonical Vercel web application is reachable.'
 
       - name: Smoke test learner Edge APIs
