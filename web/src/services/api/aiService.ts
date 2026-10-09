@@ -227,19 +227,25 @@ export const fetchPrebuiltFlashcards = async (params: {
     if (dueError) throw new Error(dueError.message);
     const dueIds = [...new Set((dueRows || []).map(row => row.flashcard_id).filter(Boolean))];
     if (dueIds.length) {
-      let dueQuery = getSupabase().from('flashcards')
-        .select('id,course_id,lesson_id,topic_id,subject_id,title,cards')
-        .in('id', dueIds)
-        .eq('is_public', true)
-        .is('created_by', null)
-        .eq('mode', 'curriculum-prebuilt');
-      if (params.subjectId) dueQuery = dueQuery.eq('subject_id', params.subjectId);
-      if (params.topicId) dueQuery = dueQuery.eq('topic_id', params.topicId);
-      else if (allowedTopicIds) dueQuery = dueQuery.in('topic_id', allowedTopicIds);
-      if (params.lessonId) dueQuery = dueQuery.eq('lesson_id', params.lessonId);
-      const { data: dueSets, error: dueSetsError } = await dueQuery;
-      if (dueSetsError) throw new Error(dueSetsError.message);
-      const byId = new Map((dueSets || []).map(set => [set.id, set]));
+      // Keep UUID IN filters bounded to avoid overlong URLs for active students.
+      const chunks: string[][] = [];
+      for (let start = 0; start < dueIds.length; start += 60) chunks.push(dueIds.slice(start, start + 60));
+      const groups = await Promise.all(chunks.map(async ids => {
+        let dueQuery = getSupabase().from('flashcards')
+          .select('id,course_id,lesson_id,topic_id,subject_id,title,cards')
+          .in('id', ids)
+          .eq('is_public', true)
+          .is('created_by', null)
+          .eq('mode', 'curriculum-prebuilt');
+        if (params.subjectId) dueQuery = dueQuery.eq('subject_id', params.subjectId);
+        if (params.topicId) dueQuery = dueQuery.eq('topic_id', params.topicId);
+        else if (allowedTopicIds) dueQuery = dueQuery.in('topic_id', allowedTopicIds);
+        if (params.lessonId) dueQuery = dueQuery.eq('lesson_id', params.lessonId);
+        const { data, error } = await dueQuery;
+        if (error) throw new Error(error.message);
+        return data || [];
+      }));
+      const byId = new Map(groups.flat().map(set => [set.id, set]));
       for (const row of dueRows || []) {
         const set = byId.get(row.flashcard_id);
         if (set && Number.isInteger(row.card_index) && row.card_index >= 0) {
