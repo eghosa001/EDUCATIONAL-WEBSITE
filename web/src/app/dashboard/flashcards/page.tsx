@@ -37,6 +37,8 @@ export default function FlashcardsPage() {
   const [dueMessage, setDueMessage] = useState('');
   const [syncing, setSyncing] = useState(0);
   const [failedWrites, setFailedWrites] = useState<Array<Record<string, unknown>>>([]);
+  const [deferredCards, setDeferredCards] = useState<Record<string, boolean>>({});
+  const [requestedTopicId, setRequestedTopicId] = useState('');
 
   useEffect(() => {
     if (authLoading || !token) return;
@@ -99,10 +101,34 @@ export default function FlashcardsPage() {
     return () => { cancelled = true; };
   }, [authLoading, token, user?.id]);
 
+  // Follow the topic-specific revision link on the Progress page. A link
+  // restores the correct subject and class without mixing school levels.
+  useEffect(() => {
+    const topic = new URLSearchParams(window.location.search).get('topic');
+    if (!topic || !/^[0-9a-f-]{36}$/i.test(topic)) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await getSupabase().from('topics')
+        .select('id,subject_id,class_id')
+        .eq('id', topic)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error || !data?.class_id || !data?.subject_id) {
+        setError('This revision topic is unavailable. Please choose a subject and class.');
+        return;
+      }
+      setRequestedTopicId(data.id);
+      setSubjectId(data.subject_id);
+      setClassId(data.class_id);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     setTopicId('');
     setTopics([]);
-    if (!subjectId || !classId) return;
+    if (!subjectId || !classId) { setTopicsLoading(false); return; }
     let cancelled = false;
     setTopicsLoading(true);
     (async () => {
@@ -121,19 +147,25 @@ export default function FlashcardsPage() {
             const key = [row.name.trim().toLowerCase(), row.term_id].join(':');
             if (key && !unique.has(key)) unique.set(key, row);
           }
-          setTopics([...unique.values()]);
+          const available = [...unique.values()];
+          setTopics(available);
+          if (requestedTopicId && available.some(row => row.id === requestedTopicId)) {
+            setTopicId(requestedTopicId);
+            setRequestedTopicId('');
+          }
         }
         setTopicsLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [subjectId, classId]);
+  }, [subjectId, classId, requestedTopicId]);
 
   const startSession = (cards: Flashcard[]) => {
     setFlashcards(cards);
     setStudyOrder(cards.map((_, index) => index));
     setCurrentIndex(0);
     setMasteredInSession({});
+    setDeferredCards({});
     setIsFlipped(false);
   };
 
@@ -149,6 +181,7 @@ export default function FlashcardsPage() {
         classId: classId || undefined,
         topicId: topicId || undefined,
         limit: Math.min(100, cardCount * 4),
+        userId: user.id,
       });
       if (!candidates.length) throw new Error('No ready-made flashcards are available for this selection yet.');
       const setIds = [...new Set(candidates.map(c => parseFlashcardId(c.id)?.flashcard_id).filter((id): id is string => Boolean(id)))];
@@ -243,7 +276,13 @@ export default function FlashcardsPage() {
 
   const skip = () => {
     if (currentIndex >= studyOrder.length) return;
-    setStudyOrder(prev => [...prev, prev[currentIndex]]);
+    const identity = flashcards[studyOrder[currentIndex]]?.id;
+    // A card can return once per session. Repeated skips should not trap
+    // the student in an endless loop of the same unanswered card.
+    if (identity && !deferredCards[identity]) {
+      setDeferredCards(prev => ({ ...prev, [identity]: true }));
+      setStudyOrder(prev => [...prev, prev[currentIndex]]);
+    }
     setCurrentIndex(value => value + 1);
     setIsFlipped(false);
   };
@@ -283,7 +322,19 @@ export default function FlashcardsPage() {
     {current ? <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-[#1b2045] sm:p-8">
       <div className="mb-5 flex items-center justify-between gap-4 text-sm text-slate-500"><span>Review {currentIndex + 1} of {studyOrder.length}</span><span className="truncate">{current.title || `${progress}% mastered`}</span></div>
       <div className="mb-6 h-2 overflow-hidden rounded-full bg-stone-100 dark:bg-slate-700"><div className="h-full rounded-full bg-brand-600 transition-all" style={{ width: `${progress}%` }}/></div>
-      <button type="button" onClick={() => setIsFlipped(v => !v)} aria-label={isFlipped ? 'Show question' : 'Reveal answer'} className="group relative min-h-[280px] w-full [perspective:1000px]"><div className="relative min-h-[280px] w-full transition-transform duration-500 [transform-style:preserve-3d]" style={{ transform: isFlipped ? 'rotateY(180deg)' : undefined }}><div className="absolute inset-0 flex min-h-[280px] flex-col items-center justify-center rounded-2xl border-2 border-brand-200 bg-brand-50 p-8 [backface-visibility:hidden] dark:border-brand-900 dark:bg-brand-950/30"><span className="mb-4 text-xs font-bold uppercase tracking-wider text-brand-600">Question</span><p className="max-w-3xl text-center text-lg font-semibold leading-8 text-slate-900 dark:text-white">{current.front}</p><span className="mt-5 text-xs text-slate-400">Tap to reveal answer</span></div><div className="absolute inset-0 flex min-h-[280px] flex-col items-center justify-center rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-8 [backface-visibility:hidden] [transform:rotateY(180deg)] dark:border-emerald-900 dark:bg-emerald-950/30"><span className="mb-4 text-xs font-bold uppercase tracking-wider text-emerald-600">Answer</span><p className="max-w-3xl text-center text-lg leading-8 text-slate-900 dark:text-white">{current.back}</p></div></div></button>
+      <button type="button"
+        onClick={() => setIsFlipped(value => !value)}
+        aria-label={isFlipped ? 'Show question' : 'Reveal answer'}
+        aria-pressed={isFlipped}
+        className={`flex min-h-[220px] w-full flex-col items-center justify-center rounded-2xl border-2 p-5 text-center transition-colors focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-brand-600 sm:min-h-[280px] sm:p-8 ${isFlipped
+          ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30'
+          : 'border-brand-200 bg-brand-50 dark:border-brand-900 dark:bg-brand-950/30'}`}>
+        <span className="mb-4 text-xs font-bold uppercase tracking-wider text-brand-700 dark:text-brand-300">{isFlipped ? 'Answer' : 'Question'}</span>
+        <span className="max-w-3xl whitespace-pre-wrap break-words text-base font-semibold leading-7 text-slate-900 dark:text-white sm:text-lg sm:leading-8">
+          {isFlipped ? current.back : current.front}
+        </span>
+        <span className="mt-5 text-xs text-slate-600 dark:text-slate-300">{isFlipped ? 'Tap to show the question again' : 'Tap or press Enter to reveal the answer'}</span>
+      </button>
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <button type="button" onClick={() => { setCurrentIndex(i => Math.max(0, i - 1)); setIsFlipped(false); }} disabled={currentIndex === 0} className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm text-slate-700 disabled:opacity-40 dark:border-slate-600 dark:text-slate-200"><ChevronLeft className="mr-1 inline h-4 w-4"/>Previous</button>
         <div className="flex flex-wrap justify-center gap-2">
@@ -291,7 +342,7 @@ export default function FlashcardsPage() {
           <button type="button" onClick={() => rate('good')} disabled={!isFlipped} className="rounded-xl border border-amber-200 px-4 py-2.5 text-sm text-amber-800 hover:bg-amber-50 disabled:opacity-40 dark:text-amber-300">Good · later</button>
           <button type="button" onClick={() => rate('easy')} disabled={!isFlipped} className="rounded-xl border border-emerald-200 px-4 py-2.5 text-sm text-emerald-800 hover:bg-emerald-50 disabled:opacity-40 dark:text-emerald-300">Easy · 3+ days</button>
         </div>
-        <button type="button" onClick={skip} className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm text-slate-700 dark:border-slate-600 dark:text-slate-200">Skip for now<ChevronRight className="ml-1 inline h-4 w-4"/></button>
+        <button type="button" onClick={skip} className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm text-slate-700 dark:border-slate-600 dark:text-slate-200">{current.id && deferredCards[current.id] ? 'Leave for later' : 'Skip for now'}<ChevronRight className="ml-1 inline h-4 w-4"/></button>
       </div>
       <p className="mt-4 text-center text-xs text-slate-500 dark:text-slate-300" role="status"><Check className="mr-1 inline h-3 w-3"/>{progress}% mastered this session. Reveal the answer before rating.</p>
     </section> : sessionFinished ? <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center dark:border-emerald-900 dark:bg-emerald-950/30" role="status"><Check className="mx-auto mb-3 h-10 w-10 text-emerald-700"/><h2 className="text-xl font-bold text-slate-900 dark:text-white">Review session complete</h2><p className="mt-2 text-sm text-slate-700 dark:text-slate-200">You recalled {Object.keys(masteredInSession).length} of {flashcards.length} cards. Their next review dates have been scheduled.</p><button type="button" onClick={() => { setAheadCards([]); setDueMessage(''); startSession([]); }} className="mt-4 rounded-lg bg-[#151A3A] px-5 py-3 text-sm font-semibold text-white">Choose another session</button></section> : <section className="rounded-2xl border border-dashed border-stone-300 bg-white p-12 text-center dark:border-slate-700 dark:bg-[#1b2045]"><BrainIcon className="mx-auto mb-4 h-12 w-12 text-stone-300"/><h3 className="font-semibold text-[#151A3A] dark:text-white">Choose what you want to revise</h3><p className="mt-2 text-sm text-slate-500">Select a subject above to open its already-prepared flashcards.</p></section>}
