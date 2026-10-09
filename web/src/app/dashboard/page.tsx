@@ -29,7 +29,7 @@ interface CourseItem {
 
 const priorityActions = [
   { label: 'Start focused session', href: '/dashboard/exams', eyebrow: 'Choose exam body', description: 'Pick WAEC, NECO, NABTEB or class practice before selecting subjects and mode.' },
-  { label: 'Continue last CBT', href: '/dashboard/past-questions/analytics', eyebrow: 'Return quickly', description: 'Resume from recent exam work and see what still needs correction.' },
+  { label: 'Review recent CBT', href: '/dashboard/past-questions/analytics', eyebrow: 'Understand mistakes', description: 'Inspect past results and choose what to correct next. To resume a study course, use Continue Learning below.' },
   { label: 'Review wrong answers', href: '/dashboard/past-questions/analytics', eyebrow: 'Fix weak areas', description: 'Use corrections and explanations after each scored session.' },
   { label: 'Open flashcards', href: '/dashboard/flashcards', eyebrow: 'Fast revision', description: 'Revise prebuilt cards by subject without waiting for generation.' },
 ];
