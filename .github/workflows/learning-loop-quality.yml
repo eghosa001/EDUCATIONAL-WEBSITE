@@ -17,6 +17,7 @@ on:
       - 'web/tests/personalized-dashboard-20261010.test.mjs'
       - 'web/tests/education-ux-quality.test.mjs'
       - 'supabase/migrations/*flashcard_reviews*.sql'
+      - 'supabase/migrations/*student_dashboard_overview*.sql'
       - '.github/workflows/learning-loop-quality.yml'
   workflow_dispatch:
 
