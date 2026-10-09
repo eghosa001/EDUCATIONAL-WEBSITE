@@ -220,35 +220,27 @@ export const fetchStudentFocus = async (_token: string): Promise<StudentFocus> =
 };
 
 export const fetchStudentOverview = async (_token: string): Promise<{ overview: StudentOverview }> => {
-  const supabase = getSupabase();
-  const userId = await currentUserId();
-  const [{ data: enrollments, error: enrollmentError }, { data: completed, error: completedError }, { data: sessions, error: sessionError }, { data: attempts, error: attemptError }] = await Promise.all([
-    supabase.from('student_courses').select('progress_percentage').eq('student_id', userId),
-    supabase.from('lesson_progress').select('id').eq('student_id', userId).eq('status', 'completed'),
-    supabase.from('study_sessions').select('duration_seconds').eq('student_id', userId),
-    supabase.from('exam_attempts').select('percentage').eq('student_id', userId).not('submitted_at', 'is', null),
-  ]);
-  const error = enrollmentError || completedError || sessionError || attemptError;
-  if (error) throw new Error(error.message);
-
-  const enrolledCourses = enrollments?.length || 0;
-  const averageCourseProgress = enrolledCourses
-    ? (enrollments || []).reduce((sum: number, row: any) => sum + Number(row.progress_percentage || 0), 0) / enrolledCourses
-    : 0;
-  const totalStudyTimeSeconds = (sessions || []).reduce((sum: number, row: any) => sum + Math.max(0, Number(row.duration_seconds || 0)), 0);
-  const examsTaken = attempts?.length || 0;
-  const averageExamScore = examsTaken
-    ? (attempts || []).reduce((sum: number, row: any) => sum + Number(row.percentage || 0), 0) / examsTaken
-    : 0;
-
+  // All four history tables already enforce RLS. Aggregation happens inside
+  // Postgres, not in 4 large browser downloads that can hit the 1,000-row
+  // default REST response cap and undercount long-term study history.
+  const { data, error } = await getSupabase().rpc('student_dashboard_overview');
+  if (error) throw new Error('Unable to load student overview: ' + error.message);
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('Student overview response was malformed.');
+  }
+  const raw = data as Record<string, unknown>;
+  const safeNumber = (key: string): number => {
+    const number = Number(raw[key]);
+    return Number.isFinite(number) && number >= 0 ? number : 0;
+  };
   return {
     overview: {
-      enrolledCourses,
-      completedLessons: completed?.length || 0,
-      totalStudyTimeSeconds,
-      averageCourseProgress: Math.round(averageCourseProgress * 10) / 10,
-      examsTaken,
-      averageExamScore: Math.round(averageExamScore * 10) / 10,
+      enrolledCourses: safeNumber('enrolledCourses'),
+      completedLessons: safeNumber('completedLessons'),
+      totalStudyTimeSeconds: safeNumber('totalStudyTimeSeconds'),
+      averageCourseProgress: safeNumber('averageCourseProgress'),
+      examsTaken: safeNumber('examsTaken'),
+      averageExamScore: safeNumber('averageExamScore'),
     },
   };
 };
