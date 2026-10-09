@@ -9,14 +9,19 @@ import { parseFlashcardId, scheduleFlashcard, selectDueFlashcards, type RecallRa
 
 interface Flashcard { id: string; front: string; back: string; subjectId?: string; topicId?: string; difficulty?: string; title?: string; }
 interface Subject { id: string; name: string; }
-interface Topic { id: string; name: string; }
+interface SchoolClass { id: string; name: string; code: string; }
+interface SchoolTerm { id: string; name: string; }
+interface Topic { id: string; name: string; term_id: string; }
 
 export default function FlashcardsPage() {
   const { token, user, isLoading: authLoading } = useAuth();
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [schoolClasses, setSchoolClasses] = useState<SchoolClass[]>([]);
+  const [terms, setTerms] = useState<SchoolTerm[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [subjectId, setSubjectId] = useState('');
+  const [classId, setClassId] = useState('');
   const [topicId, setTopicId] = useState('');
   const [topicsLoading, setTopicsLoading] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -40,13 +45,17 @@ export default function FlashcardsPage() {
       setLoading(true); setError('');
       try {
         const supabase = getSupabase();
-        const [{ data: subjectRows, error: subjectError }, saved] = await Promise.all([
+        const [{ data: subjectRows, error: subjectError }, { data: classRows }, { data: termRows }, saved] = await Promise.all([
           supabase.from('subjects').select('id,name').eq('is_active', true).order('name'),
-          fetchMyFlashcards(token, { page: 1, limit: 30 }),
+          supabase.from('classes').select('id,name,code').order('name'),
+          supabase.from('terms').select('id,name').order('name'),
+          fetchMyFlashcards(token, { page: 1, limit: 30 }).catch(() => ({ flashcards: [] as Flashcard[] })),
         ]);
         if (subjectError) throw subjectError;
         if (!cancelled) {
           setSubjects((subjectRows || []) as Subject[]);
+          setSchoolClasses((classRows || []) as SchoolClass[]);
+          setTerms((termRows || []) as SchoolTerm[]);
           const savedCards = (saved.flashcards || []) as Flashcard[];
           setFlashcards(savedCards);
           setStudyOrder(savedCards.map((_, index) => index));
@@ -69,17 +78,23 @@ export default function FlashcardsPage() {
   useEffect(() => {
     setTopicId('');
     setTopics([]);
-    if (!subjectId) return;
+    if (!subjectId || !classId) return;
     let cancelled = false;
     setTopicsLoading(true);
     (async () => {
-      const { data, error } = await getSupabase().from('topics').select('id,name').eq('subject_id', subjectId).eq('is_active', true).order('name').limit(500);
+      const { data, error } = await getSupabase().from('topics')
+        .select('id,name,term_id')
+        .eq('subject_id', subjectId)
+        .eq('class_id', classId)
+        .eq('is_active', true)
+        .order('name')
+        .limit(500);
       if (!cancelled) {
         if (error) setError(error.message || 'Unable to load topics.');
         else {
           const unique = new Map<string, Topic>();
           for (const row of (data || []) as Topic[]) {
-            const key = row.name.trim().toLowerCase();
+            const key = [row.name.trim().toLowerCase(), row.term_id].join(':');
             if (key && !unique.has(key)) unique.set(key, row);
           }
           setTopics([...unique.values()]);
@@ -88,7 +103,7 @@ export default function FlashcardsPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [subjectId]);
+  }, [subjectId, classId]);
 
   const startSession = (cards: Flashcard[]) => {
     setFlashcards(cards);
@@ -107,6 +122,7 @@ export default function FlashcardsPage() {
       // Fetch additional candidates, then select only cards currently due or new.
       const candidates = await fetchPrebuiltFlashcards({
         subjectId,
+        classId: classId || undefined,
         topicId: topicId || undefined,
         limit: Math.min(100, cardCount * 4),
       });
@@ -226,13 +242,14 @@ export default function FlashcardsPage() {
 
     <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-[#1b2045]">
       <div className="mb-4 flex items-center gap-3"><LibraryBig className="h-5 w-5 text-brand-600"/><h2 className="font-bold text-[#151A3A] dark:text-white">Ready-made curriculum flashcards</h2></div>
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <select value={subjectId} onChange={e => setSubjectId(e.target.value)} className="flex-1 rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-[#151A3A] dark:text-white"><option value="">Select a subject</option>{subjects.map(subject => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select>
-        <select value={topicId} onChange={e => setTopicId(e.target.value)} disabled={!subjectId || topicsLoading} className="flex-1 rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-stone-50 disabled:text-slate-400 dark:border-slate-700 dark:bg-[#151A3A] dark:text-white"><option value="">{topicsLoading ? 'Loading topics…' : subjectId ? 'All topics in this subject' : 'Choose a subject first'}</option>{topics.map(topic => <option key={topic.id} value={topic.id}>{topic.name}</option>)}</select>
-        <select value={cardCount} onChange={e => setCardCount(Number(e.target.value))} className="rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-slate-800 dark:border-slate-700 dark:bg-[#151A3A] dark:text-white" aria-label="Number of flashcards"><option value={10}>10 cards</option><option value={20}>20 cards</option><option value={30}>30 cards</option></select>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <select aria-label="Subject" value={subjectId} onChange={e => { setSubjectId(e.target.value); setClassId(''); setTopicId(''); }} className="min-w-0 rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-slate-700 dark:bg-[#151A3A] dark:text-white"><option value="">Select a subject</option>{subjects.map(subject => <option key={subject.id} value={subject.id}>{subject.name}</option>)}</select>
+        <select aria-label="Class level" value={classId} onChange={e => { setClassId(e.target.value); setTopicId(''); }} disabled={!subjectId} className="min-w-0 rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-slate-800 dark:border-slate-700 dark:bg-[#151A3A] dark:text-white disabled:opacity-50"><option value="">All classes · mixed revision</option>{schoolClasses.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
+        <select aria-label="Curriculum topic" value={topicId} onChange={e => setTopicId(e.target.value)} disabled={!subjectId || !classId || topicsLoading} className="min-w-0 rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-stone-50 disabled:text-slate-400 dark:border-slate-700 dark:bg-[#151A3A] dark:text-white"><option value="">{topicsLoading ? 'Loading topics…' : classId ? 'All topics in this class' : 'Select a class to narrow by topic'}</option>{topics.map(topic => <option key={topic.id} value={topic.id}>{topic.name} · {terms.find(term => term.id === topic.term_id)?.name || 'Term'}</option>)}</select>
+        <select value={cardCount} onChange={e => setCardCount(Number(e.target.value))} aria-label="Review card count" className="rounded-xl border border-stone-300 bg-white px-4 py-3 text-sm text-slate-800 dark:border-slate-700 dark:bg-[#151A3A] dark:text-white" aria-label="Number of flashcards"><option value={10}>10 cards</option><option value={20}>20 cards</option><option value={30}>30 cards</option></select>
         <button onClick={() => void loadPrebuilt()} disabled={!subjectId || loadingCards} className="rounded-xl bg-[#151A3A] px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">{loadingCards ? <><Loader2 className="mr-2 inline h-4 w-4 animate-spin"/>Loading cards…</> : `Open ${cardCount} cards`}</button>
       </div>
-      <p className="mt-2 text-xs text-slate-500">Choose a subject for mixed-topic revision or narrow the set to a topic. Finished cards are scheduled for future practice on your account.</p>
+      <p className="mt-2 text-xs text-slate-500">Choose a subject for a mixed revision set, or choose your exact class and term-labelled topic. Reviews are tracked separately for each signed-in student and scheduled for later practice.</p>
       {dueMessage && <p className="mt-3 rounded-xl bg-brand-50 px-4 py-3 text-sm text-slate-700 dark:bg-[#151A3A] dark:text-slate-200" role="status">{dueMessage}</p>}
       {aheadCards.length > 0 && flashcards.length === 0 && <button type="button" onClick={reviewAhead} className="mt-3 rounded-xl border border-brand-300 px-4 py-2 text-sm font-semibold text-brand-800 dark:text-brand-300">Practise early anyway</button>}
       {failedWrites.length > 0 && <div role="alert" className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100"><span>{failedWrites.length} review update(s) could not sync. Reconnect and retry; don't close this page before saving.</span><button type="button" onClick={() => void retryFailed()} className="rounded-lg bg-amber-900 px-3 py-2 font-semibold text-white">Retry saving</button></div>}
