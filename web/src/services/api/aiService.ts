@@ -161,11 +161,29 @@ export const fetchMyFlashcards = async (_token?: string, params: { page?: number
 
 export const fetchPrebuiltFlashcards = async (params: {
   subjectId?: string;
+  classId?: string;
   topicId?: string;
   lessonId?: string;
   limit?: number;
 } = {}): Promise<SavedFlashcard[]> => {
   const limit = Math.min(100, Math.max(1, params.limit || 20));
+  if (params.classId && !params.subjectId) throw new Error('A subject is required for class-specific review.');
+
+  // Flashcard sets are linked to curriculum topics. Filter the allowed topic IDs
+  // before selecting sets so a learner cannot accidentally study another class.
+  let allowedTopicIds: string[] | null = null;
+  if (params.classId) {
+    const { data, error } = await getSupabase().from('topics')
+      .select('id')
+      .eq('subject_id', params.subjectId!)
+      .eq('class_id', params.classId)
+      .eq('is_active', true)
+      .limit(500);
+    if (error) throw new Error(error.message);
+    allowedTopicIds = (data || []).map(topic => topic.id);
+    if (!allowedTopicIds.length) return [];
+  }
+  if (params.topicId && allowedTopicIds && !allowedTopicIds.includes(params.topicId)) return [];
   let query = getSupabase()
     .from('flashcards')
     .select('id,course_id,lesson_id,topic_id,subject_id,title,cards')
@@ -176,6 +194,7 @@ export const fetchPrebuiltFlashcards = async (params: {
     .limit(80);
 
   if (params.subjectId) query = query.eq('subject_id', params.subjectId);
+  if (allowedTopicIds && !params.topicId) query = query.in('topic_id', allowedTopicIds);
   if (params.topicId) query = query.eq('topic_id', params.topicId);
   if (params.lessonId) query = query.eq('lesson_id', params.lessonId);
 
