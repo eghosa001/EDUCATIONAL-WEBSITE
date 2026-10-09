@@ -59,6 +59,19 @@ export interface ActivityDay {
   exams: number;
   studyMinutes: number;
 }
+export interface StudentFocus {
+  dueCount: number | null;
+  weakTopic: {
+    topicId: string;
+    topicName: string;
+    subjectName: string;
+    attempts: number;
+    correct: number;
+    accuracy: number;
+  } | null;
+  partialFailure: boolean;
+}
+
 export interface LearningInsights {
   practiceAttempts: number;
   practiceCorrect: number;
@@ -118,6 +131,92 @@ const calculateStreaks = (keys: string[]) => {
     currentStreak += 1;
   }
   return { currentStreak, longestStreak: Math.max(longestStreak, currentStreak) };
+};
+
+/**
+ * Small evidence sample for the learner homepage. Do not download the entire
+ * study history or run the full analytics aggregation simply to render a
+ * quick next-step suggestion. Counts remain user-scoped through RLS.
+ */
+export const fetchStudentFocus = async (_token: string): Promise<StudentFocus> => {
+  const supabase = getSupabase();
+  const userId = await currentUserId();
+  const [practiceResult, dueResult] = await Promise.allSettled([
+    supabase.from('lesson_practice_attempts')
+      .select('topic_id,is_correct')
+      .eq('user_id', userId)
+      .not('topic_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(160),
+    supabase.from('flashcard_reviews')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .lte('next_review_at', new Date().toISOString()),
+  ]);
+  let partialFailure = false;
+  let dueCount: number | null = null;
+  let weakTopic: StudentFocus['weakTopic'] = null;
+
+  if (dueResult.status === 'fulfilled' && !dueResult.value.error) {
+    dueCount = dueResult.value.count ?? 0;
+  } else {
+    partialFailure = true;
+  }
+
+  if (practiceResult.status === 'fulfilled' && !practiceResult.value.error) {
+    const stats = new Map<string, { attempts: number; correct: number }>();
+    for (const row of practiceResult.value.data || []) {
+      if (!row.topic_id) continue;
+      const key = String(row.topic_id);
+      const current = stats.get(key) || { attempts: 0, correct: 0 };
+      current.attempts += 1;
+      if (row.is_correct) current.correct += 1;
+      stats.set(key, current);
+    }
+    const candidates = [...stats.entries()]
+      .map(([topicId, result]) => ({
+        topicId,
+        ...result,
+        accuracy: Math.round((result.correct / result.attempts) * 100),
+      }))
+      .filter(result => result.attempts >= 3 && result.accuracy < 60)
+      .sort((a, b) => a.accuracy - b.accuracy || b.attempts - a.attempts)
+      .slice(0, 12);
+    if (candidates.length) {
+      const { data: topics, error } = await supabase.from('topics')
+        .select('id,name,subject_id,class_id')
+        .in('id', candidates.map(item => item.topicId))
+        .eq('is_active', true);
+      if (error) partialFailure = true;
+      else {
+        const topicMap = new Map((topics || []).map(row => [row.id, row]));
+        const best = candidates.find(item => {
+          const topic = topicMap.get(item.topicId);
+          return Boolean(topic?.class_id && topic?.subject_id);
+        });
+        if (best) {
+          const topic = topicMap.get(best.topicId)!;
+          const subjectResult = await supabase.from('subjects')
+            .select('name').eq('id', topic.subject_id).maybeSingle();
+          if (subjectResult.error) partialFailure = true;
+          weakTopic = {
+            topicId: best.topicId,
+            topicName: topic.name || 'Your weak topic',
+            subjectName: subjectResult.data?.name || 'Subject',
+            attempts: best.attempts,
+            correct: best.correct,
+            accuracy: best.accuracy,
+          };
+        }
+      }
+    }
+  } else {
+    partialFailure = true;
+  }
+  if (practiceResult.status === 'rejected' && dueResult.status === 'rejected') {
+    throw new Error('Unable to load your recent learning signals.');
+  }
+  return { dueCount, weakTopic, partialFailure };
 };
 
 export const fetchStudentOverview = async (_token: string): Promise<{ overview: StudentOverview }> => {
