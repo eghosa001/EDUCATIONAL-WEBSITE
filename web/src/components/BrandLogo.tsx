@@ -1,67 +1,90 @@
+import { useId } from 'react';
 import Link from 'next/link';
 
 type BrandLogoProps = {
   href?: string;
   compact?: boolean;
+  /** Use the light mark on a deliberately dark surface, even in light theme. */
   inverse?: boolean;
   className?: string;
 };
 
-const lightCrop = 'absolute left-[-40.65%] top-[-73.33%] h-[250.67%] w-[177.94%] max-w-none select-none mix-blend-multiply';
-const darkCrop = 'absolute left-[-16.82%] top-[-42.67%] h-[200.53%] w-[128.88%] max-w-none select-none';
-
+/**
+ * The supplied silver logo is a JPEG: the dark rectangle is baked into its pixels.
+ * Cropping alone cannot remove that rectangle. Instead, convert the artwork's
+ * luminance into an alpha mask and paint its ORIGINAL lettering/compass/book
+ * silhouette with a theme-aware ink. The visible result has no background.
+ *
+ * The source crop matches the earlier approved brand framing. Unlike linking an
+ * image from inside an external SVG file, this inline SVG is permitted to load
+ * the original same-origin image in Chrome, Safari and Firefox.
+ */
 export default function BrandLogo({
   href = '/',
   compact = false,
   inverse = false,
   className = '',
 }: BrandLogoProps) {
-  const width = compact ? 'w-[138px] sm:w-[160px] md:w-[176px]' : 'w-[190px] sm:w-[220px] md:w-[245px]';
+  const instance = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const filterId = `guide-brand-key-${instance}`;
+  const maskId = `guide-brand-mask-${instance}`;
+  const width = compact
+    ? 'w-[126px] min-[390px]:w-[148px] sm:w-[160px] md:w-[176px]'
+    : 'w-[188px] sm:w-[220px] md:w-[245px]';
+
   return (
     <Link
       href={href}
-      aria-label="THE GUIDE"
+      aria-label="THE GUIDE — home"
       data-brand-logo
-      className={`inline-flex shrink-0 items-center ${width} ${className}`}
+      className={`inline-flex shrink-0 items-center bg-transparent p-0 shadow-none ${width} ${className}`}
     >
-      {inverse ? (
-        <span className="relative block w-full overflow-hidden aspect-[1070/375]">
-          <img
-            src="/logos/dark-mode-silver.jfif"
-            alt="THE GUIDE — Your path to smarter learning"
-            data-brand-image="dark"
-            loading="eager"
-            decoding="async"
-            draggable={false}
-            className={darkCrop}
-          />
-        </span>
-      ) : (
-        <>
-          <span className="relative block w-full overflow-hidden aspect-[775/300] dark:hidden">
-            <img
-              src="/logos/primary-logo.jfif"
-              alt="THE GUIDE — Your path to smarter learning"
-              data-brand-image="light"
-              loading="eager"
-              decoding="async"
-              draggable={false}
-              className={lightCrop}
+      <svg
+        viewBox="0 0 1070 375"
+        xmlns="http://www.w3.org/2000/svg"
+        role="img"
+        aria-label="THE GUIDE — Your path to smarter learning"
+        className="block h-auto w-full overflow-visible"
+        data-brand-image="transparent"
+      >
+        <defs>
+          {/* Make pixels darker than the JPEG backdrop fully transparent.
+              Edge pixels remain feathered, preserving the supplied artwork. */}
+          <filter id={filterId} colorInterpolationFilters="sRGB" x="-15%" y="-15%" width="130%" height="130%">
+            <feColorMatrix
+              type="matrix"
+              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0.85 0.85 0.85 0 -0.65"
             />
-          </span>
-          <span className="relative hidden w-full overflow-hidden aspect-[1070/375] dark:block">
-            <img
-              src="/logos/dark-mode-silver.jfif"
-              alt="THE GUIDE — Your path to smarter learning"
-              data-brand-image="dark"
-              loading="eager"
-              decoding="async"
-              draggable={false}
-              className={darkCrop}
+          </filter>
+          <mask
+            id={maskId}
+            x="0"
+            y="0"
+            width="1070"
+            height="375"
+            maskUnits="userSpaceOnUse"
+            style={{ maskType: 'alpha' }}
+          >
+            <image
+              href="/logos/dark-mode-silver.jfif"
+              x="-180"
+              y="-160"
+              width="1379"
+              height="752"
+              preserveAspectRatio="none"
+              filter={`url(#${filterId})`}
             />
-          </span>
-        </>
-      )}
+          </mask>
+        </defs>
+        <rect
+          x="0"
+          y="0"
+          width="1070"
+          height="375"
+          mask={`url(#${maskId})`}
+          className={inverse ? 'fill-[#E8DFCF]' : 'fill-[#151A3A] dark:fill-[#E8DFCF]'}
+        />
+      </svg>
     </Link>
   );
 }
