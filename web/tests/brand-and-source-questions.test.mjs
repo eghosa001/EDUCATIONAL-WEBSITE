@@ -29,6 +29,24 @@ test('brand remains readable on light and dark login, register and recovery scre
   }
 });
 
+test('brand theme control is accessible on public, account and dashboard screens', () => {
+  const read = path => fs.readFileSync(new URL(path, import.meta.url), 'utf8');
+  assert.match(read('../src/app/page.tsx'), /<ThemeToggle compact/);
+  assert.match(read('../src/app/(auth)/layout.tsx'), /<ThemeToggle compact/);
+  const dashboard = read('../src/app/dashboard/layout.tsx');
+  assert.match(dashboard, /<ThemeToggle compact/);
+  assert.match(dashboard, /Appearance<\/span><ThemeToggle \/>/);
+});
+
+test('brand theme button saves preference and updates the whole document', () => {
+  const theme = fs.readFileSync(new URL('../src/contexts/ThemeContext.tsx', import.meta.url), 'utf8');
+  assert.match(theme, /STORAGE_KEY = 'edu-theme'/);
+  assert.match(theme, /window\.localStorage\.setItem\(STORAGE_KEY, next\)/);
+  assert.match(theme, /document\.documentElement\.classList\.toggle\('dark'/);
+  assert.match(theme, /aria-label=\{`Switch to \$\{next\} mode`\}/);
+  assert.match(theme, /focus-visible:ring-2/);
+});
+
 test('timed past-question CBT excludes ungraded source questions', () => {
   const api = fs.readFileSync(new URL('../../supabase/functions/web-api/index.ts', import.meta.url), 'utf8');
   const page = fs.readFileSync(new URL('../src/app/dashboard/past-questions/page.tsx', import.meta.url), 'utf8');

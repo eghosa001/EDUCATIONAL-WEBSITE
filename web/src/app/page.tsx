@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import BrandLogo from '@/components/BrandLogo';
+import { ThemeToggle } from '@/contexts/ThemeContext';
 
 const examBodies = [
   { title: 'JAMB / UTME', tag: '4-subject CBT', detail: 'Build your subject combination, choose question count and practise in a timed exam room.', href: '/login' },
@@ -33,16 +34,17 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-stone-50 text-slate-900 dark:bg-[#151A3A] dark:text-slate-100">
       <nav className="sticky top-0 z-50 border-b border-stone-200/80 bg-white/95 backdrop-blur-xl dark:border-slate-700/80 dark:bg-[#151A3A]/95">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-2 px-3 sm:px-6 lg:px-8">
           <BrandLogo href="/" compact className="shrink-0" />
           <div className="hidden items-center gap-7 text-sm font-medium text-slate-600 dark:text-slate-300 lg:flex">
             <a href="#exam-entry" className="transition hover:text-[#151A3A] dark:hover:text-white">Exam entry</a>
             <a href="#study-flow" className="transition hover:text-[#151A3A] dark:hover:text-white">Study flow</a>
             <a href="#return" className="transition hover:text-[#151A3A] dark:hover:text-white">Return</a>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Link href="/login" className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:text-brand-700 dark:text-slate-300 dark:hover:text-brand-300">Log in</Link>
-            <Link href="/register" className="rounded-xl bg-[#151A3A] px-4 py-2.5 text-sm font-semibold text-white shadow-brand-sm transition hover:bg-[#202750]">Start learning</Link>
+          <div className="flex shrink-0 items-center gap-1 sm:gap-3">
+            <ThemeToggle compact />
+            <Link href="/login" className="rounded-lg px-1.5 py-2 text-xs font-semibold sm:px-3 sm:text-sm text-slate-600 transition hover:text-brand-700 dark:text-slate-300 dark:hover:text-brand-300">Log in</Link>
+            <Link href="/register" className="rounded-xl bg-[#151A3A] px-2 py-2.5 text-xs font-semibold text-white shadow-brand-sm transition hover:bg-[#202750] dark:bg-brand-500 dark:text-[#151A3A] dark:hover:bg-brand-400 sm:px-4 sm:text-sm"><span className="sm:hidden">Start</span><span className="hidden sm:inline">Start learning</span></Link>
           </div>
         </div>
       </nav>
@@ -62,7 +64,7 @@ export default function LandingPage() {
                 THE GUIDE helps Nigerian students move from exam body to subject selection, question count, timed or untimed practice and score review without overwhelming the first screen.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link href="/register" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-[#151A3A] px-7 py-3.5 font-semibold text-white shadow-brand transition hover:-translate-y-0.5 hover:bg-[#202750]">Create free account</Link>
+                <Link href="/register" className="inline-flex min-h-12 items-center justify-center rounded-xl bg-[#151A3A] px-7 py-3.5 font-semibold text-white shadow-brand transition hover:-translate-y-0.5 hover:bg-[#202750] dark:bg-brand-500 dark:text-[#151A3A] dark:hover:bg-brand-400">Create free account</Link>
                 <Link href="/login" className="inline-flex min-h-12 items-center justify-center rounded-xl border border-stone-300 bg-white px-7 py-3.5 font-semibold text-slate-700 shadow-sm transition hover:border-brand-300 hover:bg-brand-50 dark:border-slate-600 dark:bg-[#1b2045] dark:text-slate-100 dark:hover:bg-[#202750]">Continue learning</Link>
               </div>
             </div>
