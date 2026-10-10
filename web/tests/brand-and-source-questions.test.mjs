@@ -2,12 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-test('brand component uses supplied THE GUIDE raster assets directly', () => {
+test('transparent shared brand reuses the supplied artwork without a rectangular raster backdrop', () => {
   const brand = fs.readFileSync(new URL('../src/components/BrandLogo.tsx', import.meta.url), 'utf8');
-  assert.match(brand, /primary-logo\.jfif/);
-  assert.match(brand, /dark-mode-silver\.jfif/);
+  assert.match(brand, /dark-mode-silver\\.jfif/);
+  assert.match(brand, /feColorMatrix/);
+  assert.match(brand, /maskType: 'alpha'/);
   assert.match(brand, /data-brand-logo/);
-  assert.doesNotMatch(brand, /brand-light\.svg|brand-dark\.svg|the-guide-mark/);
+  assert.match(brand, /dark:fill-/);
+  assert.doesNotMatch(brand, /<img|mix-blend|the-guide-mark/);
 });
 
 test('auth screens no longer use generic book or user marks', () => {
