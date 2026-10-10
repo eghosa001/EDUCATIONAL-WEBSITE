@@ -14,7 +14,7 @@ test('learner question API excludes generic filler and never exposes stored PDFs
 
 test('transparent shared brand reuses the supplied artwork without a rectangular raster backdrop', () => {
   const brand = fs.readFileSync(new URL('../src/components/BrandLogo.tsx', import.meta.url), 'utf8');
-  assert.match(brand, /dark-mode-silver\\.jfif/);
+  assert.ok(brand.includes('/logos/dark-mode-silver.jfif'));
   assert.match(brand, /feColorMatrix/);
   assert.match(brand, /maskType: 'alpha'/);
   assert.match(brand, /data-brand-logo/);
