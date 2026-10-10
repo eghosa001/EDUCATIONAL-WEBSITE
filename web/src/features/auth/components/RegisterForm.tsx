@@ -11,16 +11,16 @@ export default function RegisterForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-stone-50 text-slate-900 dark:bg-[#151A3A] dark:text-slate-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="flex justify-center"><BrandLogo href="/" /></div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-slate-100">
             Create your account
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-center text-sm text-gray-600 dark:text-slate-300">
             Already have an account?{' '}
-            <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
+            <Link href="/login" className="font-medium text-brand-700 hover:text-brand-800 dark:text-brand-300 dark:hover:text-brand-200">
               Sign in
             </Link>
           </p>
@@ -36,13 +36,13 @@ export default function RegisterForm() {
           <div className="rounded-md shadow-sm space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-slate-200">
                   First Name
                 </label>
                 <input
                   {...formRegister('firstName')}
                   type="text"
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className="mt-1 appearance-none relative block min-h-11 w-full px-3 py-2.5 border border-gray-300 bg-white dark:border-slate-700 dark:bg-[#202650] dark:placeholder-slate-400 placeholder-gray-500 text-gray-900 dark:text-slate-100 rounded-md focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm"
                   placeholder="First name"
                   disabled={isLoading}
                 />
@@ -51,13 +51,13 @@ export default function RegisterForm() {
                 )}
               </div>
               <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-slate-200">
                   Last Name
                 </label>
                 <input
                   {...formRegister('lastName')}
                   type="text"
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className="mt-1 appearance-none relative block min-h-11 w-full px-3 py-2.5 border border-gray-300 bg-white dark:border-slate-700 dark:bg-[#202650] dark:placeholder-slate-400 placeholder-gray-500 text-gray-900 dark:text-slate-100 rounded-md focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm"
                   placeholder="Last name"
                   disabled={isLoading}
                 />
@@ -68,13 +68,13 @@ export default function RegisterForm() {
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-slate-200">
                 Email address
               </label>
               <input
                 {...formRegister('email')}
                 type="email"
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="mt-1 appearance-none relative block min-h-11 w-full px-3 py-2.5 border border-gray-300 bg-white dark:border-slate-700 dark:bg-[#202650] dark:placeholder-slate-400 placeholder-gray-500 text-gray-900 dark:text-slate-100 rounded-md focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm"
                 placeholder="Email address"
                 disabled={isLoading}
               />
@@ -84,13 +84,13 @@ export default function RegisterForm() {
             </div>
 
             <div className="relative">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-slate-200">
                 Password
               </label>
               <input
                 {...formRegister('password')}
                 type={showPassword ? 'text' : 'password'}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="mt-1 appearance-none relative block min-h-11 w-full px-3 py-2.5 pr-10 border border-gray-300 bg-white dark:border-slate-700 dark:bg-[#202650] dark:placeholder-slate-400 placeholder-gray-500 text-gray-900 dark:text-slate-100 rounded-md focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm"
                 placeholder="Password"
                 disabled={isLoading}
               />
@@ -113,13 +113,13 @@ export default function RegisterForm() {
             </div>
 
             <div className="relative">
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-slate-200">
                 Confirm Password
               </label>
               <input
                 {...formRegister('confirmPassword')}
                 type={showConfirmPassword ? 'text' : 'password'}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="mt-1 appearance-none relative block min-h-11 w-full px-3 py-2.5 pr-10 border border-gray-300 bg-white dark:border-slate-700 dark:bg-[#202650] dark:placeholder-slate-400 placeholder-gray-500 text-gray-900 dark:text-slate-100 rounded-md focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm"
                 placeholder="Confirm password"
                 disabled={isLoading}
               />
@@ -142,12 +142,12 @@ export default function RegisterForm() {
             </div>
 
             <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700 dark:text-slate-200">
                 I am a
               </label>
               <select
                 {...formRegister('role')}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 bg-white dark:border-slate-700 dark:bg-[#202650] dark:placeholder-slate-400 focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm rounded-md"
                 disabled={isLoading}
               >
                 <option value="student">Student</option>
@@ -164,7 +164,7 @@ export default function RegisterForm() {
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative w-full flex min-h-11 justify-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#151A3A] hover:bg-[#202750] dark:bg-brand-600 dark:hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -177,7 +177,7 @@ export default function RegisterForm() {
           </div>
 
           <div className="text-center">
-            <Link href="/login" className="text-sm text-blue-600 hover:text-blue-500">
+            <Link href="/login" className="text-sm text-brand-700 hover:text-brand-800 dark:text-brand-300 dark:hover:text-brand-200">
               Already have an account? Sign in
             </Link>
           </div>

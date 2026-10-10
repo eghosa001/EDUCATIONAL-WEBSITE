@@ -43,7 +43,7 @@ export default function ForgotPasswordForm() {
 
   if (sent) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen flex items-center justify-center bg-stone-50 text-slate-900 dark:bg-[#151A3A] dark:text-slate-100 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8 text-center">
           <div className="mx-auto h-16 w-16 bg-green-100 rounded-full flex items-center justify-center">
             <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -51,12 +51,12 @@ export default function ForgotPasswordForm() {
             </svg>
           </div>
           <div>
-            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Check your email</h2>
-            <p className="mt-2 text-sm text-gray-600">
+            <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-slate-100">Check your email</h2>
+            <p className="mt-2 text-sm text-gray-600 dark:text-slate-300">
               If an account exists for that address, a password reset link has been sent. Please check your inbox and spam folder.
             </p>
           </div>
-          <button onClick={() => router.push('/login')} className="text-sm text-blue-600 hover:text-blue-500">
+          <button onClick={() => router.push('/login')} className="text-sm text-brand-700 hover:text-brand-800 dark:text-brand-300 dark:hover:text-brand-200">
             Back to login
           </button>
         </div>
@@ -65,12 +65,12 @@ export default function ForgotPasswordForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-stone-50 text-slate-900 dark:bg-[#151A3A] dark:text-slate-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="flex justify-center"><BrandLogo href="/" /></div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Reset your password</h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-slate-100">Reset your password</h2>
+          <p className="mt-2 text-center text-sm text-gray-600 dark:text-slate-300">
             Enter your email address and we&apos;ll send you a link to reset your password.
           </p>
         </div>
@@ -88,7 +88,7 @@ export default function ForgotPasswordForm() {
               {...register('email')}
               type="email"
               autoComplete="email"
-              className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+              className="appearance-none rounded-md relative block min-h-11 w-full px-3 py-2.5 border border-gray-300 bg-white dark:border-slate-700 dark:bg-[#202650] dark:placeholder-slate-400 placeholder-gray-500 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-brand-500 focus:border-brand-500 focus:z-10 sm:text-sm"
               placeholder="Email address"
               disabled={submitting}
             />
@@ -98,13 +98,13 @@ export default function ForgotPasswordForm() {
           <button
             type="submit"
             disabled={submitting}
-            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="group relative w-full flex min-h-11 justify-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#151A3A] hover:bg-[#202750] dark:bg-brand-600 dark:hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? 'Sending…' : 'Send Reset Link'}
           </button>
 
           <div className="text-center">
-            <a href="/login" className="text-sm text-blue-600 hover:text-blue-500">Back to login</a>
+            <a href="/login" className="text-sm text-brand-700 hover:text-brand-800 dark:text-brand-300 dark:hover:text-brand-200">Back to login</a>
           </div>
         </form>
       </div>

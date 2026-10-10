@@ -2,12 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-test('brand component uses supplied THE GUIDE raster assets directly', () => {
+test('transparent shared brand reuses the supplied artwork without a rectangular raster backdrop', () => {
   const brand = fs.readFileSync(new URL('../src/components/BrandLogo.tsx', import.meta.url), 'utf8');
-  assert.match(brand, /primary-logo\.jfif/);
-  assert.match(brand, /dark-mode-silver\.jfif/);
+  assert.ok(brand.includes('/logos/dark-mode-silver.jfif'));
+  assert.match(brand, /feColorMatrix/);
+  assert.match(brand, /maskType: 'alpha'/);
   assert.match(brand, /data-brand-logo/);
-  assert.doesNotMatch(brand, /brand-light\.svg|brand-dark\.svg|the-guide-mark/);
+  assert.match(brand, /dark:fill-/);
+  assert.doesNotMatch(brand, /<img|mix-blend|the-guide-mark/);
 });
 
 test('auth screens no longer use generic book or user marks', () => {
@@ -15,6 +17,15 @@ test('auth screens no longer use generic book or user marks', () => {
     const source = fs.readFileSync(new URL('../src/features/auth/components/' + file, import.meta.url), 'utf8');
     assert.match(source, /BrandLogo/);
     assert.doesNotMatch(source, /mx-auto h-16 w-16 bg-blue-600 rounded-full/);
+  }
+});
+
+test('brand remains readable on light and dark login, register and recovery screens', () => {
+  for (const file of ['LoginForm.tsx', 'RegisterForm.tsx', 'ForgotPasswordForm.tsx', 'ResetPasswordForm.tsx']) {
+    const source = fs.readFileSync(new URL('../src/features/auth/components/' + file, import.meta.url), 'utf8');
+    assert.ok(source.includes('dark:bg-[#151A3A]'));
+    assert.match(source, /dark:text-slate-100/);
+    assert.match(source, /BrandLogo/);
   }
 });
 

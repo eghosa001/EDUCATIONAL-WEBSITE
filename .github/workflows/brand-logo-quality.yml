@@ -1,0 +1,36 @@
+name: Brand Logo Quality
+on:
+  pull_request:
+    paths:
+      - 'web/src/components/BrandLogo.tsx'
+      - 'web/src/features/auth/components/**'
+      - 'web/src/app/(auth)/**'
+      - 'web/tests/brand-and-source-questions.test.mjs'
+      - 'web/tests/storage-question-and-brand.test.mjs'
+      - '.github/workflows/brand-logo-quality.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: brand-logo-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  brand-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install web dependencies
+        working-directory: web
+        run: npm install --workspaces=false --no-audit --no-fund --progress=false
+      - name: Typecheck
+        working-directory: web
+        run: npm run typecheck
+      - name: Check brand and auth regressions only
+        working-directory: web
+        run: node --test --test-name-pattern="(brand|auth screens)" tests/brand-and-source-questions.test.mjs tests/storage-question-and-brand.test.mjs
