@@ -68,7 +68,7 @@ export default function ResetPasswordForm() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen flex items-center justify-center bg-stone-50 text-slate-900 dark:bg-[#151A3A] dark:text-slate-100 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8 text-center">
           <div className="mx-auto h-16 w-16 bg-green-100 rounded-full flex items-center justify-center">
             <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -76,11 +76,11 @@ export default function ResetPasswordForm() {
             </svg>
           </div>
           <div>
-            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Password reset successful</h2>
-            <p className="mt-2 text-sm text-gray-600">Your password has been reset successfully. You can now sign in with your new password.</p>
+            <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-slate-100">Password reset successful</h2>
+            <p className="mt-2 text-sm text-gray-600 dark:text-slate-300">Your password has been reset successfully. You can now sign in with your new password.</p>
           </div>
           <div>
-            <a href="/login" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">Sign In</a>
+            <a href="/login" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#151A3A] hover:bg-[#202750] dark:bg-brand-600 dark:hover:bg-brand-700">Sign In</a>
           </div>
         </div>
       </div>
@@ -88,11 +88,11 @@ export default function ResetPasswordForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-stone-50 text-slate-900 dark:bg-[#151A3A] dark:text-slate-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="flex justify-center"><BrandLogo href="/" /></div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Set new password</h2>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-slate-100">Set new password</h2>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
@@ -104,19 +104,19 @@ export default function ResetPasswordForm() {
 
           <div className="rounded-md shadow-sm space-y-4">
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">New Password</label>
-              <input {...register('password')} id="password" type="password" autoComplete="new-password" className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="New password" />
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-slate-200">New Password</label>
+              <input {...register('password')} id="password" type="password" autoComplete="new-password" className="mt-1 appearance-none relative block min-h-11 w-full px-3 py-2.5 border border-gray-300 bg-white dark:border-slate-700 dark:bg-[#202650] dark:placeholder-slate-400 placeholder-gray-500 text-gray-900 dark:text-slate-100 rounded-md focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm" placeholder="New password" />
               {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>}
             </div>
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirm Password</label>
-              <input {...register('confirmPassword')} id="confirmPassword" type="password" autoComplete="new-password" className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Confirm new password" />
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-slate-200">Confirm Password</label>
+              <input {...register('confirmPassword')} id="confirmPassword" type="password" autoComplete="new-password" className="mt-1 appearance-none relative block min-h-11 w-full px-3 py-2.5 border border-gray-300 bg-white dark:border-slate-700 dark:bg-[#202650] dark:placeholder-slate-400 placeholder-gray-500 text-gray-900 dark:text-slate-100 rounded-md focus:outline-none focus:ring-brand-500 focus:border-brand-500 sm:text-sm" placeholder="Confirm new password" />
               {errors.confirmPassword && <p className="mt-1 text-sm text-red-600">{errors.confirmPassword.message}</p>}
             </div>
           </div>
 
           <div>
-            <button type="submit" disabled={submitting} className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            <button type="submit" disabled={submitting} className="group relative w-full flex min-h-11 justify-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#151A3A] hover:bg-[#202750] dark:bg-brand-600 dark:hover:bg-brand-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500">
               {submitting ? 'Resetting password…' : 'Reset Password'}
             </button>
           </div>
