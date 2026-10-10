@@ -9,6 +9,9 @@ on:
       - 'web/src/app/dashboard/flashcards/page.tsx'
       - 'web/src/app/dashboard/progress/page.tsx'
       - 'web/src/app/dashboard/layout.tsx'
+      - 'web/src/app/globals.css'
+      - 'web/src/app/dashboard/courses/**'
+      - 'web/tests/mobile-course-table-layout.test.mjs'
       - 'web/src/app/dashboard/page.tsx'
       - 'web/src/app/dashboard/lessons/**'
       - 'web/src/services/api/aiService.ts'
@@ -45,5 +48,5 @@ jobs:
         run: npm run typecheck
         working-directory: web
       - name: Run focused curriculum-learning and navigation regressions
-        run: node --test tests/learning-loop-benchmark-20261009.test.mjs tests/education-ux-quality.test.mjs tests/lesson-learning-completion.test.mjs tests/prebuilt-learning-resources.test.mjs tests/due-revision-and-weak-topic-20261009.test.mjs
+        run: node --test tests/learning-loop-benchmark-20261009.test.mjs tests/education-ux-quality.test.mjs tests/lesson-learning-completion.test.mjs tests/prebuilt-learning-resources.test.mjs tests/due-revision-and-weak-topic-20261009.test.mjs tests/mobile-course-table-layout.test.mjs
         working-directory: web
