@@ -275,8 +275,8 @@ export default function BillingPage() {
         {invoices.length === 0 ? (
           <p className="text-gray-500 text-sm text-center py-8">No invoices yet</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="mobile-table-scroll overflow-x-auto" role="region" aria-label="Scrollable table: swipe sideways to read all columns" tabIndex={0}>
+            <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left py-3 px-2 text-gray-600 font-medium">Invoice #</th>
