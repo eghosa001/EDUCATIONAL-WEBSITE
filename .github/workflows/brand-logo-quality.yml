@@ -33,4 +33,4 @@ jobs:
         run: npm run typecheck
       - name: Check brand and auth regressions only
         working-directory: web
-        run: node --test tests/brand-and-source-questions.test.mjs tests/storage-question-and-brand.test.mjs
+        run: node --test --test-name-pattern="(brand|auth screens)" tests/brand-and-source-questions.test.mjs tests/storage-question-and-brand.test.mjs
