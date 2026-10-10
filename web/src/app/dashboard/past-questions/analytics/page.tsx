@@ -146,7 +146,7 @@ export default function PastQuestionAnalyticsPage() {
 
       <section className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm dark:border-slate-700 dark:bg-[#1b2045]">
         <div className="border-b border-stone-100 px-6 py-4 dark:border-slate-700"><h2 className="font-bold text-[#151A3A] dark:text-white">Recent CBT sessions</h2></div>
-        <div className="overflow-x-auto"><table className="w-full min-w-[640px] text-sm">
+        <div className="mobile-table-scroll overflow-x-auto" role="region" aria-label="Scrollable table: swipe sideways to read all columns" tabIndex={0}><table className="w-full min-w-[640px] text-sm">
           <thead className="bg-stone-50 text-left text-xs uppercase tracking-wide text-slate-500 dark:bg-[#151A3A]"><tr><th className="px-6 py-3">Date</th><th className="px-6 py-3">Exam</th><th className="px-6 py-3">Year</th><th className="px-6 py-3">Score</th><th className="px-6 py-3">Questions</th><th className="px-6 py-3">Time</th></tr></thead>
           <tbody className="divide-y divide-stone-100 dark:divide-slate-700">{insights.recentAttempts.map((attempt) => <tr key={attempt.id}><td className="px-6 py-4 text-slate-600 dark:text-slate-300">{new Date(attempt.submittedAt).toLocaleDateString()}</td><td className="px-6 py-4 font-semibold">{boardLabel(attempt.board)}</td><td className="px-6 py-4 text-slate-500">{attempt.year || 'Mixed'}</td><td className="px-6 py-4 font-bold">{attempt.percentage}%</td><td className="px-6 py-4 text-slate-500">{attempt.correctCount}/{attempt.questionCount}</td><td className="px-6 py-4 text-slate-500">{formatDuration(attempt.timeSpentSeconds)}</td></tr>)}</tbody>
         </table></div>

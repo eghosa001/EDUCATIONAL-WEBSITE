@@ -306,7 +306,7 @@ export default function ProgressPage() {
             <h2 className="font-semibold text-gray-900 dark:text-slate-100">Subject performance</h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-slate-300">Practice accuracy and completed exam scores by subject.</p>
           </div>
-          <div className="overflow-x-auto">
+          <div className="mobile-table-scroll overflow-x-auto" role="region" aria-label="Scrollable table: swipe sideways to read all columns" tabIndex={0}>
             <table className="w-full min-w-[620px] text-sm">
               <thead className="bg-gray-50 dark:bg-[#151A3A] text-left text-xs uppercase tracking-wide text-gray-500 dark:text-slate-300">
                 <tr>
