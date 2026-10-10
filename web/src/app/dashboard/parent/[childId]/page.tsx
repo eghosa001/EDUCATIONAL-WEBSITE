@@ -262,8 +262,8 @@ export default function ParentChildReportPage() {
         {exams.length === 0 ? (
           <p className="text-sm text-gray-500 py-8 text-center">No exams taken yet.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="mobile-table-scroll overflow-x-auto" role="region" aria-label="Scrollable table: swipe sideways to read all columns" tabIndex={0}>
+            <table className="w-full min-w-[600px]">
               <thead><tr className="border-b border-gray-100">
                 {['Exam', 'Date', 'Percentage', 'Result'].map(h => (
                   <th key={h} className="text-left px-6 py-3 text-xs font-medium text-gray-500">{h}</th>
