@@ -55,3 +55,57 @@
   .brand-glow { box-shadow: 0 10px 35px rgb(21 26 58 / 0.18); }
   .brand-accent { color: #a67c38; }
 }
+
+/* Keep wide teaching content inside the viewport. Tables scroll independently
+   so users can still read every column without sideways page scrolling. */
+@layer components {
+  .dashboard-content {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .dashboard-content :where(.grid > *) {
+    min-width: 0;
+  }
+  .dashboard-content :where(.overflow-x-auto) {
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+  .dashboard-content :where(img, video, iframe, canvas) {
+    max-width: 100%;
+  }
+  .dashboard-content :where(h1, h2, h3, p) {
+    overflow-wrap: anywhere;
+  }
+  .mobile-table-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #9ca3af transparent;
+  }
+  .mobile-table-scroll table {
+    width: 100%;
+    min-width: 560px;
+  }
+  .mobile-table-scroll :is(th, td) {
+    overflow-wrap: break-word;
+  }
+}
+
+@media (max-width: 639px) {
+  .mobile-table-scroll::before {
+    content: "↔ Swipe sideways to view all columns";
+    position: sticky;
+    left: 0;
+    display: block;
+    width: max-content;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #475569;
+  }
+  .mobile-table-scroll :is(th, td) {
+    padding: 0.7rem 0.75rem;
+  }
+}
