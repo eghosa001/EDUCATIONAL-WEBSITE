@@ -28,13 +28,13 @@ Scores above are directional review estimates from repository/database inspectio
 ## Priority quality gates
 1. **One action, one destination**. Route clicks must not land on an unrelated area. Mark only the single most-specific sidebar entry active. Prefer targeted next-route prefetch to all-route eager prefetch; obey data-saving network preference.
 2. **Mobile course and table acceptance**. At 320, 360, 390 and 430 CSS pixels (including Safari/iPhone), courses, class cards, lesson tabs, teaching content, practice and reports must fit the viewport without page-level sideways scrolling. Any table wider than its card must remain fully readable via independent horizontal touch-swipe, visible swipe guidance and keyboard focus, without losing columns or clipping cells. Verify with an authenticated real-device browser before claiming 9+.
-2. **Complete learning loop**. Lesson → active question → explain wrong answer → repeat weak skill/card → track real mastery. Do not label simple next-card scrolling as spaced repetition.
-3. **Saved mastery**. Flashcard review histories are user-specific and should persist across browser sessions; rows must obey RLS. The current first rollout uses the existing public-card review table. Verify real multi-device sync before scoring 9+.
-4. **Fair sampling**. Mixed subject flashcards must rotate across sets, not consume only the first stored lesson. Select new and due cards first; future cards can be practised early only on request.
-5. **Source trust**. Historical JAMB, WAEC, NECO and NABTEB archives must be separate from synthetic or authored practice. Show provenance to students. Do not claim an invented excerpt is from a prescribed author.
-6. **Inclusive motion and control**. Reduce unnecessary flipping/motion for learners sensitive to visual movement and support keyboard focus; avoid effects that impair reading.
-7. **Resilient sessions**. Error states give concrete recovery actions; never silently assume offline/sync writes succeeded.
-8. **Scope control**. Check ongoing PRs and existing canonical lessons, then run only relevant tests and typecheck. No broad CI if change-scoped validation suffices.
+3. **Complete learning loop**. Lesson → active question → explain wrong answer → repeat weak skill/card → track real mastery. Do not label simple next-card scrolling as spaced repetition.
+4. **Saved mastery**. Flashcard review histories are user-specific and should persist across browser sessions; rows must obey RLS. The current first rollout uses the existing public-card review table. Verify real multi-device sync before scoring 9+.
+5. **Fair sampling**. Mixed subject flashcards must rotate across sets, not consume only the first stored lesson. Select new and due cards first; future cards can be practised early only on request.
+6. **Source trust**. Historical JAMB, WAEC, NECO and NABTEB archives must be separate from synthetic or authored practice. Show provenance to students. Do not claim an invented excerpt is from a prescribed author.
+7. **Inclusive motion and control**. Reduce unnecessary flipping/motion for learners sensitive to visual movement and support keyboard focus; avoid effects that impair reading.
+8. **Resilient sessions**. Error states give concrete recovery actions; never silently assume offline/sync writes succeeded.
+9. **Scope control**. Check ongoing PRs and existing canonical lessons, then run only relevant tests and typecheck. No broad CI if change-scoped validation suffices.
 
 ## Evidence and remaining work
 2026-10-09 PR: implement account-persisted flashcard reviews using existing `flashcard_reviews`, scoped write policies, spaced scheduler, first-due selection, mixed topic selection, retriable save errors, navigation active-state fix and bounded route prefetch. These changes need deployed mobile browser, logged-in review round-trip and performance measurements before assigning verified post-change scores.
