@@ -23,7 +23,7 @@ test('auth screens no longer use generic book or user marks', () => {
 test('brand remains readable on light and dark login, register and recovery screens', () => {
   for (const file of ['LoginForm.tsx', 'RegisterForm.tsx', 'ForgotPasswordForm.tsx', 'ResetPasswordForm.tsx']) {
     const source = fs.readFileSync(new URL('../src/features/auth/components/' + file, import.meta.url), 'utf8');
-    assert.match(source, /dark:bg-\\[#151A3A\\]/);
+    assert.ok(source.includes('dark:bg-[#151A3A]'));
     assert.match(source, /dark:text-slate-100/);
     assert.match(source, /BrandLogo/);
   }
