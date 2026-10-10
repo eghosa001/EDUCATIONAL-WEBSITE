@@ -1,40 +1,89 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { Moon, Sun } from 'lucide-react';
 
 type Theme = 'light' | 'dark' | 'system';
-interface ThemeContextType { theme: Theme; resolvedTheme: 'light' | 'dark'; setTheme: (theme: Theme) => void; }
+type ResolvedTheme = 'light' | 'dark';
+interface ThemeContextType { theme: Theme; resolvedTheme: ResolvedTheme; setTheme: (theme: Theme) => void; }
 const ThemeContext = createContext<ThemeContextType>({ theme: 'system', resolvedTheme: 'light', setTheme: () => {} });
+const STORAGE_KEY = 'edu-theme';
 
-const getPreferredTheme = (): 'light' | 'dark' => {
-  if (typeof window === 'undefined') return 'light';
-  const stored = localStorage.getItem('edu-theme');
-  if (stored === 'dark' || stored === 'light') return stored;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-};
+function readSavedTheme(): Theme {
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system';
+  } catch {
+    return 'system';
+  }
+}
+
+function resolveTheme(theme: Theme): ResolvedTheme {
+  return theme === 'system'
+    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    : theme;
+}
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('system');
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light');
+  const [ready, setReady] = useState(false);
 
-  useEffect(() => { const stored = localStorage.getItem('edu-theme') as Theme | null; if (stored) setThemeState(stored); }, []);
   useEffect(() => {
-    const resolved = theme === 'system' ? getPreferredTheme() : theme;
-    setResolvedTheme(resolved);
+    // Read stored preferences before persisting anything. Otherwise the first
+    // render can accidentally overwrite a saved choice with "system".
+    setThemeState(readSavedTheme());
+    setReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    const apply = () => {
+      const next = resolveTheme(theme);
+      setResolvedTheme(next);
+      document.documentElement.classList.toggle('dark', next === 'dark');
+      document.documentElement.style.colorScheme = next;
+    };
+    apply();
+    try { window.localStorage.setItem(STORAGE_KEY, theme); } catch { /* storage may be unavailable */ }
+
+    // Follow operating-system changes only when the user hasn't chosen a mode.
+    if (theme !== 'system') return;
+    const query = window.matchMedia('(prefers-color-scheme: dark)');
+    query.addEventListener?.('change', apply);
+    return () => query.removeEventListener?.('change', apply);
+  }, [theme, ready]);
+
+  const setTheme = useCallback((next: Theme) => {
+    setThemeState(next);
+    // Apply immediately so the button never feels delayed on a phone.
+    const resolved = resolveTheme(next);
     document.documentElement.classList.toggle('dark', resolved === 'dark');
     document.documentElement.style.colorScheme = resolved;
-    localStorage.setItem('edu-theme', theme);
-  }, [theme]);
-  return <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme: setThemeState }}>{children}</ThemeContext.Provider>;
+    setResolvedTheme(resolved);
+    try { window.localStorage.setItem(STORAGE_KEY, next); } catch { /* optional preference */ }
+  }, []);
+
+  return <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() { return useContext(ThemeContext); }
 
-export function ThemeToggle() {
+export function ThemeToggle({ compact = false, className = '' }: { compact?: boolean; className?: string }) {
   const { setTheme, resolvedTheme } = useTheme();
   const next: Theme = resolvedTheme === 'dark' ? 'light' : 'dark';
-  return <button onClick={() => setTheme(next)} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-brand-300" title={`Switch to ${next} mode`} aria-label={`Switch to ${next} mode`}>
-    {resolvedTheme === 'dark' ? <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg> : <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>}
-    <span className="hidden sm:inline">{resolvedTheme === 'dark' ? 'Light' : 'Dark'}</span>
-  </button>;
+  return (
+    <button
+      type="button"
+      data-theme-toggle
+      data-current-theme={resolvedTheme}
+      onClick={() => setTheme(next)}
+      aria-label={`Switch to ${next} mode`}
+      title={`Switch to ${next} mode`}
+      className={`inline-flex h-11 shrink-0 items-center justify-center rounded-xl border border-stone-300 bg-white text-[#151A3A] shadow-sm transition-colors hover:border-brand-500 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:border-slate-600 dark:bg-[#202650] dark:text-brand-200 dark:hover:bg-[#30385f] dark:focus-visible:ring-brand-300 dark:focus-visible:ring-offset-[#151A3A] ${compact ? 'w-11' : 'gap-2 px-3'} ${className}`}
+    >
+      {resolvedTheme === 'dark' ? <Sun className="h-[19px] w-[19px]" aria-hidden="true" /> : <Moon className="h-[19px] w-[19px]" aria-hidden="true" />}
+      {!compact && <span className="text-sm font-semibold">{resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}</span>}
+    </button>
+  );
 }
